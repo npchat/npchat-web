@@ -1,0 +1,18 @@
+name = "openchat"
+type = "javascript"
+account_id = "[YOUR-CF-ACCOUNT-ID]"
+workers_dev = true
+route = ""
+zone_id = ""
+compatibility_date = "2021-10-04"
+
+[build.upload]
+dir = "src"
+format = "modules"
+main = "./index.mjs"
+
+[durable_objects]
+bindings = [{name = "CHANNEL", class_name = "Channel"}]
+
+[vars]
+CHALLENGE_TTL = "6000000"

@@ -1,0 +1,23 @@
+{
+  "name": "openchat",
+  "version": "1.0.0",
+  "description": "Worker for securely sending & receiving messages",
+  "type": "module",
+  "main": "src/index.mjs",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dr-useless/openchat.git"
+  },
+  "keywords": [
+    "secure",
+    "chat",
+    "instant-messaging",
+    "serverless"
+  ],
+  "author": "dr-useless",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/dr-useless/openchat/issues"
+  },
+  "homepage": "https://github.com/dr-useless/openchat#readme"
+}
