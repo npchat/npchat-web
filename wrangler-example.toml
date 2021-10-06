@@ -15,4 +15,4 @@ main = "./index.mjs"
 bindings = [{name = "CHANNEL", class_name = "Channel"}]
 
 [vars]
-CHALLENGE_TTL = "6000000"
+CHALLENGE_TTL = "6000000" #ms 1.6h, reduce for prod

@@ -1,3 +1,14 @@
+const messagesKey = "messages"
+const challengeKey = "challenge"
+const hashAlgorithm = "SHA-256"
+const ecKeyImportParams = {
+	name: "ECDSA",
+	namedCurve: "P-384"
+}
+const signingAlgorithm = {
+	name: "ECDSA",
+	hash: "SHA-384"
+}
 const defaultResponseOpts = {
 	headers: {
 		"Access-Control-Allow-Origin": "*",
@@ -47,19 +58,7 @@ async function handleRequest(request, env) {
 export class Channel {
 	constructor(state, env) {
 		this.state = state
-		this.messagesKey = "messages"
-		this.challengeKey = "challenge"
-		this.challengeTtl = env.CHALLENGE_TTL;
-		this.ecKeyImportParams = {
-			name: "ECDSA",
-			namedCurve: "P-384"
-		}
-		this.signingAlgorithm = {
-			name: "ECDSA",
-			hash: "SHA-384"
-		}
-		this.hashAlgorithm = "SHA-256"
-
+		this.challengeTtl = env.CHALLENGE_TTL
 		//this.state.blockConcurrencyWhile(async () => )
 	}
 
@@ -67,7 +66,7 @@ export class Channel {
 		const url = new URL(request.url)
 		const segments = url.pathname.split("/")
 		if (request.method === "GET") {
-			if (segments[segments.length-1] === this.challengeKey) {
+			if (segments[segments.length-1] === challengeKey) {
 				return this.handleGetChallenge()
 			}
 			return this.handleGetMessages(request)
@@ -79,10 +78,10 @@ export class Channel {
 	}
 
 	async handleGetChallenge() {
-		const challenge = await this.state.storage.get(this.challengeKey)
+		const challenge = await this.state.storage.get(challengeKey)
 		if (!challenge || this.hasChallengeExpired(JSON.parse(challenge))) {
 			const newChallenge = JSON.stringify(this.makeChallenge());
-			this.state.storage.put(this.challengeKey, newChallenge)
+			this.state.storage.put(challengeKey, newChallenge)
 			return new Response(newChallenge, defaultResponseOpts)
 		}
 		return new Response(challenge, defaultResponseOpts)
@@ -105,33 +104,38 @@ export class Channel {
 			opts.status = 401
 			return new Response(JSON.stringify({error: "Unauthorized"}), opts)
 		}
-		const messages = await this.state.storage.get(this.messagesKey)
-		await this.state.storage.put(this.messagesKey, JSON.stringify([]))
+		const messages = await this.state.storage.get(messagesKey)
+		await this.state.storage.put(messagesKey, JSON.stringify([]))
 		return new Response(JSON.stringify({messages: messages}), opts)
 	}
 
 	async authenticate(request) {
+		const opts = Object.assign({}, defaultResponseOpts)
 		const pubKeyHeader = request.headers.get("oc-pk")
 		const signedChallengeHeader = request.headers.get("oc-sig")
 
 		if (!pubKeyHeader || !signedChallengeHeader) {
+			opts.status = 401
 			return new Response("Unauthorized, missing header oc-pk (pubKey) or oc-sig (signedChallenge)", opts)
 		}
 
 		const pubKeyHashHeader = request.headers.get("oc-pkh")
 
-		const jwkBytes = base58().decode(pubKeyHeader)
-		const jwkHash = await crypto.subtle.digest(this.hashAlgorithm, jwkBytes)
-		const jwkHashBase58 = base58().encode(new Uint8Array(jwkHash))
+		const base58 = this.base58()
+
+		const jwkBytes = base58.decode(pubKeyHeader)
+		const jwkHash = await crypto.subtle.digest(hashAlgorithm, jwkBytes)
+		const jwkHashBase58 = base58.encode(new Uint8Array(jwkHash))
 
 		if (jwkHashBase58 !== pubKeyHashHeader) {
-			return new Response(JSON.stringify({error: "oc-pk & oc-pkh do not match", jwkBytes: jwkBytes, jwkHash: jwkHash, jwkHashBase58: jwkHashBase58, pubKeyHashHeader}), opts)
+			opts.status = 401
+			return new Response(JSON.stringify({message: "Unauthorized", error: "oc-pk & oc-pkh do not match"}), opts)
 		}
 
 		const jwk = JSON.parse(new TextDecoder().decode(jwkBytes))
 		const pubKey = await this.importJwk(jwk)
 
-		const signedChallengeBytes = base58().decode(signedChallengeHeader)
+		const signedChallengeBytes = base58.decode(signedChallengeHeader)
 
 		return await this.verifyChallenge(pubKey, signedChallengeBytes)
 	}
@@ -145,7 +149,7 @@ export class Channel {
 	}
 
 	async getStoredMessages() {
-		const stored = await this.state.storage.get(this.messagesKey)
+		const stored = await this.state.storage.get(messagesKey)
 		if (!stored) {
 			return []
 		}
@@ -153,119 +157,118 @@ export class Channel {
 	}
 
 	async storeMessages(messages) {
-		return await this.state.storage.put(this.messagesKey, JSON.stringify(messages))
+		return await this.state.storage.put(messagesKey, JSON.stringify(messages))
 	}
 
 	async verifyChallenge(publicKey, signedChallengeBytes) {
-		const challenge = JSON.parse(await this.state.storage.get(this.challengeKey))
+		const challenge = JSON.parse(await this.state.storage.get(challengeKey))
 		const challengeBytes = new TextEncoder().encode(challenge.text)
-		return await crypto.subtle.verify(this.signingAlgorithm, publicKey, signedChallengeBytes, challengeBytes)
+		return await crypto.subtle.verify(signingAlgorithm, publicKey, signedChallengeBytes, challengeBytes)
 	}
 
 	async importJwk(jwk) {
 		return crypto.subtle.importKey(
 			"jwk",
 			jwk,
-			this.ecKeyImportParams,
+			ecKeyImportParams,
 			true,
 			["verify"])
-			.catch(e => {return { error: e, jwk: jwk}})
 	}
-}
 
-const base58 = () => {
-	// https://github.com/45678/Base58
-	const base58 = {}
-	const ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-	const ALPHABET_MAP = {};
-	let i = 0;
-
-	while (i < ALPHABET.length) {
+	base58() {
+		// https://github.com/45678/Base58
+		const result = {}
+		const ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+		const ALPHABET_MAP = {};
+		let i = 0;
+	
+		while (i < ALPHABET.length) {
 			ALPHABET_MAP[ALPHABET.charAt(i)] = i;
 			i++;
-	}
-
-	base58.encode = buffer => {
-			var carry, digits, j;
+		}
+	
+		result.encode = buffer => {
+			let carry, digits, j;
 			if (buffer.length === 0) {
-					return "";
+				return "";
 			}
 			i = void 0;
 			j = void 0;
 			digits = [0];
 			i = 0;
 			while (i < buffer.length) {
-					j = 0;
-					while (j < digits.length) {
-							digits[j] <<= 8;
-							j++;
-					}
-					digits[0] += buffer[i];
-					carry = 0;
-					j = 0;
-					while (j < digits.length) {
-							digits[j] += carry;
-							carry = (digits[j] / 58) | 0;
-							digits[j] %= 58;
-							++j;
-					}
-					while (carry) {
-							digits.push(carry % 58);
-							carry = (carry / 58) | 0;
-					}
-					i++;
+				j = 0;
+				while (j < digits.length) {
+					digits[j] <<= 8;
+					j++;
+				}
+				digits[0] += buffer[i];
+				carry = 0;
+				j = 0;
+				while (j < digits.length) {
+					digits[j] += carry;
+					carry = (digits[j] / 58) | 0;
+					digits[j] %= 58;
+					++j;
+				}
+				while (carry) {
+					digits.push(carry % 58);
+					carry = (carry / 58) | 0;
+				}
+				i++;
 			}
 			i = 0;
 			while (buffer[i] === 0 && i < buffer.length - 1) {
-					digits.push(0);
-					i++;
+				digits.push(0);
+				i++;
 			}
 			return digits.reverse().map(function(digit) {
-					return ALPHABET[digit];
+				return ALPHABET[digit];
 			}).join("");
-	};
-
-	base58.decode = string => {
-			var bytes, c, carry, j;
+		};
+	
+		result.decode = string => {
+			let bytes, c, carry, j;
 			if (string.length === 0) {
-					return new(typeof Uint8Array !== "undefined" && Uint8Array !== null ? Uint8Array : Buffer)(0);
+				return new(typeof Uint8Array !== "undefined" && Uint8Array !== null ? Uint8Array : Buffer)(0);
 			}
 			i = void 0;
 			j = void 0;
 			bytes = [0];
 			i = 0;
 			while (i < string.length) {
-					c = string[i];
-					if (!(c in ALPHABET_MAP)) {
-							throw "Base58.decode received unacceptable input. Character '" + c + "' is not in the Base58 alphabet.";
-					}
-					j = 0;
-					while (j < bytes.length) {
-							bytes[j] *= 58;
-							j++;
-					}
-					bytes[0] += ALPHABET_MAP[c];
-					carry = 0;
-					j = 0;
-					while (j < bytes.length) {
-							bytes[j] += carry;
-							carry = bytes[j] >> 8;
-							bytes[j] &= 0xff;
-							++j;
-					}
-					while (carry) {
-							bytes.push(carry & 0xff);
-							carry >>= 8;
-					}
-					i++;
+				c = string[i];
+				if (!(c in ALPHABET_MAP)) {
+					throw "Base58.decode received unacceptable input. Character '" + c + "' is not in the Base58 alphabet.";
+				}
+				j = 0;
+				while (j < bytes.length) {
+					bytes[j] *= 58;
+					j++;
+				}
+				bytes[0] += ALPHABET_MAP[c];
+				carry = 0;
+				j = 0;
+				while (j < bytes.length) {
+					bytes[j] += carry;
+					carry = bytes[j] >> 8;
+					bytes[j] &= 0xff;
+					++j;
+				}
+				while (carry) {
+					bytes.push(carry & 0xff);
+					carry >>= 8;
+				}
+				i++;
 			}
 			i = 0;
 			while (string[i] === "1" && i < string.length - 1) {
-					bytes.push(0);
-					i++;
+				bytes.push(0);
+				i++;
 			}
 			return new(typeof Uint8Array !== "undefined" && Uint8Array !== null ? Uint8Array : Buffer)(bytes.reverse());
-	};
-
-	return base58
+		};
+	
+		return result
+	}
 }

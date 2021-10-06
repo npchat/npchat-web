@@ -75,6 +75,7 @@
 					getHash(pubJwkBytes)
 						.then(pkh => base58().encode(new Uint8Array(pkh)))
 						.then(pkhStr => {
+							console.log("pkh", pkhStr)
 							getChallenge(pkhStr).then(challenge => {
 								console.log('challenge', challenge.text);
 								// sign it with privKey
