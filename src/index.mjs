@@ -21,6 +21,11 @@ const defaultResponseOpts = () => { return {
 	}
 }
 
+const getPubKeyHashFromRequest = request => {
+	const url = new URL(request.url)
+	return url.pathname.split("/")[1]
+}
+
 export default {
   async fetch(request, env) {
     return await handleRequest(request, env);
@@ -32,14 +37,14 @@ async function handleRequest(request, env) {
 		return new Response('Allowed methods: GET, POST, OPTIONS', defaultResponseOpts())
 	}
 
-	const pubKeyHashHeader = request.headers.get("oc-pkh")
-	if (!pubKeyHashHeader) {
+	
+	const pubKeyHash = getPubKeyHashFromRequest(request)
+	if (!pubKeyHash) {
 		const opts = defaultResponseOpts()
 		opts.status = 401
-		return new Response('Missing header oc-pkh (pubKeyHash)', opts)
+		return new Response('Missing pubKeyHash', opts)
 	}
-
-  const id = env.CHANNEL.idFromName(pubKeyHashHeader);
+  const id = env.CHANNEL.idFromName(pubKeyHash);
   const obj = env.CHANNEL.get(id);
 
 	switch(request.method) {
@@ -116,12 +121,12 @@ export class Channel {
 		if (!pubKeyHeader || !signedChallengeHeader) {
 			return false
 		}
-		const pubKeyHashHeader = request.headers.get("oc-pkh")
+		const pubKeyHash = getPubKeyHashFromRequest(request)
 		const base58 = this.base58()
 		const jwkBytes = base58.decode(pubKeyHeader)
 		const jwkHash = await crypto.subtle.digest(hashAlgorithm, jwkBytes)
 		const jwkHashBase58 = base58.encode(new Uint8Array(jwkHash))
-		if (jwkHashBase58 !== pubKeyHashHeader) {
+		if (jwkHashBase58 !== pubKeyHash) {
 			return false
 		}
 		const jwk = JSON.parse(new TextDecoder().decode(jwkBytes))
