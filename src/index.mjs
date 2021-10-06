@@ -9,7 +9,7 @@ const signingAlgorithm = {
 	name: "ECDSA",
 	hash: "SHA-384"
 }
-const defaultResponseOpts = {
+const defaultResponseOpts = () => { return {
 	headers: {
 		"Access-Control-Allow-Origin": "*",
 		"Access-Control-ALlow-Methods": "POST, GET, OPTIONS",
@@ -18,6 +18,7 @@ const defaultResponseOpts = {
 		"Vary": "Origin"
 	},
 	status: 200
+	}
 }
 
 export default {
@@ -28,14 +29,14 @@ export default {
 
 async function handleRequest(request, env) {
 	if (request.method === "OPTIONS") {
-		return new Response('Allowed methods: GET, POST, OPTIONS', defaultResponseOpts)
+		return new Response('Allowed methods: GET, POST, OPTIONS', defaultResponseOpts())
 	}
 
 	const pubKeyHashHeader = request.headers.get("oc-pkh")
 	if (!pubKeyHashHeader) {
-		const opts = Object.assign({}, defaultResponseOpts)
+		const opts = defaultResponseOpts()
 		opts.status = 401
-		return new Response('Unauthorized, missing header oc-pkh (pubKeyHash)', opts)
+		return new Response('Missing header oc-pkh (pubKeyHash)', opts)
 	}
 
   const id = env.CHANNEL.idFromName(pubKeyHashHeader);
@@ -51,7 +52,7 @@ async function handleRequest(request, env) {
 				body: request.body
 			})
 		default:
-			return new Response("Method not supported", defaultResponseOpts)
+			return new Response("Method not supported", defaultResponseOpts())
 	}
 }
 
@@ -74,7 +75,7 @@ export class Channel {
 		if (request.method === "POST") {
 			return this.handlePostMessage(request)
 		}
-		return new Response("Hello chatter", defaultResponseOpts);
+		return new Response("Hello chatter", defaultResponseOpts());
 	}
 
 	async handleGetChallenge() {
@@ -82,9 +83,9 @@ export class Channel {
 		if (!challenge || this.hasChallengeExpired(JSON.parse(challenge))) {
 			const newChallenge = JSON.stringify(this.makeChallenge());
 			this.state.storage.put(challengeKey, newChallenge)
-			return new Response(newChallenge, defaultResponseOpts)
+			return new Response(newChallenge, defaultResponseOpts())
 		}
-		return new Response(challenge, defaultResponseOpts)
+		return new Response(challenge, defaultResponseOpts())
 	}
 
 	makeChallenge() {
@@ -99,44 +100,33 @@ export class Channel {
 	}
 
 	async handleGetMessages(request) {
-		const opts = Object.assign({}, defaultResponseOpts)
-		if (!await this.authenticate(request)) {
+		const opts = defaultResponseOpts()
+		if (await this.authenticate(request) !== true) {
 			opts.status = 401
 			return new Response(JSON.stringify({error: "Unauthorized"}), opts)
 		}
-		const messages = await this.state.storage.get(messagesKey)
-		await this.state.storage.put(messagesKey, JSON.stringify([]))
+		const messages = await this.getStoredMessages()
+		await this.storeMessages([])
 		return new Response(JSON.stringify({messages: messages}), opts)
 	}
 
 	async authenticate(request) {
-		const opts = Object.assign({}, defaultResponseOpts)
 		const pubKeyHeader = request.headers.get("oc-pk")
 		const signedChallengeHeader = request.headers.get("oc-sig")
-
 		if (!pubKeyHeader || !signedChallengeHeader) {
-			opts.status = 401
-			return new Response("Unauthorized, missing header oc-pk (pubKey) or oc-sig (signedChallenge)", opts)
+			return false
 		}
-
 		const pubKeyHashHeader = request.headers.get("oc-pkh")
-
 		const base58 = this.base58()
-
 		const jwkBytes = base58.decode(pubKeyHeader)
 		const jwkHash = await crypto.subtle.digest(hashAlgorithm, jwkBytes)
 		const jwkHashBase58 = base58.encode(new Uint8Array(jwkHash))
-
 		if (jwkHashBase58 !== pubKeyHashHeader) {
-			opts.status = 401
-			return new Response(JSON.stringify({message: "Unauthorized", error: "oc-pk & oc-pkh do not match"}), opts)
+			return false
 		}
-
 		const jwk = JSON.parse(new TextDecoder().decode(jwkBytes))
 		const pubKey = await this.importJwk(jwk)
-
 		const signedChallengeBytes = base58.decode(signedChallengeHeader)
-
 		return await this.verifyChallenge(pubKey, signedChallengeBytes)
 	}
 
@@ -145,7 +135,7 @@ export class Channel {
 		const messages = await this.getStoredMessages()
 		messages.push(newMessage)
 		await this.storeMessages(messages)
-		return new Response(JSON.stringify({message: "Stored"}), defaultResponseOpts)
+		return new Response(JSON.stringify({message: "Stored"}), defaultResponseOpts())
 	}
 
 	async getStoredMessages() {

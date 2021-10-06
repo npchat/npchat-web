@@ -83,22 +83,15 @@
 								crypto.subtle.sign(signingAlgorithm, keyPair.priv, challengeBytes).then(signed => {
 									const signedChallengeStr = base58().encode(new Uint8Array(signed))
 									const pubJwkBytes = encoder.encode(JSON.stringify(pubJwk))
-									const pkStr = base58().encode(pubJwkBytes)
-									console.log('signed challenge', signedChallengeStr)
-									
+									const pkStr = base58().encode(pubJwkBytes)									
 									// test auth,
 									// get messages with signed challenge
-									getMessages(pkhStr, pkStr, signedChallengeStr).then(m => console.log('messages', JSON.parse(m.messages)))
+									getMessages(pkhStr, pkStr, signedChallengeStr).then(m => console.log('messages', m.messages))
 							})
 						})
 					})
 				})
 			});
-
-
-			
-
-
 			
 			base58 = () => {
 				// https://github.com/45678/Base58
