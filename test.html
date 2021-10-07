@@ -87,9 +87,8 @@
 					getHash(pubJwkBytes)
 						.then(pkh => base58().encode(new Uint8Array(pkh)))
 						.then(pkhStr => {
-							console.log("pkh", pkhStr)
+							console.log("pubKeyHash", pkhStr)
 							getChallenge(pkhStr).then(challenge => {
-								console.log('challenge', challenge);
 								// sign it with privKey
 								const challengeBytes = encoder.encode(challenge.txt)
 								crypto.subtle.sign(signingAlgorithm, keyPair.priv, challengeBytes).then(signed => {
