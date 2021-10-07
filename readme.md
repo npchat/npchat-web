@@ -10,15 +10,37 @@ A client can authenticate with any host to fetch messages by siging the host's c
 ## Channel
 As implemented here, a Channel is a [Durable Object](https://developers.cloudflare.com/workers/learning/using-durable-objects).
 
-It can in fact be a simple JSON object that stores state for a given `sigPubJwkHash` (the users public id).
+It can in fact be a simple JSON object that holds state for a given `sigPubJwkHash` (the users public id).
 
 The state must contain:
-- challenge, a JSON object with `{t: timestamp, exp: expiryTime, txt: challengeText}`
+- challenge, a JSON object
 - messages, an array of messages not yet fetched
 
-Everything else can be derived from or given by the request.
+Everything else is derived from the request.
 
 ## Keys
+A client must generate a ECDSA P-384 key pair.
+
+The private key is used to authenticate by signing a random challenge.
+
+The public key is used to verify the signed challenge.
+
+The hash of the public key `sigPubJwkHash` is used as a public address and Channel Id.
+
+### Algorithm
+The signing keys are an ECDSA P-385 key pair. The signing algorithm is ECDSA SHA-384. These are shown in the following example.
+```JS
+const sigKeyImportParams = {
+				name: "ECDSA",
+				namedCurve: "P-384"
+			}
+			
+const sigAlgorithm = {
+	name: "ECDSA",
+	hash: "SHA-384"
+}
+```
+
 ### Format
 A CryptoKey is exported & imported as a JWK (JSON Web Key).
 For easy transmission, they are encoded as base58 strings.
@@ -48,16 +70,79 @@ decodeJwk = base58Str => {
 }
 ```
 
+### Importing & exporting
+Keys are exported as JWK because it's easy to stringify & encode them, and it's easy to do the reverse.
+They are imported as a CryptoKey.
+
+#### Import
+A JWK is imported as a CryptoKey.
+```JS
+const sigKeyImportParams = {
+	name: "ECDSA",
+	namedCurve: "P-384"
+}
+const cryptoKey = await crypto.subtle.importKey("jwk", jwk, sigKeyImportParams)
+```
+
+#### Export
+A CryptoKey is exported as a JWK.
+```JS
+const jwk = await crypto.subtle.exportKey("jwk", cryptoKey)
+```
+
 
 ### Types
+#### sigPub & sigPriv
+The CryptoKeyPair containing `sigPub` & `sigPriv` CryptoKeys.
+
+#### sigPubJwk & sigPrivJwk
+The public & private signing KeyPair represented as JWK. The algorithm used is:
+```JSON
+{
+	"name": "ECDSA",
+	"namedCurve": "P-384"
+}
+```
+
 #### sigPubJwkHash
-This is used as the root ID for each Channel
+A public address, used as the root ID for each Channel. It is derived by hashing the `sigPubJwk` (public signing key) using `SHA-256`.
+```JS
+const jwkHash = await crypto.subtle.digest("SHA-256", jwkBytes)
+```
+
+## Authentication
+Fetching messages for the given `sigPubJwkHash` requires authentication.
+
+### 1. Request challenge
+First, you need the current challenge. Make a request such as:
+```JS
+const challengeJson = await fetch(`${contact.host}/${contact.sigPubJwkHash}/challenge`)
+```
+It will return something like
+```JSON
+{
+	"t": 1633623658420,
+	"exp": 1633624258420,
+	"txt": "718d6400-e992-41e3-821a-50e69a89688f"
+}
+```
+You should store it locally & check it's expiry date before requesting again.
+
+### 2. Sign Challenge
+Use `sigPriv` to sign the challenge text.
+```JS
+const challengeBytes = new TextEncoder().encode(challenge.txt)
+const signedChallenge = await crypto.subtle.sign(sigAlgorithm, sigPriv, challengeBytes)
+const signedChallengeStr = base58().encode(new Uint8Array(signedChallenge))
+
+```
+
 
 ## The client
 ### Authentication
 - check for stored challenge
 	- if found & not expired, return it
-	- if not found or expired, request a new one using `GET {host}/{pubKeyHash}/challenge`
+	- if not found or expired, request a new one using `GET {host}/{sigPubJwkHash}/challenge`
 - sign challenge using privateKey
 - perform authenticated request by setting in header: oc-pk (publicKey) & oc-sig (signedChallenge)
 
@@ -68,16 +153,17 @@ A client should import the public encryption (not signing) key of the recipient,
 
 ### Contact import suggestion
 Import as base58 text or QR code. The data should decode to a JSON object:
-``` JSON
+```JSON
 {
 	"host": "https://any.host",
-	"sigJwkHash": "{pubSigningJwkHash}",
-	"sigJwk": "{pubSigningJwk}",
-	"encJwk": "{pubEncryptionJwk}"
+	"sigPubJwkHash": "{sigPubJwkHash}",
+	"sigPubJwk": "{sigPubJwk}",
+	"encPubJwk": "{encPubJwk}"
 }
 ```
 
-`host` & `sigJwkHash` are required. `sigJwkHash` is the hash of the publicSigningJwk.
-`pubSigningJwk` and `pubEncryptionKey` are optional.
-If `sigJwk` is omitted, a message signature cannot be verified
-If `encJwk` is omitted, a shared secret cannot be derived, and so a message cannot be encrypted without another key echange mechanism.
+`host` & `sigPubJwkHash` are required. `sigPubJwkHash` is the SHA-256 hash of `sigPubJwk`.
+
+`sigPubJwk` and `encPubJwk` are optional.
+If `sigPubJwk` is omitted, a message signature cannot be verified
+If `encPubJwk` is omitted, a shared secret cannot be derived, and so a message cannot be encrypted without another key echange mechanism.
