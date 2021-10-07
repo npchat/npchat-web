@@ -7,6 +7,26 @@ This protocol does, however, specify standards that clients should follow for in
 A client can send messages for any pubKeyHash at any host that implements this protocol.
 A client can authenticate with any host to fetch messages by siging the host's current challenge for the given pubKeyHash.
 
+## Channel
+As implemented here, a Channel is a [Durable Object](https://developers.cloudflare.com/workers/learning/using-durable-objects).
+
+It can in fact be a simple JSON object that stores state for a given `sigJwkHash` (the users public id).
+
+The state must contain:
+- challenge, a JSON object with `{t: timestamp, exp: expiryTime, txt: challengeText}`
+- messages, an array of messages not yet fetched
+
+Everything else can be derived from or given by the request.
+
+## Keys
+### Format
+A CryptoKey is exported & imported as a JWK (JSON Web Key).
+For easy transmission, they are encoded as base58 strings.
+
+### Types
+#### sigJwkHash
+This is used as the root ID for each Channel
+
 ## The client
 ### Authentication
 - check for stored challenge
@@ -24,8 +44,14 @@ A client should import the public encryption (not signing) key of the recipient,
 Import as base58 text or QR code. The data should decode to a JSON object:
 ``` JSON
 {
-	"pkh": pubKeyHash,
-	"pubSigningKey": pubSigningKey, // optional, needed to verify message content & sender
-	"pubEncryptionKey": pubEncryptionKey // optional, needed to derive the shared secret for message encryption
+	"host": "https://any.host",
+	"sigJwkHash": "{pubSigningJwkHash}",
+	"sigJwk": "{pubSigningJwk}",
+	"encJwk": "{pubEncryptionJwk}"
 }
 ```
+
+`host` & `sigJwkHash` are required. `sigJwkHash` is the hash of the publicSigningJwk.
+`pubSigningJwk` and `pubEncryptionKey` are optional.
+If `sigJwk` is omitted, a message signature cannot be verified
+If `encJwk` is omitted, a shared secret cannot be derived, and so a message cannot be encrypted without another key echange mechanism.
