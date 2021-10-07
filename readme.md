@@ -10,7 +10,7 @@ A client can authenticate with any host to fetch messages by siging the host's c
 ## Channel
 As implemented here, a Channel is a [Durable Object](https://developers.cloudflare.com/workers/learning/using-durable-objects).
 
-It can in fact be a simple JSON object that stores state for a given `sigJwkHash` (the users public id).
+It can in fact be a simple JSON object that stores state for a given `sigPubJwkHash` (the users public id).
 
 The state must contain:
 - challenge, a JSON object with `{t: timestamp, exp: expiryTime, txt: challengeText}`
@@ -23,8 +23,34 @@ Everything else can be derived from or given by the request.
 A CryptoKey is exported & imported as a JWK (JSON Web Key).
 For easy transmission, they are encoded as base58 strings.
 
+### Encoding & decoding
+Encode between base58 string & JWK JSON object.
+
+#### Encoding
+```JS
+// return a base58 string from JWK JSON object
+encodeJwk = jwk => {
+	// make sure you stringify the JWK, or you will encode "[object Object]"
+	const jwkBytes = new TextEncoder().encode(JSON.stringify(jwk))
+	// use a base58 encoding/decoding helper
+	return base58().encode(jwkBytes)
+}
+```
+
+#### Decoding
+```JS
+// return a JWK JSON object from base58 string
+decodeJwk = base58Str => {
+	// decode base58 string to bytes
+	const jwkBytes = base58().decode(base58Str)
+	// decode bytes to string & return parsed JSON
+	return JSON.parse(new TextDecoder().decode(jwkBytes))
+}
+```
+
+
 ### Types
-#### sigJwkHash
+#### sigPubJwkHash
 This is used as the root ID for each Channel
 
 ## The client
