@@ -1,6 +1,6 @@
 # openchat
 ## A simple & secure messaging protocol
-This is simply a transport protocol, encryption & verification of data is the responsiblity of each client.
+This is simply a transport protocol, encryption & verification of data is the responsiblity of each client implementation.
 
 This protocol does, however, specify standards that clients should support for interoperability.
 
