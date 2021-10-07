@@ -4,8 +4,12 @@ This is simply a transport protocol, encryption & verification of data is the re
 
 This protocol does, however, specify standards that clients should follow for interoperability.
 
-A client can send messages for any pubKeyHash at any host that implements this protocol.
-A client can authenticate with any host to fetch messages by siging the host's current challenge for the given pubKeyHash.
+A client generates or imports an ECDSA P-384 key pair.
+The hash of the public key is the address & id, called `sigPubJwkHash`.
+
+A client can send messages for any `sigPubJwkHash` at any host that implements this protocol.
+
+A client can authenticate with any host to fetch messages by signing the host's current challenge for the given `sigPubJwkHash`.
 
 ## Channel
 As implemented here, a Channel is a [Durable Object](https://developers.cloudflare.com/workers/learning/using-durable-objects).
@@ -30,7 +34,7 @@ The hash of the public key `sigPubJwkHash` is used as a public address and Chann
 ### Algorithm
 The signing keys are an ECDSA P-385 key pair. The signing algorithm is ECDSA SHA-384. These are shown in the following example.
 ```JS
-const sigKeyImportParams = {
+const sigKeyParams = {
 				name: "ECDSA",
 				namedCurve: "P-384"
 			}
@@ -77,7 +81,7 @@ They are imported as a CryptoKey.
 #### Import
 A JWK is imported as a CryptoKey.
 ```JS
-const sigKeyImportParams = {
+const sigKeyParams = {
 	name: "ECDSA",
 	namedCurve: "P-384"
 }
@@ -133,7 +137,7 @@ Use `sigPriv` to sign the challenge text.
 ```JS
 const challengeBytes = new TextEncoder().encode(challenge.txt)
 const signedChallenge = await crypto.subtle.sign(sigAlgorithm, sigPriv, challengeBytes)
-const signedChallengeStr = base58().encode(new Uint8Array(signedChallenge))
+const signedChallengeBase58 = base58().encode(new Uint8Array(signedChallenge))
 
 ```
 

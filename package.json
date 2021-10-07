@@ -1,7 +1,7 @@
 {
   "name": "openchat",
-  "version": "1.0.0",
-  "description": "Worker for securely sending & receiving messages",
+  "version": "0.0.1",
+  "description": "A simple messaging protocol. Agnostic about recipient host. Build or choose a client. Host a node or use openchat.dr-useless.workers.dev.",
   "type": "module",
   "main": "src/index.mjs",
   "repository": {

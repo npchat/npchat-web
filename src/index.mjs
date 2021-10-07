@@ -1,19 +1,29 @@
+/**
+	openchat implementation
+	using Cloudflare Workers & Durable Objects
+	https://developers.cloudflare.com/workers/learning/using-durable-objects
+*/
+
 const messagesKey = "messages"
 const challengeKey = "challenge"
 const hashAlgorithm = "SHA-256"
-const ecKeyImportParams = {
+const sigKeyParams = {
 	name: "ECDSA",
 	namedCurve: "P-384"
 }
-const signingAlgorithm = {
+const sigAlgorithm = {
 	name: "ECDSA",
 	hash: "SHA-384"
 }
+
+/**
+	@return {Object} default response options
+*/
 const defaultResponseOpts = () => { return {
 	headers: {
 		"Access-Control-Allow-Origin": "*",
 		"Access-Control-ALlow-Methods": "POST, GET, OPTIONS",
-		"Access-Control-Allow-Headers": "oc-pkh, oc-pk, oc-sig",
+		"Access-Control-Allow-Headers": "oc-pk, oc-sig",
 		"Access-Control-Max-Age": 86400,
 		"Vary": "Origin"
 	},
@@ -21,7 +31,11 @@ const defaultResponseOpts = () => { return {
 	}
 }
 
-const getPubKeyHashFromRequest = request => {
+/**
+	@param {Request} request
+	@return {String} sigPubJwkHashBase58
+*/
+const getSigPubJwkHashFromRequest = request => {
 	const url = new URL(request.url)
 	return url.pathname.split("/")[1]
 }
@@ -34,30 +48,41 @@ export default {
 
 async function handleRequest(request, env) {
 	if (request.method === "OPTIONS") {
-		return new Response('Allowed methods: GET, POST, OPTIONS', defaultResponseOpts())
+		return new Response("Allowed methods: GET, POST, OPTIONS", defaultResponseOpts())
 	}
-	const pubKeyHash = getPubKeyHashFromRequest(request)
-	if (!pubKeyHash) {
-		const opts = defaultResponseOpts()
-		opts.status = 401
-		return new Response('Missing pubKeyHash', opts)
+	const opts = defaultResponseOpts()
+	const sigPubJwkHash = getSigPubJwkHashFromRequest(request)
+	if (!sigPubJwkHash) {
+		opts.status = 400
+		return new Response(JSON.stringify({error:"Missing sigPubJwkHash"}), opts)
 	}
-  const id = env.CHANNEL.idFromName(pubKeyHash);
+  const id = env.CHANNEL.idFromName(sigPubJwkHash);
   const obj = env.CHANNEL.get(id);
-	switch(request.method) {
-		case "GET":
-			return await obj.fetch(request.url, {headers: request.headers})
-		case "POST":
-			return await obj.fetch(request.url, {
-				method: request.method,
-				headers: request.headers,
-				body: request.body
-			})
-		default:
-			return new Response("Method not supported", defaultResponseOpts())
+	if (request.method === "GET"){
+		return await obj.fetch(request.url, {headers: request.headers})
 	}
+	if (request.method === "POST") {
+		return await obj.fetch(request.url, {
+			method: request.method,
+			headers: request.headers,
+			body: request.body
+		})
+	}
+	opts.status = 405
+	return new Response(JSON.stringify({error: "Method not allowed"}), defaultResponseOpts())
 }
 
+/**
+	Channel Durable Object.
+	Storage for one-way messaging.
+	
+	Current state holds:
+	- challenge
+	- messages
+
+	Environment sets:
+	- challengeTtl
+*/
 export class Channel {
 	constructor(state, env) {
 		this.state = state
@@ -68,7 +93,7 @@ export class Channel {
 	async fetch(request) {
 		const url = new URL(request.url)
 		const segments = url.pathname.split("/")
-		if (request.method === "GET") {
+		if (request.method === "GET" && segments.length > 1) {
 			if (segments[segments.length-1] === challengeKey) {
 				return this.handleGetChallenge()
 			}
@@ -77,9 +102,14 @@ export class Channel {
 		if (request.method === "POST") {
 			return this.handlePostMessage(request)
 		}
-		return new Response("Hello chatter", defaultResponseOpts());
+		const opts = defaultResponseOpts()
+		opts.status = 400
+		return new Response(JSON.stringify({error: "Bad request"}), opts)
 	}
 
+	/**
+		@return {Promise<Response>}
+	*/
 	async handleGetChallenge() {
 		const challenge = await this.state.storage.get(challengeKey)
 		if (!challenge || this.hasChallengeExpired(JSON.parse(challenge))) {
@@ -90,18 +120,28 @@ export class Channel {
 		return new Response(challenge, defaultResponseOpts())
 	}
 
+	/**
+		@return {Object} challenge
+	*/
 	makeChallenge() {
 		return {t: Date.now(), exp: Date.now()+new Number(this.challengeTtl), txt: crypto.randomUUID()}
 	}
 
+	/**
+		@param {Object} challenge
+	*/
 	hasChallengeExpired(challenge) {
-		// check expiry, not t to prevent issue when changing challengeTtl
+		// check expiry (not t) to prevent issue when changing challengeTtl
 		if (Date.now() > challenge.exp) {
 			return true
 		}
 		return false
 	}
 
+	/**
+		@param {Request} request
+		@return {Promise<Response>}
+	*/
 	async handleGetMessages(request) {
 		const opts = defaultResponseOpts()
 		if (await this.authenticate(request) !== true) {
@@ -113,26 +153,34 @@ export class Channel {
 		return new Response(JSON.stringify({messages: messages}), opts)
 	}
 
+	/**
+		@param {Request} request
+		@return {Promise<boolean>} isAuthenticated
+	*/
 	async authenticate(request) {
-		const pubKeyHeader = request.headers.get("oc-pk")
+		const sigPubJwkHeader = request.headers.get("oc-pk")
 		const signedChallengeHeader = request.headers.get("oc-sig")
-		if (!pubKeyHeader || !signedChallengeHeader) {
+		if (!sigPubJwkHeader || !signedChallengeHeader) {
 			return false
 		}
-		const pubKeyHash = getPubKeyHashFromRequest(request)
+		const sigPubJwkHash = getSigPubJwkHashFromRequest(request)
 		const base58 = this.base58()
-		const jwkBytes = base58.decode(pubKeyHeader)
+		const jwkBytes = base58.decode(sigPubJwkHeader)
 		const jwkHash = await crypto.subtle.digest(hashAlgorithm, jwkBytes)
 		const jwkHashBase58 = base58.encode(new Uint8Array(jwkHash))
-		if (jwkHashBase58 !== pubKeyHash) {
+		if (jwkHashBase58 !== sigPubJwkHash) {
 			return false
 		}
 		const jwk = JSON.parse(new TextDecoder().decode(jwkBytes))
-		const pubKey = await this.importJwk(jwk)
+		const sigPubKey = await this.importJwk(jwk)
 		const signedChallengeBytes = base58.decode(signedChallengeHeader)
-		return await this.verifyChallenge(pubKey, signedChallengeBytes)
+		return await this.verifyChallenge(sigPubKey, signedChallengeBytes)
 	}
 
+	/**
+		@param {Request} request
+		@return {Promise<Response>} Post message response
+	*/
 	async handlePostMessage(request) {
 		const newMessage = await request.json()
 		const messages = await this.getStoredMessages()
@@ -141,6 +189,9 @@ export class Channel {
 		return new Response(JSON.stringify({message: "Stored"}), defaultResponseOpts())
 	}
 
+	/**
+		@return {Promise<Object>} Promise for stored messages
+	*/
 	async getStoredMessages() {
 		const stored = await this.state.storage.get(messagesKey)
 		if (!stored) {
@@ -149,24 +200,37 @@ export class Channel {
 		return JSON.parse(stored)
 	}
 
+	/**
+		@param {Object[]} messages Array of messages
+		@return {Promise} stored
+	*/
 	async storeMessages(messages) {
 		return await this.state.storage.put(messagesKey, JSON.stringify(messages))
 	}
 
-	async verifyChallenge(publicKey, signedChallengeBytes) {
+	/**
+		@param {CryptoKey} sigPub Public signing key
+		@param {Uint8Array} signedChallengeBytes Signed challenge ByteArray
+		@return {Promise<boolean>} isVerified
+	*/
+	async verifyChallenge(sigPub, signedChallengeBytes) {
 		const challenge = JSON.parse(await this.state.storage.get(challengeKey))
 		if (this.hasChallengeExpired(challenge)) {
 			return false
 		}
 		const challengeBytes = new TextEncoder().encode(challenge.txt)
-		return await crypto.subtle.verify(signingAlgorithm, publicKey, signedChallengeBytes, challengeBytes)
+		return await crypto.subtle.verify(sigAlgorithm, sigPub, signedChallengeBytes, challengeBytes)
 	}
 
+	/**
+		@param {Object} jwk JSON Web Token
+		@return {Promise<CryptoKey>} Promise for a CryptoKey
+	*/
 	async importJwk(jwk) {
 		return crypto.subtle.importKey(
 			"jwk",
 			jwk,
-			ecKeyImportParams,
+			sigKeyParams,
 			true,
 			["verify"])
 	}

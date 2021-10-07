@@ -3,12 +3,12 @@
 		<script>
 			const host = "http://localhost:8787"
 
-			const keyParams = {
+			const sigKeyParams = {
 				name: "ECDSA",
 				namedCurve: "P-384"
 			}
 			
-			const signingAlgorithm = {
+			const sigAlgorithm = {
 				name: "ECDSA",
 				hash: "SHA-384"
 			}
@@ -16,7 +16,7 @@
 			const hashAlgorithm = "SHA-256"
 
 			genKeyPair = () => {
-				return crypto.subtle.generateKey(keyParams, true, ["sign", "verify"])
+				return crypto.subtle.generateKey(sigKeyParams, true, ["sign", "verify"])
 				.then(keyPair => {
 					const priv = crypto.subtle.exportKey("jwk", keyPair.privateKey)
 					const pub = crypto.subtle.exportKey("jwk", keyPair.publicKey)
@@ -26,8 +26,8 @@
 			}
 
 			getKeyPair = () => {
-				const priv = crypto.subtle.importKey("jwk", JSON.parse(localStorage.getItem("privKey")), keyParams, true, ["sign"])
-				const pub = crypto.subtle.importKey("jwk", JSON.parse(localStorage.getItem("pubKey")), keyParams, true, ["verify"])
+				const priv = crypto.subtle.importKey("jwk", JSON.parse(localStorage.getItem("privKey")), sigKeyParams, true, ["sign"])
+				const pub = crypto.subtle.importKey("jwk", JSON.parse(localStorage.getItem("pubKey")), sigKeyParams, true, ["verify"])
 				return Promise.all([priv, pub]).then(keys => {return { priv: keys[0], pub: keys[1]}})
 			}
 
@@ -50,10 +50,10 @@
 				return getKeyPair()
 			}
 
-			getChallenge = pkhStr => {
+			getChallenge = sigPubJwkHashBase58 => {
 				const stored = localStorage.getItem("challenge")
 				const request = () => {
-					return fetch(`${host}/${pkhStr}/challenge`)
+					return fetch(`${host}/${sigPubJwkHashBase58}/challenge`)
 					.then(r => r.json())
 					.then(challenge => {
 						console.log('fetched challenge', challenge)
@@ -71,33 +71,33 @@
 				return Promise.resolve(challenge)
 			}
 
-			getMessages = (pkhStr, pkStr, signedChallengeStr) => {
-				return fetch(`${host}/${pkhStr}`, {
+			getMessages = (sigPubJwkHashBase58, sigPubJwkBase58, signedChallengeBase58) => {
+				return fetch(`${host}/${sigPubJwkHashBase58}`, {
 					headers: {
-						"oc-pk": pkStr,
-						"oc-sig": signedChallengeStr
+						"oc-pk": sigPubJwkBase58,
+						"oc-sig": signedChallengeBase58
 					}
 				}).then(r => r.json())
 			}
 			
 			init().then(keyPair => {
-				crypto.subtle.exportKey("jwk", keyPair.pub).then(pubJwk => {
+				crypto.subtle.exportKey("jwk", keyPair.pub).then(sigPubJwk => {
 					const encoder = new TextEncoder()
-					const pubJwkBytes = encoder.encode(JSON.stringify(pubJwk))
-					getHash(pubJwkBytes)
-						.then(pkh => base58().encode(new Uint8Array(pkh)))
-						.then(pkhStr => {
-							console.log("pubKeyHash", pkhStr)
-							getChallenge(pkhStr).then(challenge => {
+					const sigPubJwkBytes = encoder.encode(JSON.stringify(sigPubJwk))
+					getHash(sigPubJwkBytes)
+						.then(sigPubJwkHash => base58().encode(new Uint8Array(sigPubJwkHash)))
+						.then(sigPubJwkHashBase58 => {
+							console.log("sigPubJwkHashBase58", sigPubJwkHashBase58)
+							getChallenge(sigPubJwkHashBase58).then(challenge => {
 								// sign it with privKey
 								const challengeBytes = encoder.encode(challenge.txt)
-								crypto.subtle.sign(signingAlgorithm, keyPair.priv, challengeBytes).then(signed => {
-									const signedChallengeStr = base58().encode(new Uint8Array(signed))
-									const pubJwkBytes = encoder.encode(JSON.stringify(pubJwk))
-									const pkStr = base58().encode(pubJwkBytes)									
+								crypto.subtle.sign(sigAlgorithm, keyPair.priv, challengeBytes).then(signed => {
+									const signedChallengeBase58 = base58().encode(new Uint8Array(signed))
+									const sigPubJwkBytes = encoder.encode(JSON.stringify(sigPubJwk))
+									const sigPubJwkBase58 = base58().encode(sigPubJwkBytes)									
 									// test auth,
 									// get messages with signed challenge
-									getMessages(pkhStr, pkStr, signedChallengeStr).then(m => console.log('messages', m.messages, m.error))
+									getMessages(sigPubJwkHashBase58, sigPubJwkBase58, signedChallengeBase58).then(m => console.log('messages', m.messages, m.error))
 							})
 						})
 					})
