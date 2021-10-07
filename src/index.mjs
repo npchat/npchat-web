@@ -36,8 +36,6 @@ async function handleRequest(request, env) {
 	if (request.method === "OPTIONS") {
 		return new Response('Allowed methods: GET, POST, OPTIONS', defaultResponseOpts())
 	}
-
-	
 	const pubKeyHash = getPubKeyHashFromRequest(request)
 	if (!pubKeyHash) {
 		const opts = defaultResponseOpts()
@@ -46,7 +44,6 @@ async function handleRequest(request, env) {
 	}
   const id = env.CHANNEL.idFromName(pubKeyHash);
   const obj = env.CHANNEL.get(id);
-
 	switch(request.method) {
 		case "GET":
 			return await obj.fetch(request.url, {headers: request.headers})
@@ -94,11 +91,12 @@ export class Channel {
 	}
 
 	makeChallenge() {
-		return {timestamp: Date.now(), text: crypto.randomUUID()}
+		return {t: Date.now(), exp: Date.now()+new Number(this.challengeTtl), txt: crypto.randomUUID()}
 	}
 
 	hasChallengeExpired(challenge) {
-		if (Date.now() - challenge.timestamp > this.challengeTtl) {
+		// check expiry, not t to prevent issue when changing challengeTtl
+		if (Date.now() > challenge.exp) {
 			return true
 		}
 		return false
@@ -157,7 +155,10 @@ export class Channel {
 
 	async verifyChallenge(publicKey, signedChallengeBytes) {
 		const challenge = JSON.parse(await this.state.storage.get(challengeKey))
-		const challengeBytes = new TextEncoder().encode(challenge.text)
+		if (this.hasChallengeExpired(challenge)) {
+			return false
+		}
+		const challengeBytes = new TextEncoder().encode(challenge.txt)
 		return await crypto.subtle.verify(signingAlgorithm, publicKey, signedChallengeBytes, challengeBytes)
 	}
 

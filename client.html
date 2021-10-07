@@ -51,7 +51,24 @@
 			}
 
 			getChallenge = pkhStr => {
-				return fetch(`${host}/${pkhStr}/challenge`).then(r => r.json())
+				const stored = localStorage.getItem("challenge")
+				const request = () => {
+					return fetch(`${host}/${pkhStr}/challenge`)
+					.then(r => r.json())
+					.then(challenge => {
+						console.log('fetched challenge', challenge)
+						localStorage.setItem("challenge", JSON.stringify(challenge))
+						return challenge
+					})
+				}
+				if (!stored) {
+					return request()
+				}
+				const challenge = JSON.parse(stored)
+				if (Date.now() > challenge.exp) {
+					return request()
+				}
+				return Promise.resolve(challenge)
 			}
 
 			getMessages = (pkhStr, pkStr, signedChallengeStr) => {
@@ -72,9 +89,9 @@
 						.then(pkhStr => {
 							console.log("pkh", pkhStr)
 							getChallenge(pkhStr).then(challenge => {
-								console.log('challenge', challenge.text);
+								console.log('challenge', challenge);
 								// sign it with privKey
-								const challengeBytes = encoder.encode(challenge.text)
+								const challengeBytes = encoder.encode(challenge.txt)
 								crypto.subtle.sign(signingAlgorithm, keyPair.priv, challengeBytes).then(signed => {
 									const signedChallengeStr = base58().encode(new Uint8Array(signed))
 									const pubJwkBytes = encoder.encode(JSON.stringify(pubJwk))
