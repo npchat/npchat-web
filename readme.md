@@ -2,7 +2,7 @@
 ## A simple & secure messaging protocol
 This is simply a transport protocol, encryption & verification of data is the responsiblity of each client implementation.
 
-This protocol does, however, specify standards that clients should support for interoperability.
+This protocol does, however, specify standards that clients should follow for interoperability.
 
 A client can send messages for any pubKeyHash at any host that implements this protocol.
 A client can authenticate with any host to fetch messages by siging the host's current challenge for the given pubKeyHash.
