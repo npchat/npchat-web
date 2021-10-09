@@ -1,7 +1,7 @@
-import {TodoList} from "./components/todo-list"
+import {Client} from "./components/client"
 
 
 window.addEventListener("DOMContentLoaded", async () => {
-  customElements.define('todo-list', TodoList);
+  customElements.define('openchat-client', Client);
 })
 
