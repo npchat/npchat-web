@@ -56,10 +56,10 @@ export class Client extends LitElement {
   }
 
   async initKeys() {
-    console.log('genKeyPair...')
     const storedSigPubJwk = localStorage.getItem("sigPubJwk")
     const storedSigPrivJwk = localStorage.getItem("sigPrivJwk")
     if (!storedSigPubJwk || !storedSigPrivJwk) {
+      console.log('genKeyPair...')
       const keyPair = await genKeyPair()
       console.log(keyPair)
       const sigPubJwk = await exportKey(keyPair.publicKey)

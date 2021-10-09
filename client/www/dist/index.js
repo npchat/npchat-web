@@ -712,10 +712,10 @@ var Client = class extends s4 {
     this.initKeys().then(() => this.initMe()).then(() => console.log("init done"));
   }
   async initKeys() {
-    console.log("genKeyPair...");
     const storedSigPubJwk = localStorage.getItem("sigPubJwk");
     const storedSigPrivJwk = localStorage.getItem("sigPrivJwk");
     if (!storedSigPubJwk || !storedSigPrivJwk) {
+      console.log("genKeyPair...");
       const keyPair = await genKeyPair();
       console.log(keyPair);
       const sigPubJwk = await exportKey(keyPair.publicKey);
