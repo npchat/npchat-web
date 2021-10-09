@@ -1,0 +1,21 @@
+{
+  "name": "openchat-client",
+  "author": "dr-useless",
+  "license": "MIT",
+  "type": "module",
+  "main": "src/index.mjs",
+  "dependencies": {
+    "lit": "^2.0.2"
+  },
+  "devDependencies": {
+    "esbuild": "^0.13.4",
+    "npm-run-all": "^4.1.5"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "node ./esbuild.js",
+    "start": "run-p start:**",
+    "start:watch": "node ./esbuild.js --dev --watch",
+    "start:server": "node ./dev-server.js"
+  }
+}

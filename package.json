@@ -2,22 +2,16 @@
   "name": "openchat",
   "version": "0.0.1",
   "description": "A simple messaging protocol. Agnostic about recipient host. Build or choose a client. Host a node or use openchat.dr-useless.workers.dev.",
+  "author": "dr-useless",
+  "license": "MIT",
+  "homepage": "https://github.com/dr-useless/openchat#readme",
   "type": "module",
   "main": "src/index.mjs",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/dr-useless/openchat.git"
   },
-  "keywords": [
-    "secure",
-    "chat",
-    "instant-messaging",
-    "serverless"
-  ],
-  "author": "dr-useless",
-  "license": "MIT",
   "bugs": {
     "url": "https://github.com/dr-useless/openchat/issues"
-  },
-  "homepage": "https://github.com/dr-useless/openchat#readme"
+  }
 }

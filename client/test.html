@@ -1,7 +1,8 @@
 <html>
 	<body>
 		<script>
-			const host = "http://localhost:8787"
+			const httpProtocol = "https://"
+			const host = "openchat.dr-useless.workers.dev"
 
 			const sigKeyParams = {
 				name: "ECDSA",
@@ -53,7 +54,7 @@
 			getChallenge = sigPubJwkHashBase58 => {
 				const stored = localStorage.getItem("challenge")
 				const request = () => {
-					return fetch(`${host}/${sigPubJwkHashBase58}/challenge`)
+					return fetch(`${httpProtocol}${host}/${sigPubJwkHashBase58}/challenge`)
 					.then(r => r.json())
 					.then(challenge => {
 						console.log('fetched challenge', challenge)
@@ -72,12 +73,19 @@
 			}
 
 			getMessages = (sigPubJwkHashBase58, sigPubJwkBase58, signedChallengeBase58) => {
-				return fetch(`${host}/${sigPubJwkHashBase58}`, {
+				return fetch(`${httpProtocol}${host}/${sigPubJwkHashBase58}`, {
 					headers: {
 						"oc-pk": sigPubJwkBase58,
 						"oc-sig": signedChallengeBase58
 					}
 				}).then(r => r.json())
+			}
+
+			sendMessage = (sigPubJwkHashBase58, message) => {
+				return fetch(`${httpProtocol}${host}/${sigPubJwkHashBase58}`, {
+					method: "POST",
+					body: JSON.stringify(message)
+				})
 			}
 			
 			init().then(keyPair => {
@@ -97,7 +105,24 @@
 									const sigPubJwkBase58 = base58().encode(sigPubJwkBytes)									
 									// test auth,
 									// get messages with signed challenge
-									getMessages(sigPubJwkHashBase58, sigPubJwkBase58, signedChallengeBase58).then(m => console.log('messages', m.messages, m.error))
+									getMessages(sigPubJwkHashBase58, sigPubJwkBase58, signedChallengeBase58)
+									.then(m => console.log("messages", m.messages, m.error))
+									.then(() => {
+										// test websockets
+										const websocket = new WebSocket(`wss://${host}/${sigPubJwkHashBase58}`)
+										websocket.addEventListener("message", event => {
+											const message = JSON.parse(event.data)
+											console.log("client got", message)
+											if (message.challenge) {
+												const challenge = JSON.parse(message.challenge)
+												websocket.send(JSON.stringify({signedChallengeBase58, sigPubJwkBase58}))
+												// now we're authenticated & will recieve messages
+
+												// send a test to ourselves
+												sendMessage(sigPubJwkHashBase58, {message: "This is a test"})
+											}
+										})
+									})
 							})
 						})
 					})

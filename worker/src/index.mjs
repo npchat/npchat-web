@@ -17,7 +17,7 @@ const sigAlgorithm = {
 }
 
 /**
-	@return {Object} default response options
+	@returns {Object} default response options
 */
 const defaultResponseOpts = () => { return {
 	headers: {
@@ -33,9 +33,9 @@ const defaultResponseOpts = () => { return {
 
 /**
 	@param {Request} request
-	@return {String} sigPubJwkHashBase58
+	@returns {String} sigPubJwkHashBase58
 */
-const getSigPubJwkHashFromRequest = request => {
+const getSigPubJwkHashBase58FromRequest = request => {
 	const url = new URL(request.url)
 	return url.pathname.split("/")[1]
 }
@@ -51,12 +51,12 @@ async function handleRequest(request, env) {
 		return new Response("Allowed methods: GET, POST, OPTIONS", defaultResponseOpts())
 	}
 	const opts = defaultResponseOpts()
-	const sigPubJwkHash = getSigPubJwkHashFromRequest(request)
-	if (!sigPubJwkHash) {
+	const sigPubJwkHashBase58 = getSigPubJwkHashBase58FromRequest(request)
+	if (!sigPubJwkHashBase58) {
 		opts.status = 400
-		return new Response(JSON.stringify({error:"Missing sigPubJwkHash"}), opts)
+		return new Response(JSON.stringify({error:"Missing sigPubJwkHashBase58"}), opts)
 	}
-  const id = env.CHANNEL.idFromName(sigPubJwkHash)
+  const id = env.CHANNEL.idFromName(sigPubJwkHashBase58)
   const obj = env.CHANNEL.get(id)
 	if (request.method === "GET"){
 		return await obj.fetch(request.url, {headers: request.headers})
@@ -87,17 +87,22 @@ export class Channel {
 	constructor(state, env) {
 		this.state = state
 		this.challengeTtl = env.CHALLENGE_TTL
+		this.isWebSocketAuthenticated = false
 		//this.state.blockConcurrencyWhile(async () => )
 	}
 
 	async fetch(request) {
+		const upgradeHeader = request.headers.get("Upgrade")
+		if (upgradeHeader) {
+			return await this.handleUpgrade(request, upgradeHeader)
+		}
 		const url = new URL(request.url)
 		const segments = url.pathname.split("/")
 		if (request.method === "GET" && segments.length > 1) {
 			if (segments[segments.length-1] === challengeKey) {
-				return this.handleGetChallenge()
+				return this.handleGetChallengeRequest()
 			}
-			return this.handleGetMessages(request)
+			return this.handleGetMessagesRequest(request)
 		}
 		if (request.method === "POST") {
 			return this.handlePostMessage(request)
@@ -107,21 +112,65 @@ export class Channel {
 		return new Response(JSON.stringify({error: "Bad request"}), opts)
 	}
 
+	async handleUpgrade(request, upgradeHeader) {
+		if (upgradeHeader !== "websocket") {
+			const opts = defaultResponseOpts()
+			opts.status = 400
+			return new Response(JSON.stringify({error: "Expected websocket"}), opts)
+		}
+		const [clientSocket, serverSocket] = Object.values(new WebSocketPair())
+		await this.handleSocketSession(request, serverSocket)
+		return new Response(null, {
+			status: 101,
+			webSocket: clientSocket
+		})
+	}
+
+	async handleSocketSession(request, websocket) {
+		const sigPubJwkHashBase58 = getSigPubJwkHashBase58FromRequest(request)
+		websocket.accept()
+		websocket.addEventListener("message", async event => {
+			const message = JSON.parse(event.data)
+			if (message.signedChallengeBase58 && message.sigPubJwkBase58) {
+				const isAuthenticated = await this.authenticate(message.sigPubJwkBase58, sigPubJwkHashBase58, message.signedChallengeBase58)
+				if (isAuthenticated) {
+					this.isAuthenticated = true
+					this.websocket = websocket
+					websocket.send(JSON.stringify({message: "You're now authenticated. Authentication will reset when this WebSocket connection is closed."}))
+				}
+			}
+		})
+
+		websocket.addEventListener("close", async () => {
+			this.isAuthenticated = false
+			this.websocket = undefined
+		})
+
+		websocket.send(JSON.stringify({message:"Authenticate", challenge: await this.getChallenge()}))
+	}
+
 	/**
-		@return {Promise<Response>}
+		@returns {Promise<Response>}
 	*/
-	async handleGetChallenge() {
+	async handleGetChallengeRequest() {
+		return new Response(await this.getChallenge(), defaultResponseOpts())
+	}
+
+	/**
+		@returns {Promise<Object>}
+	*/
+	async getChallenge() {
 		const challenge = await this.state.storage.get(challengeKey)
 		if (!challenge || this.hasChallengeExpired(JSON.parse(challenge))) {
 			const newChallenge = JSON.stringify(this.makeChallenge())
 			this.state.storage.put(challengeKey, newChallenge)
-			return new Response(newChallenge, defaultResponseOpts())
+			return newChallenge
 		}
-		return new Response(challenge, defaultResponseOpts())
+		return challenge
 	}
 
 	/**
-		@return {Object} challenge
+		@returns {Object} challenge
 	*/
 	makeChallenge() {
 		return {t: Date.now(), exp: Date.now()+new Number(this.challengeTtl), txt: crypto.randomUUID()}
@@ -140,11 +189,11 @@ export class Channel {
 
 	/**
 		@param {Request} request
-		@return {Promise<Response>}
+		@returns {Promise<Response>}
 	*/
-	async handleGetMessages(request) {
+	async handleGetMessagesRequest(request) {
 		const opts = defaultResponseOpts()
-		if (await this.authenticate(request) !== true) {
+		if (await this.authenticateRequest(request) !== true) {
 			opts.status = 401
 			return new Response(JSON.stringify({error: "Unauthorized"}), opts)
 		}
@@ -155,42 +204,52 @@ export class Channel {
 
 	/**
 		@param {Request} request
-		@return {Promise<boolean>} isAuthenticated
+		@returns {Promise<boolean>} isAuthenticated
 	*/
-	async authenticate(request) {
-		const sigPubJwkHeader = request.headers.get("oc-pk")
-		const signedChallengeHeader = request.headers.get("oc-sig")
-		if (!sigPubJwkHeader || !signedChallengeHeader) {
+	async authenticateRequest(request) {
+		const sigPubJwkBase58Header = request.headers.get("oc-pk")
+		const signedChallengeBase58Header = request.headers.get("oc-sig")
+		const sigPubJwkHashBase58 = getSigPubJwkHashBase58FromRequest(request)
+		return this.authenticate(sigPubJwkBase58Header, sigPubJwkHashBase58, signedChallengeBase58Header)
+	}
+
+	async authenticate(sigPubJwkBase58, sigPubJwkHashBase58, signedChallengeBase58) {
+		if (!sigPubJwkBase58 || !signedChallengeBase58) {
 			return false
 		}
-		const sigPubJwkHash = getSigPubJwkHashFromRequest(request)
 		const base58 = this.base58()
-		const jwkBytes = base58.decode(sigPubJwkHeader)
+		const jwkBytes = base58.decode(sigPubJwkBase58)
 		const jwkHash = await crypto.subtle.digest(hashAlgorithm, jwkBytes)
 		const jwkHashBase58 = base58.encode(new Uint8Array(jwkHash))
-		if (jwkHashBase58 !== sigPubJwkHash) {
+		// verify sigPubJwkHash is equal to hash of public key
+		if (jwkHashBase58 !== sigPubJwkHashBase58) {
 			return false
 		}
 		const jwk = JSON.parse(new TextDecoder().decode(jwkBytes))
 		const sigPubKey = await this.importJwk(jwk)
-		const signedChallengeBytes = base58.decode(signedChallengeHeader)
+		const signedChallengeBytes = base58.decode(signedChallengeBase58)
 		return await this.verifyChallenge(sigPubKey, signedChallengeBytes)
 	}
 
 	/**
 		@param {Request} request
-		@return {Promise<Response>} Post message response
+		@returns {Promise<Response>} Post message response
 	*/
 	async handlePostMessage(request) {
-		const newMessage = await request.json()
+		const response = new Response(JSON.stringify({message: "Sent"}), defaultResponseOpts());
+		const newMessageText = await request.text()
+		if (this.isAuthenticated && this.websocket && typeof this.websocket.send === 'function') {
+			this.websocket.send(newMessageText)
+			return response
+		}
 		const messages = await this.getStoredMessages()
-		messages.push(newMessage)
+		messages.push(JSON.parse(newMessageText))
 		await this.storeMessages(messages)
-		return new Response(JSON.stringify({message: "Stored"}), defaultResponseOpts())
+		return response
 	}
 
 	/**
-		@return {Promise<Object>} Promise for stored messages
+		@returns {Promise<Object>} Promise for stored messages
 	*/
 	async getStoredMessages() {
 		const stored = await this.state.storage.get(messagesKey)
@@ -202,7 +261,7 @@ export class Channel {
 
 	/**
 		@param {Object[]} messages Array of messages
-		@return {Promise} stored
+		@returns {Promise} stored
 	*/
 	async storeMessages(messages) {
 		return await this.state.storage.put(messagesKey, JSON.stringify(messages))
@@ -211,7 +270,7 @@ export class Channel {
 	/**
 		@param {CryptoKey} sigPub Public signing key
 		@param {Uint8Array} signedChallengeBytes Signed challenge ByteArray
-		@return {Promise<boolean>} isVerified
+		@returns {Promise<boolean>} isVerified
 	*/
 	async verifyChallenge(sigPub, signedChallengeBytes) {
 		const challenge = JSON.parse(await this.state.storage.get(challengeKey))
@@ -224,7 +283,7 @@ export class Channel {
 
 	/**
 		@param {Object} jwk JSON Web Token
-		@return {Promise<CryptoKey>} Promise for a CryptoKey
+		@returns {Promise<CryptoKey>} Promise for a CryptoKey
 	*/
 	async importJwk(jwk) {
 		return crypto.subtle.importKey(
