@@ -3,8 +3,8 @@ import { sign } from './sign'
 
 export const challengeKey = "challenge"
 
-export async function fetchChallenge(host, sigPubJwkHash) {
-	const resp = await fetch(`https://${host}/${sigPubJwkHash}/challenge`)
+export async function fetchChallenge(domain, sigPubJwkHash) {
+	const resp = await fetch(`https://${domain}/${sigPubJwkHash}/challenge`)
 	return resp.json()
 }
 

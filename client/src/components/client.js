@@ -2,23 +2,19 @@ import { LitElement, html, css } from 'lit';
 import { challengeKey, fetchChallenge, hasChallengeExpired, signChallenge } from '../../../util/auth';
 import { base58 } from '../../../util/base58';
 import { hash } from '../../../util/hash';
-import { exportKey, genKeyPair, getJwkBytes, importKey } from '../../../util/key';
-import { buildMessage, fetchMessages, messagesKey, sendMessage } from '../../../util/message';
+import { getJwkBytes, importKey } from '../../../util/key';
+import { buildMessage, fetchMessages, messagesKey, sendMessage, verifyMessage } from '../../../util/message';
 import { getWebSocket, handshakeWebsocket } from '../../../util/websocket';
+import { ContactsController } from '../controllers/contacts';
+import { PreferencesController } from '../controllers/preferences';
 
 export class Client extends LitElement {
+  pref = new PreferencesController(this)
+  contacts = new ContactsController(this)
+
   static properties = {
-    host: {},
-    sharable: {},
-    name: {},
-    sigKeyPair: {},
-    sigPrivJwk: {},
-    sigPubJwk: {},
-    sigPubJwkHash: {},
     challenge: {},
     challengeSig: {},
-    selectedContact: {},
-    contacts: {},
     messages: {},
     websocket: {}
   }
@@ -34,10 +30,11 @@ export class Client extends LitElement {
       padding: 0.25rem;
     }
     .box {
-      background-color: #e5e5e5;
+      background-color: #f5f5f5;
       display: block;
       padding: 0.5rem;
-      margin: 0.5rem 0;
+      margin: 0.5rem;
+      border-radius: 2px;
     }
     .wrap {
       overflow-wrap: anywhere;
@@ -59,100 +56,38 @@ export class Client extends LitElement {
       background-color: #e5e5e5
     }
     .meta {
-      color: #333;
-      font-size: 0.8rem;
+      color: #555;
+      font-size: .8rem;
       user-select: none;
     }
     .select-all {
       user-select: all;
     }
+    .warn {
+      background-color: #ff6700
+    }
+    .monospace {
+      font-family: ui-monospace, Menlo, Monaco, "Cascadia Mono", "Segoe UI Mono", "Roboto Mono", "Oxygen Mono", "Ubuntu Monospace", "Source Code Pro", "Fira Mono", "Droid Sans Mono", "Courier New", monospace;
+      font-size: .8rem
+    }
   `;
 
   constructor() {
     super()
-    this.host = ""
-    this.name = ""
-    this.sharable = {}
-    this.sigKeyPair = {}
-    this.sigPrivJwk = {}
-    this.sigPubJwk = {}
-    this.sigPubJwkHash = {}
     this.challenge = {}
     this.challengeSig = {}
-    this.selectedContact = {}
-    this.contacts = []
     this.messages = []
     this.websocket = {}
   }
 
   connectedCallback() {
     super.connectedCallback()
-    this.initDetails()
-    this.initContacts()
-    this.initKeys()
-    .then(() => this.initSharable())
-    .then(() => this.initMessages())
-    .then(() => this.connectWebSocket())
-    .then(() => console.log('init done'))
-  }
-
-  async initKeys() {
-    const storedSigPrivJwk = localStorage.getItem("sigPrivJwk")
-    const storedSigPubJwk = localStorage.getItem("sigPubJwk")
-    const storedSigPubJwkHash = localStorage.getItem("sigPubJwkHash")
-    if (!storedSigPrivJwk || !storedSigPubJwk || !storedSigPubJwkHash) {
-      this.sigKeyPair = await genKeyPair()
-      this.sigPrivJwk = await exportKey(this.sigKeyPair.privateKey)
-      this.sigPubJwk = await exportKey(this.sigKeyPair.publicKey)
-      localStorage.setItem("sigPrivJwk", JSON.stringify(this.sigPrivJwk))
-      localStorage.setItem("sigPubJwk", JSON.stringify(this.sigPubJwk))
-      const hashBytes = new Uint8Array(await hash(getJwkBytes(this.sigPubJwk)))
-      this.sigPubJwkHash = base58().encode(hashBytes)
-      localStorage.setItem("sigPubJwkHash", this.sigPubJwkHash)
-    } else {
-      this.sigPrivJwk = JSON.parse(storedSigPrivJwk)
-      this.sigPubJwk = JSON.parse(storedSigPubJwk)
-      this.sigPubJwkHash = storedSigPubJwkHash
-      this.sigKeyPair = {
-        privateKey: await importKey(this.sigPrivJwk, ["sign"]),
-        publicKey: await importKey(this.sigPubJwk, ["verify"])
-      }
-    }
-  }
-
-  initDetails() {
-    this.name = localStorage.getItem("name")
-    if (!this.name) {
-      // ask user to input a name
-      this.name = "Joey"
-      localStorage.setItem("name", this.name)
-    }
-
-    this.host = localStorage.getItem("host")
-    if (!this.host) {
-      // ask user to input a host
-      this.host = "openchat.dr-useless.workers.dev"
-      localStorage.setItem("host", this.host)
-    }
-  }
-
-  initSharable() {
-    const sharable = {
-      name: this.name,
-      sigPubJwk: this.sigPubJwk,
-      host: this.host
-    }
-    this.sharable = btoa(JSON.stringify(sharable))
-  }
-
-  initContacts() {
-    const stored = localStorage.getItem("contacts")
-    if (!stored) {
-      this.contacts = []
-      return
-    }
-    this.contacts = JSON.parse(stored)
-    this.selectContact(this.contacts[0])
+    this.pref.initPromise.then(() => {
+      this.initMessages()
+      .then(() => this.connectWebSocket())
+      .then(() => console.log('init done'))
+    })
+    
   }
 
   async initMessages() {
@@ -162,10 +97,9 @@ export class Client extends LitElement {
     } else {
       this.messages = JSON.parse(stored)
     }
-    const fetched = await fetchMessages(this.host, this.sigPubJwk, this.sigPubJwkHash, await this.getChallengeSig())
-    this.messages.push(...fetched)
-    localStorage.setItem("messages", JSON.stringify(this.messages))
-    this.requestUpdate();
+    const fetched = await fetchMessages(this.pref.inboxDomain, this.pref.keys.sig.jwk.public, this.pref.keys.sig.publicHash, await this.getChallengeSig())
+    fetched.forEach(async m => await this.handleRecievedMessage(m))
+    localStorage.setItem(messagesKey, JSON.stringify(this.messages))
   }
 
   async getChallengeSig() {
@@ -177,24 +111,25 @@ export class Client extends LitElement {
       const parsed = JSON.parse(stored)
       if (!hasChallengeExpired(parsed)) {
         this.challenge = parsed
-        this.challengeSig = await signChallenge(this.sigKeyPair.privateKey, this.challenge.txt)
+        this.challengeSig = await signChallenge(this.pref.keys.sig.keyPair.privateKey, this.challenge.txt)
         return this.challengeSig;
       }
     }
-    const challenge = await fetchChallenge(this.host, this.sigPubJwkHash)
+    const challenge = await fetchChallenge(this.pref.inboxDomain, this.pref.keys.sig.publicHash)
     localStorage.setItem(challengeKey, JSON.stringify(challenge))
     this.challenge = challenge
-    this.challengeSig = await signChallenge(this.sigKeyPair.privateKey, challenge.txt)
+    this.challengeSig = await signChallenge(this.pref.keys.sig.keyPair.privateKey, challenge.txt)
     return this.challengeSig
   }
 
-  async addContact() {
+  async handleAddContact() {
     const inputValue = this.contactInput.value
     if (inputValue.length < 1) {
       console.log('invalid')
       return false
     }
-    const jsonString = atob(inputValue)
+    const bytes = base58().decode(inputValue)
+    const jsonString = new TextDecoder().decode(bytes)
     let contact = {}
     try {
       contact = JSON.parse(jsonString);
@@ -202,59 +137,50 @@ export class Client extends LitElement {
       console.log('failed to parse json', jsonString)
       return
     }
-    if (!contact.sigPubJwk || !contact.host) {
-      console.log('failed, missing sigPubJwk or host', contact)
+    if (!this.contacts.isValid(contact)) {
+      console.log('failed, missing keys, inboxDomain or name', contact)
       return
     }
-    const sigPubJwkHashBytes = new Uint8Array(await hash(getJwkBytes(contact.sigPubJwk)))
-    contact.sigPubJwkHash = base58().encode(sigPubJwkHashBytes)
-    this.contacts.push(contact);
-    localStorage.setItem("contacts", JSON.stringify(this.contacts))
+    const publicHashBytes = new Uint8Array(await hash(getJwkBytes(contact.keys.sig.jwk)))
+    contact.keys.sig.publicHash = base58().encode(publicHashBytes)
+    this.contacts.addContact(contact)
     this.contactInput.value = '';
     this.requestUpdate();
   }
 
-  selectContact(contact) {
-		this.selectedContact = contact
-    console.log('selected', this.selectedContact)
-	}
-
   async handleSendMessage() {
-    const message = this.messageInput.value
+    const message = this.messageInput.value.trim()
     if (message.length < 1) {
       return
     }
-    if (!this.selectedContact.sigPubJwkHash) {
+    if (!this.contacts.selected.keys.sig.publicHash) {
       console.log('no contact selected')
       return
     }
-    const c = this.selectedContact
-    const res = await sendMessage(c.host, c.sigPubJwkHash, this.sigPubJwkHash, message)
-    console.log('post result', res)
+    const c = this.contacts.selected
+    const res = await sendMessage(c.inboxDomain, this.pref.keys.sig.keyPair.privateKey, message, this.pref.keys.sig.publicHash, c.keys.sig.publicHash)
     if (res.error) {
       console.log('error', res)
       return
     }
-    const sentMessage = buildMessage(message, c.sigPubJwkHash, this.sigPubJwkHash)
+    this.messageInput.value = ""
+    // build a local version for storage
+    const sentMessage = buildMessage(undefined, message, this.pref.keys.sig.publicHash, c.keys.sig.publicHash)
     this.messages.push(sentMessage)
-    localStorage.setItem("messages", JSON.stringify(this.messages))
+    localStorage.setItem(messagesKey, JSON.stringify(this.messages))
     this.requestUpdate()
   }
 
   async connectWebSocket() {
-    this.websocket = getWebSocket(this.host, this.sigPubJwkHash)
+    this.websocket = getWebSocket(this.pref.inboxDomain, this.pref.keys.sig.publicHash)
     this.websocket.addEventListener("open", async () => {
       console.log("connection open")
-      handshakeWebsocket(this.websocket, this.sigPubJwk, await this.getChallengeSig())
+      handshakeWebsocket(this.websocket, this.pref.keys.sig.jwk.public, await this.getChallengeSig())
     })
     this.websocket.addEventListener("message", async event => {
       const data = JSON.parse(event.data)
-      console.log("ws got", data)
-      if (data.m && data.from) {
-        this.messages.push(data)
-        this.requestUpdate()
-        localStorage.setItem("messages", JSON.stringify(this.messages))
-      }
+      await this.handleRecievedMessage(data)
+      localStorage.setItem(messagesKey, JSON.stringify(this.messages))
     })
     this.addEventListener("close", () => {
       console.log("connection closed")
@@ -262,55 +188,149 @@ export class Client extends LitElement {
     })
   }
 
-  render() {
-    let messages = this.messages
-    if (this.selectedContact.sigPubJwk) {
-      messages = messages.filter(m => {
-        return m.from === this.selectedContact.sigPubJwkHash ||
-        m.to === this.selectedContact.sigPubJwkHash
-      })
+  async handleRecievedMessage(data) {
+    if (data.m && data.from) {
+      let isVerified = false
+      const contactMatch = this.contacts.list.find(c => c.keys.sig.publicHash === data.from)
+      // we need a contactMatch to get the public key, & the message must contain a hash & sig
+      if (contactMatch && data.h && data.sig) {
+        const contactSigPub = await importKey(contactMatch.keys.sig.jwk, ["verify"])
+        isVerified = await verifyMessage(contactSigPub, data)
+      }
+      if (isVerified || !this.pref.acceptOnlyVerified) {
+        const storable = {
+          t: data.t,
+          m: data.m,
+          from: data.from,
+          h: data.h,
+          v: isVerified
+        }
+        this.messages.push(storable)
+        console.log('stored', storable)
+        this.requestUpdate()
+      } else {
+        console.log('rejected unverified message')
+      }
     }
+  }
 
-    return html`
+  handleChangeName(event) {
+    this.pref.changeName(event.target.value)
+  }
+
+  handleChangeInboxDomain(event) {
+    this.pref.changeInboxDomain(event.target.value)
+  }
+
+  handleChangeAcceptOnlyVerified(event) {
+    console.log(event.target)
+    this.pref.changeAcceptOnlyVerified(event.target.checked)
+  }
+
+  headerTemplate() {
+    return html `
       <header>
         <h1>Openchat client</h1>
         <div>
-          <h2>Hello, ${this.name}</h2>
+          <h2>Hello, ${this.pref.name}</h2>
           <div class="box">
             <p class="meta">Your publicKeyHash</p>
-            <p class="wrap select-all">${this.sigPubJwkHash}</p>
+            <p class="wrap monospace select-all">${this.pref.keys.sig.publicHash}</p>
           </div>
           <div class="box">
-            <p class="meta">Your sharable</p>
-            <p class="wrap select-all">${this.sharable}</p>
+            <p class="meta">Your shareable</p>
+            <p class="wrap monospace select-all">${this.pref.shareable}</p>
           </div>
         </div>
       </header>
-      <div class="main">
-        <div class="contacts">
-          <ul class="no-list">
-            ${this.contacts.map(contact =>
-              html`<li class="contact wrap ${this.selectedContact.sigPubJwkHash === contact.sigPubJwkHash ? "selected" : ""}" @click=${() => this.selectContact(contact)}>${contact.name} [${contact.sigPubJwkHash}]</li>`
-            )}
-          </ul>
-          <input id="contact-addtext" placeholder="Sharable (base64)">
-          <button @click=${this.addContact}>Add</button>
+    `;
+  }
+
+  preferencesTemplate() {
+    return html`
+      <div class="preferences">
+        <h2>Preferences</h2>
+        <div class="preferences-group">
+          <h3>Shareable</h3>
+          <label>
+            <span>Your name</span>
+            <input type="text" id="preferences-name" .value=${this.pref.name} @change=${this.handleChangeName}/>
+          </label>
         </div>
-        <div class="messages">
-          <div class="compose">
-              <input id="message-compose" type="text"
-                placeholder="Write a message to ${this.selectedContact.name ? this.selectedContact.name : this.selectedContact.sigPubJwkHash}"/>
-              <button @click=${this.handleSendMessage}>Send</button>
-          </div>
-          <ul class="no-list">
-            ${messages.map(message =>
-              html`<li class="message wrap">${message.m}</li>`
-            )}
-          </ul>
+        <div class="preferences-group">
+          <h3>Domain</h3>
+          <p>This must point to a service that implements the <a href="https://github.com/dr-useless/openchat">openchat protocol</a>.</p>
+          <label>
+            <span>Domain</span>
+            <input type="text" id="preferences-domain" .value=${this.pref.inboxDomain} @change=${this.handleChangeInboxDomain}/>
+          </label>
+        </div>
+        <div class="preferences-group">
+          <h3>Security</h3>
+          <p>Two conditions must be met for a message to be verified: it must be signed by the sender & the sender must be in your contacts list. You can choose to accept only messages that have been verified.</p>
+          <label>
+            <span>Accept only verified messages</span>
+            <input type="checkbox" id="preferences-accept-only-verified" .checked=${this.pref.acceptOnlyVerified} @change=${this.handleChangeAcceptOnlyVerified}
+          </label>
         </div>
       </div>
-      <footer>
-      </footer>
+    `;
+  }
+
+  contactsTemplate(selectedPubHash) {
+    return html`
+      <div class="contacts">
+        <h2>Contacts</h2>
+        <ul class="no-list">
+          ${this.contacts.list.map(contact =>
+            html`
+            <li class="contact wrap ${selectedPubHash === contact.keys.sig.publicHash ? "selected" : ""}"
+                @click=${() => this.contacts.selectContact(contact)}>
+              ${contact.name} [${contact.keys.sig.publicHash}]
+            </li>
+            `
+          )}
+        </ul>
+        <input id="contact-addtext" placeholder="Enter a shareable">
+        <button @click=${this.handleAddContact}>Add</button>
+      </div>
+    `;
+  }
+
+  messagesTemplate(messages) {
+    return html`
+      <div class="messages">
+        <h2>Messages</h2>
+        <div class="compose">
+            <input id="message-compose" type="text"
+              placeholder="Write a message to ${this.contacts.selected.name}"/>
+            <button @click=${this.handleSendMessage}>Send</button>
+        </div>
+        <ul class="no-list">
+          ${messages.map(message => {
+            const v = message.v === true
+            return html`<li class="message wrap ${v ? "" : "warn"}"><div class="message-header">${v ? "" : ""}</div><div>${message.m}</div></li>`
+          })}
+        </ul>
+      </div>
+    `;
+  }
+
+  render() {
+    let messages = this.messages
+    let selectedPubHash
+    if (this.contacts.selected.keys) {
+      selectedPubHash = this.contacts.selected.keys.sig.publicHash
+      messages = messages.filter(m => m.from === selectedPubHash || m.to === selectedPubHash)
+    }
+
+    return html`
+      ${this.headerTemplate()}
+      <div class="main">
+        ${this.preferencesTemplate()}
+        ${this.contactsTemplate(selectedPubHash)}
+        ${this.messagesTemplate(messages)}
+      </div>
     `;
   }
 

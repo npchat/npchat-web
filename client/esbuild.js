@@ -24,14 +24,14 @@ function watch() {
 			}
 		}
 	}
-	return false;
+	return false
 }
 
 function shouldWatch() {
-	return isDev() && process.argv.indexOf('--watch') >= 0;
+	return isDev() && process.argv.indexOf('--watch') >= 0
 }
 
 function isDev() {
-	return process.argv.indexOf('--dev') >= 0;
+	return process.argv.indexOf('--dev') >= 0
 }
 

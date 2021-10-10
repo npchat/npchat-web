@@ -1,5 +1,5 @@
-export function getWebSocket(host, sigPubJwkHash) {
-	return new WebSocket(`wss://${host}/${sigPubJwkHash}`)
+export function getWebSocket(domain, sigPubJwkHash) {
+	return new WebSocket(`wss://${domain}/${sigPubJwkHash}`)
 }
 
 export function handshakeWebsocket(websocket, sigPubJwk, challengeSig) {
