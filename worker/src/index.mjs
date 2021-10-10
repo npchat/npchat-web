@@ -131,12 +131,14 @@ export class Channel {
 		websocket.accept()
 		websocket.addEventListener("message", async event => {
 			const message = JSON.parse(event.data)
-			if (message.signedChallengeBase58 && message.sigPubJwkBase58) {
-				const isAuthenticated = await this.authenticate(message.sigPubJwkBase58, sigPubJwkHashBase58, message.signedChallengeBase58)
+			if (message.sigPubJwk && message.challengeSig) {
+				const isAuthenticated = await this.authenticate(message.sigPubJwk, sigPubJwkHashBase58, message.challengeSig)
 				if (isAuthenticated) {
 					this.isAuthenticated = true
 					this.websocket = websocket
 					websocket.send(JSON.stringify({message: "You're now authenticated. Authentication will reset when this WebSocket connection is closed."}))
+				} else {
+					websocket.send(JSON.stringify({message: "Nope. Try again..."}))
 				}
 			}
 		})

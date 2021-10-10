@@ -4,6 +4,7 @@ import { base58 } from '../util/base58';
 import { hash } from '../util/hash';
 import { exportKey, genKeyPair, getJwkBytes, importKey } from '../util/key';
 import { buildMessage, fetchMessages, sendMessage } from '../util/message';
+import { getWebSocket, handshakeWebsocket } from '../util/websocket';
 
 export class Client extends LitElement {
   static properties = {
@@ -18,7 +19,8 @@ export class Client extends LitElement {
     challengeSig: {},
     selectedContact: {},
     contacts: {},
-    messages: {}
+    messages: {},
+    webSocket: {}
   }
 
   static styles = css`
@@ -71,6 +73,7 @@ export class Client extends LitElement {
     this.selectedContact = {}
     this.contacts = []
     this.messages = []
+    this.webSocket = {}
   }
 
   connectedCallback() {
@@ -80,6 +83,7 @@ export class Client extends LitElement {
     this.initKeys()
     .then(() => this.initSharable())
     .then(() => this.initMessages())
+    .then(() => this.connectWebSocket())
     .then(() => console.log('init done'))
   }
 
@@ -226,6 +230,21 @@ export class Client extends LitElement {
     this.messages.push(sentMessage)
     localStorage.setItem("messages", JSON.stringify(this.messages))
     this.requestUpdate()
+  }
+
+  async connectWebSocket() {
+    const websocket = getWebSocket(this.host, this.sigPubJwkHash)
+    websocket.addEventListener("message", async event => {
+      const data = JSON.parse(event.data)
+      if (data.challenge) {
+        const challenge = JSON.parse(data.challenge)
+        const challengeSig = await signChallenge(this.sigKeyPair.privateKey, challenge.txt)
+        handshakeWebsocket(websocket, this.sigPubJwk, challengeSig)
+        console.log('handshook')
+        return
+      }
+      console.log('ws got', data)
+    })
   }
 
   render() {

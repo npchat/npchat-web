@@ -747,6 +747,14 @@ async function sendMessage(host, toSigPubJwkHash, fromSigPubJwkHash, message) {
   return resp.json();
 }
 
+// src/util/websocket.js
+function getWebSocket(host, sigPubJwkHash) {
+  return new WebSocket(`wss://${host}/${sigPubJwkHash}`);
+}
+function handshakeWebsocket(websocket, sigPubJwk, challengeSig) {
+  websocket.send(JSON.stringify({ sigPubJwk, challengeSig }));
+}
+
 // src/components/client.js
 var Client = class extends s4 {
   constructor() {
@@ -763,12 +771,13 @@ var Client = class extends s4 {
     this.selectedContact = {};
     this.contacts = [];
     this.messages = [];
+    this.webSocket = {};
   }
   connectedCallback() {
     super.connectedCallback();
     this.initDetails();
     this.initContacts();
-    this.initKeys().then(() => this.initSharable()).then(() => this.initMessages()).then(() => console.log("init done"));
+    this.initKeys().then(() => this.initSharable()).then(() => this.initMessages()).then(() => this.connectWebSocket()).then(() => console.log("init done"));
   }
   async initKeys() {
     const storedSigPrivJwk = localStorage.getItem("sigPrivJwk");
@@ -903,6 +912,20 @@ var Client = class extends s4 {
     localStorage.setItem("messages", JSON.stringify(this.messages));
     this.requestUpdate();
   }
+  async connectWebSocket() {
+    const websocket = getWebSocket(this.host, this.sigPubJwkHash);
+    websocket.addEventListener("message", async (event) => {
+      const data = JSON.parse(event.data);
+      if (data.challenge) {
+        const challenge = JSON.parse(data.challenge);
+        const challengeSig = await signChallenge(this.sigKeyPair.privateKey, challenge.txt);
+        handshakeWebsocket(websocket, this.sigPubJwk, challengeSig);
+        console.log("handshook");
+        return;
+      }
+      console.log("ws got", data);
+    });
+  }
   render() {
     let messages = this.messages;
     if (this.selectedContact.sigPubJwk) {
@@ -961,7 +984,8 @@ __publicField(Client, "properties", {
   challengeSig: {},
   selectedContact: {},
   contacts: {},
-  messages: {}
+  messages: {},
+  webSocket: {}
 });
 __publicField(Client, "styles", r`
     header, .main, footer {
