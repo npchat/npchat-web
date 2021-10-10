@@ -187,7 +187,7 @@ export class Channel {
 		}
 		const messages = await this.getStoredMessages()
 		await this.storeMessages([])
-		return new Response(JSON.stringify({messagesKey: messages}), opts)
+		return new Response(JSON.stringify({messages: messages}), opts)
 	}
 
 	/**
@@ -260,7 +260,7 @@ export class Channel {
 	*/
 	async verifyChallenge(sigPub, signedChallengeBytes) {
 		const challenge = JSON.parse(await this.state.storage.get(challengeKey))
-		if (this.hasChallengeExpired(challenge)) {
+		if (hasChallengeExpired(challenge)) {
 			return false
 		}
 		const challengeBytes = new TextEncoder().encode(challenge.txt)
