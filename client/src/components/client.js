@@ -26,14 +26,15 @@ export class Client extends LitElement {
     .main > div {
       margin: 5rem 0;
     }
-    button {
+    button, input {
       padding: 0.25rem;
+      font-size: 1rem;
     }
     .box {
       background-color: #f5f5f5;
       display: block;
       padding: 0.5rem;
-      margin: 0.5rem;
+      margin: 1rem 0;
       border-radius: 2px;
     }
     .wrap {
@@ -54,6 +55,9 @@ export class Client extends LitElement {
     }
     .message.background {
       background-color: #e5e5e5
+    }
+    .message.sent {
+      
     }
     .meta {
       color: #555;
@@ -87,7 +91,6 @@ export class Client extends LitElement {
       .then(() => this.connectWebSocket())
       .then(() => console.log('init done'))
     })
-    
   }
 
   async initMessages() {
@@ -165,7 +168,7 @@ export class Client extends LitElement {
     }
     this.messageInput.value = ""
     // build a local version for storage
-    const sentMessage = buildMessage(undefined, message, this.pref.keys.sig.publicHash, c.keys.sig.publicHash)
+    const sentMessage = await buildMessage(undefined, message, this.pref.keys.sig.publicHash, c.keys.sig.publicHash)
     this.messages.push(sentMessage)
     localStorage.setItem(messagesKey, JSON.stringify(this.messages))
     this.requestUpdate()
@@ -227,31 +230,54 @@ export class Client extends LitElement {
     this.pref.changeAcceptOnlyVerified(event.target.checked)
   }
 
+  handleDismissShareables() {
+    console.log('dismissed')
+    this.pref.dismissShareables()
+  }
+  
+
   headerTemplate() {
     return html `
       <header>
         <h1>Openchat client</h1>
         <div>
           <h2>Hello, ${this.pref.name}</h2>
-          <div class="box">
-            <p class="meta">Your publicKeyHash</p>
-            <p class="wrap monospace select-all">${this.pref.keys.sig.publicHash}</p>
-          </div>
-          <div class="box">
-            <p class="meta">Your shareable</p>
-            <p class="wrap monospace select-all">${this.pref.shareable}</p>
-          </div>
+          ${this.shareableTemplate(true)}
         </div>
       </header>
     `;
   }
 
+  shareableTemplate(isDismissable) {
+    if (isDismissable && this.pref.shareablesDismissed) {
+      return html``
+    }
+    const dismissTemplate = html`
+      <span>It's in your preferences.</span>
+      <button class="dismiss" @click=${this.handleDismissShareables}>Got it</button>
+    `;
+    return html`
+    <div class="shareable">
+      ${isDismissable ? dismissTemplate : undefined}
+      <div class="box">
+        <p class="meta">Your publicKeyHash</p>
+        <p class="wrap monospace select-all">${this.pref.keys.sig.publicHash}</p>
+      </div>
+      <div class="box">
+        <p class="meta">Your shareable</p>
+        <p class="wrap monospace select-all">${this.pref.shareable}</p>
+      </div>
+    </div>
+    `;
+  }
+
   preferencesTemplate() {
     return html`
-      <div class="preferences">
+      <div id="preferences" class="preferences">
         <h2>Preferences</h2>
         <div class="preferences-group">
           <h3>Shareable</h3>
+          ${this.shareableTemplate()}
           <label>
             <span>Your name</span>
             <input type="text" id="preferences-name" .value=${this.pref.name} @change=${this.handleChangeName}/>
@@ -279,7 +305,7 @@ export class Client extends LitElement {
 
   contactsTemplate(selectedPubHash) {
     return html`
-      <div class="contacts">
+      <div id="contacts" class="contacts">
         <h2>Contacts</h2>
         <ul class="no-list">
           ${this.contacts.list.map(contact =>
@@ -299,7 +325,7 @@ export class Client extends LitElement {
 
   messagesTemplate(messages) {
     return html`
-      <div class="messages">
+      <div id="messages" class="messages">
         <h2>Messages</h2>
         <div class="compose">
             <input id="message-compose" type="text"
@@ -307,15 +333,22 @@ export class Client extends LitElement {
             <button @click=${this.handleSendMessage}>Send</button>
         </div>
         <ul class="no-list">
-          ${messages.map(message => {
-            const v = message.v === true
-            return html`<li class="message wrap ${v ? "" : "warn"}"><div class="message-header">${v ? "" : ""}</div><div>${message.m}</div></li>`
-          })}
+          ${messages.map(message => this.messageTemplate(message))}
         </ul>
       </div>
     `;
   }
 
+  messageTemplate(message) {
+    const sent = message.from === this.pref.keys.sig.publicHash
+    const v = message.v === true || sent
+    return html`<li class="message wrap ${v ? "" : "warn"} ${sent ? "sent" : "recieved"}"><div class="message-header">${v ? "" : ""}</div><div>${message.m}</div></li>`
+  }
+
+  manageDataTemlate() {
+    return html`
+    `;
+  }
   render() {
     let messages = this.messages
     let selectedPubHash
@@ -323,7 +356,6 @@ export class Client extends LitElement {
       selectedPubHash = this.contacts.selected.keys.sig.publicHash
       messages = messages.filter(m => m.from === selectedPubHash || m.to === selectedPubHash)
     }
-
     return html`
       ${this.headerTemplate()}
       <div class="main">

@@ -7,6 +7,7 @@ const nameStorageKey = "name"
 const inboxDomainStorageKey = "inboxDomain"
 const keysStorageKey = "keys"
 const acceptOnlyVerifiedStorageKey = "acceptOnlyVerified"
+const shareablesDismissedStorageKey = "shareablesDismissed"
 
 const inboxDomainRegex = /^(?=.{1,255}$)[0-9A-Za-z](?:(?:[0-9A-Za-z]|-){0,61}[0-9A-Za-z])?(?:\.[0-9A-Za-z](?:(?:[0-9A-Za-z]|-){0,61}[0-9A-Za-z])?)*\.?$/
 
@@ -24,6 +25,7 @@ export class PreferencesController {
 			}
 		}
 		this.initPromise = this.getKeys().then(() => {
+			this.shareablesDismissed = localStorage.getItem(shareablesDismissedStorageKey) || false
 			this.name = localStorage.getItem(nameStorageKey) || "Anonymous"
 			this.inboxDomain = localStorage.getItem(inboxDomainStorageKey) || "openchat.dr-useless.workers.dev"
 			this.shareable = this.getShareable()
@@ -75,6 +77,7 @@ export class PreferencesController {
 		localStorage.setItem(inboxDomainStorageKey, this.inboxDomain)
 		localStorage.setItem(keysStorageKey, JSON.stringify(this.keys))
 		localStorage.setItem(acceptOnlyVerifiedStorageKey, this.acceptOnlyVerified)
+		localStorage.setItem(shareablesDismissedStorageKey, this.shareablesDismissed)
 	}
 
 	changeName(name) {
@@ -104,5 +107,11 @@ export class PreferencesController {
 		console.log('changed to', this.acceptOnlyVerified)
 		this.store()
 		this.host.requestUpdate()
+	}
+
+	dismissShareables() {
+		this.shareablesDismissed = true
+		this.host.requestUpdate()
+		this.store()
 	}
 }
