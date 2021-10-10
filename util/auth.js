@@ -1,6 +1,8 @@
 import { base58 } from './base58'
 import { sign } from './sign'
 
+export const challengeKey = "challenge"
+
 export async function fetchChallenge(host, sigPubJwkHash) {
 	const resp = await fetch(`https://${host}/${sigPubJwkHash}/challenge`)
 	return resp.json()

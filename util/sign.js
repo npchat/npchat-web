@@ -1,4 +1,4 @@
-const sigAlgorithm = {
+export const sigAlgorithm = {
 	name: "ECDSA",
 	hash: "SHA-384"
 }

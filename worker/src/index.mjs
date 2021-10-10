@@ -4,17 +4,12 @@
 	https://developers.cloudflare.com/workers/learning/using-durable-objects
 */
 
-const messagesKey = "messages"
-const challengeKey = "challenge"
-const hashAlgorithm = "SHA-256"
-const sigKeyParams = {
-	name: "ECDSA",
-	namedCurve: "P-384"
-}
-const sigAlgorithm = {
-	name: "ECDSA",
-	hash: "SHA-384"
-}
+import { verify } from '../../util/sign'
+import { importKey } from '../../util/key'
+import { challengeKey, hasChallengeExpired } from '../../util/auth'
+import { base58 } from '../../util/base58'
+import { messagesKey } from '../../util/message'
+import { hash } from '../../util/hash'
 
 /**
 	@returns {Object} default response options
@@ -165,7 +160,7 @@ export class Channel {
 	*/
 	async getChallenge() {
 		const challenge = await this.state.storage.get(challengeKey)
-		if (!challenge || this.hasChallengeExpired(JSON.parse(challenge))) {
+		if (!challenge || hasChallengeExpired(JSON.parse(challenge))) {
 			const newChallenge = JSON.stringify(this.makeChallenge())
 			this.state.storage.put(challengeKey, newChallenge)
 			return newChallenge
@@ -181,17 +176,6 @@ export class Channel {
 	}
 
 	/**
-		@param {Object} challenge
-	*/
-	hasChallengeExpired(challenge) {
-		// check expiry (not t) to prevent issue when changing challengeTtl
-		if (Date.now() > challenge.exp) {
-			return true
-		}
-		return false
-	}
-
-	/**
 		@param {Request} request
 		@returns {Promise<Response>}
 	*/
@@ -203,7 +187,7 @@ export class Channel {
 		}
 		const messages = await this.getStoredMessages()
 		await this.storeMessages([])
-		return new Response(JSON.stringify({messages: messages}), opts)
+		return new Response(JSON.stringify({messagesKey: messages}), opts)
 	}
 
 	/**
@@ -214,23 +198,23 @@ export class Channel {
 		const sigPubJwkBase58Header = request.headers.get("oc-pk")
 		const signedChallengeBase58Header = request.headers.get("oc-sig")
 		const sigPubJwkHashBase58 = getSigPubJwkHashBase58FromRequest(request)
-		const sigPubJwkBytes = this.base58().decode(sigPubJwkBase58Header)
+		const sigPubJwkBytes = base58().decode(sigPubJwkBase58Header)
 		const sigPubJwk = JSON.parse(new TextDecoder().decode(sigPubJwkBytes))
 		return this.authenticate(sigPubJwk, sigPubJwkHashBase58, signedChallengeBase58Header)
 	}
 
 	async authenticate(sigPubJwk, sigPubJwkHashBase58, signedChallengeBase58) {
 		const jwkBytes = new TextEncoder().encode(JSON.stringify(sigPubJwk))
-		const jwkHash = await crypto.subtle.digest(hashAlgorithm, jwkBytes)
-		const base58 = this.base58()
-		const jwkHashBase58 = base58.encode(new Uint8Array(jwkHash))
+		const jwkHash = await hash(jwkBytes)
+		const b58 = base58()
+		const jwkHashBase58 = b58.encode(new Uint8Array(jwkHash))
 		// IMPORTANT verify sigPubJwkHash is equal to hash of public key
 		if (jwkHashBase58 !== sigPubJwkHashBase58) {
 			return false
 		}
 		const jwk = JSON.parse(new TextDecoder().decode(jwkBytes))
-		const sigPubKey = await this.importJwk(jwk)
-		const signedChallengeBytes = base58.decode(signedChallengeBase58)
+		const sigPubKey = await importKey(jwk, ["verify"])
+		const signedChallengeBytes = b58.decode(signedChallengeBase58)
 		return await this.verifyChallenge(sigPubKey, signedChallengeBytes)
 	}
 
@@ -280,116 +264,6 @@ export class Channel {
 			return false
 		}
 		const challengeBytes = new TextEncoder().encode(challenge.txt)
-		return await crypto.subtle.verify(sigAlgorithm, sigPub, signedChallengeBytes, challengeBytes)
-	}
-
-	/**
-		@param {Object} jwk JSON Web Token
-		@returns {Promise<CryptoKey>} Promise for a CryptoKey
-	*/
-	async importJwk(jwk) {
-		return crypto.subtle.importKey(
-			"jwk",
-			jwk,
-			sigKeyParams,
-			true,
-			["verify"])
-	}
-
-	base58() {
-		// https://github.com/45678/Base58
-		const result = {}
-		const ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
-		const ALPHABET_MAP = {}
-		let i = 0
-	
-		while (i < ALPHABET.length) {
-			ALPHABET_MAP[ALPHABET.charAt(i)] = i;
-			i++
-		}
-	
-		result.encode = buffer => {
-			let carry, digits, j
-			if (buffer.length === 0) {
-				return ""
-			}
-			i = void 0
-			j = void 0
-			digits = [0]
-			i = 0
-			while (i < buffer.length) {
-				j = 0
-				while (j < digits.length) {
-					digits[j] <<= 8
-					j++
-				}
-				digits[0] += buffer[i]
-				carry = 0
-				j = 0
-				while (j < digits.length) {
-					digits[j] += carry
-					carry = (digits[j] / 58) | 0
-					digits[j] %= 58
-					++j
-				}
-				while (carry) {
-					digits.push(carry % 58)
-					carry = (carry / 58) | 0
-				}
-				i++
-			}
-			i = 0
-			while (buffer[i] === 0 && i < buffer.length - 1) {
-				digits.push(0)
-				i++
-			}
-			return digits.reverse().map(function(digit) {
-				return ALPHABET[digit]
-			}).join("")
-		};
-	
-		result.decode = string => {
-			let bytes, c, carry, j
-			if (string.length === 0) {
-				return new Uint8Array(0)
-			}
-			i = void 0
-			j = void 0
-			bytes = [0]
-			i = 0
-			while (i < string.length) {
-				c = string[i]
-				if (!(c in ALPHABET_MAP)) {
-					throw "Base58.decode received unacceptable input. Character '" + c + "' is not in the Base58 alphabet."
-				}
-				j = 0
-				while (j < bytes.length) {
-					bytes[j] *= 58
-					j++
-				}
-				bytes[0] += ALPHABET_MAP[c]
-				carry = 0
-				j = 0
-				while (j < bytes.length) {
-					bytes[j] += carry
-					carry = bytes[j] >> 8
-					bytes[j] &= 0xff
-					++j
-				}
-				while (carry) {
-					bytes.push(carry & 0xff)
-					carry >>= 8
-				}
-				i++
-			}
-			i = 0
-			while (string[i] === "1" && i < string.length - 1) {
-				bytes.push(0)
-				i++
-			}
-			return new Uint8Array(bytes.reverse())
-		}
-	
-		return result
+		return await verify(sigPub, signedChallengeBytes, challengeBytes)
 	}
 }

@@ -1,4 +1,4 @@
-import {Client} from "./components/client"
+import { Client } from "./components/client"
 
 
 window.addEventListener("DOMContentLoaded", async () => {

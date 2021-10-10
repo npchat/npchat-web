@@ -2,3 +2,4 @@
 wrangler.toml
 node_modules
 client/www/dist
+worker/dist

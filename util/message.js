@@ -1,6 +1,8 @@
 import { base58 } from './base58'
 import { getJwkBytes } from './key'
 
+export const messagesKey = "messages"
+
 export async function fetchMessages(host, sigPubJwk, sigPubJwkHash, challengeSig) {
 	const sigPubJwkBytes = getJwkBytes(sigPubJwk)
 	const sigPubJwkBase58 = base58().encode(sigPubJwkBytes)
@@ -22,7 +24,7 @@ export function buildMessage(message, to, from) {
 }
 
 export async function sendMessage(host, toSigPubJwkHash, fromSigPubJwkHash, message) {
-	const resp = await fetch(`http://${host}/${toSigPubJwkHash}`, {
+	const resp = await fetch(`https://${host}/${toSigPubJwkHash}`, {
 		method: "POST",
 		body: JSON.stringify(buildMessage(message, undefined, fromSigPubJwkHash))
 	})

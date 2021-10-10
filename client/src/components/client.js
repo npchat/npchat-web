@@ -1,9 +1,9 @@
-import {LitElement, html, css} from 'lit';
-import { fetchChallenge, hasChallengeExpired, signChallenge } from '../../../util/auth';
+import { LitElement, html, css } from 'lit';
+import { challengeKey, fetchChallenge, hasChallengeExpired, signChallenge } from '../../../util/auth';
 import { base58 } from '../../../util/base58';
 import { hash } from '../../../util/hash';
 import { exportKey, genKeyPair, getJwkBytes, importKey } from '../../../util/key';
-import { buildMessage, fetchMessages, sendMessage } from '../../../util/message';
+import { buildMessage, fetchMessages, messagesKey, sendMessage } from '../../../util/message';
 import { getWebSocket, handshakeWebsocket } from '../../../util/websocket';
 
 export class Client extends LitElement {
@@ -156,7 +156,7 @@ export class Client extends LitElement {
   }
 
   async initMessages() {
-    const stored = localStorage.getItem("messages")
+    const stored = localStorage.getItem(messagesKey)
     if (!stored) {
       this.messages = []
     } else {
@@ -172,7 +172,7 @@ export class Client extends LitElement {
     if (this.challengeSig && this.challenge.txt && !hasChallengeExpired(this.challenge)) {
       return this.challengeSig
     }
-    const stored = localStorage.getItem("challenge")
+    const stored = localStorage.getItem(challengeKey)
     if (stored) {
       const parsed = JSON.parse(stored)
       if (!hasChallengeExpired(parsed)) {
@@ -182,7 +182,7 @@ export class Client extends LitElement {
       }
     }
     const challenge = await fetchChallenge(this.host, this.sigPubJwkHash)
-    localStorage.setItem("challenge", JSON.stringify(challenge))
+    localStorage.setItem(challengeKey, JSON.stringify(challenge))
     this.challenge = challenge
     this.challengeSig = await signChallenge(this.sigKeyPair.privateKey, challenge.txt)
     return this.challengeSig
@@ -235,7 +235,7 @@ export class Client extends LitElement {
       console.log('error', res)
       return
     }
-    const sentMessage = buildMessage(message, c.sigPubJwkHash)
+    const sentMessage = buildMessage(message, c.sigPubJwkHash, this.sigPubJwkHash)
     this.messages.push(sentMessage)
     localStorage.setItem("messages", JSON.stringify(this.messages))
     this.requestUpdate()

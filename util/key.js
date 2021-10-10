@@ -1,4 +1,4 @@
-const sigKeyParams = {
+export const sigKeyParams = {
 	name: "ECDSA",
 	namedCurve: "P-384"
 }
