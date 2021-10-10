@@ -669,6 +669,32 @@ function base58() {
   return result;
 }
 
+// src/util/sign.js
+var sigAlgorithm = {
+  name: "ECDSA",
+  hash: "SHA-384"
+};
+async function sign(privCryptoKey, bytes) {
+  return crypto.subtle.sign(sigAlgorithm, privCryptoKey, bytes);
+}
+
+// src/util/auth.js
+async function fetchChallenge(host, sigPubJwkHash) {
+  const resp = await fetch(`https://${host}/${sigPubJwkHash}/challenge`);
+  return resp.json();
+}
+function hasChallengeExpired(challenge) {
+  if (Date.now() > challenge.exp) {
+    return true;
+  }
+  return false;
+}
+async function signChallenge(privateKey, challengeText) {
+  const bytes = new TextEncoder().encode(challengeText);
+  const sig = new Uint8Array(await sign(privateKey, bytes));
+  return base58().encode(sig);
+}
+
 // src/util/hash.js
 var hashAlgorithm = "SHA-256";
 async function hash(bytes) {
@@ -694,26 +720,55 @@ function getJwkBytes(jwk) {
   return new TextEncoder().encode(str);
 }
 
+// src/util/message.js
+async function fetchMessages(host, sigPubJwk, sigPubJwkHash, challengeSig) {
+  const sigPubJwkBytes = getJwkBytes(sigPubJwk);
+  const sigPubJwkBase58 = base58().encode(sigPubJwkBytes);
+  const resp = await fetch(`https://${host}/${sigPubJwkHash}`, {
+    headers: {
+      "oc-pk": sigPubJwkBase58,
+      "oc-sig": challengeSig
+    }
+  });
+  return (await resp.json()).messages;
+}
+function buildMessage(message, to, from) {
+  return {
+    m: message,
+    from,
+    to
+  };
+}
+async function sendMessage(host, toSigPubJwkHash, fromSigPubJwkHash, message) {
+  const resp = await fetch(`https://${host}/${toSigPubJwkHash}`, {
+    method: "POST",
+    body: JSON.stringify(buildMessage(message, void 0, fromSigPubJwkHash))
+  });
+  return resp.json();
+}
+
 // src/components/client.js
 var Client = class extends s4 {
   constructor() {
     super();
-    this.sharable = {};
+    this.host = "";
     this.name = "";
+    this.sharable = {};
     this.sigKeyPair = {};
     this.sigPrivJwk = {};
     this.sigPubJwk = {};
     this.sigPubJwkHash = {};
     this.challenge = {};
+    this.challengeSig = {};
     this.selectedContact = {};
     this.contacts = [];
     this.messages = [];
   }
   connectedCallback() {
     super.connectedCallback();
+    this.initDetails();
     this.initContacts();
-    this.initMessages();
-    this.initKeys().then(() => this.initSharable()).then(() => console.log("init done"));
+    this.initKeys().then(() => this.initMessages()).then(() => this.initSharable()).then(() => console.log("init done"));
   }
   async initKeys() {
     const storedSigPrivJwk = localStorage.getItem("sigPrivJwk");
@@ -739,14 +794,21 @@ var Client = class extends s4 {
     }
     console.log("initKeys done", this.sigKeyPair, this.sigPubJwkHash);
   }
-  initSharable() {
+  initDetails() {
     this.name = localStorage.getItem("name");
     if (!this.name) {
       this.name = "Joey";
     }
+    this.host = localStorage.getItem("host");
+    if (!this.host) {
+      this.host = "openchat.dr-useless.workers.dev";
+    }
+  }
+  initSharable() {
     const sharable = {
       name: this.name,
-      sigPubJwk: this.sigPubJwk
+      sigPubJwk: this.sigPubJwk,
+      host: this.host
     };
     this.sharable = btoa(JSON.stringify(sharable));
     console.log("initSharable done");
@@ -758,53 +820,41 @@ var Client = class extends s4 {
       return;
     }
     this.contacts = JSON.parse(stored);
+    this.selectContact(this.contacts[0]);
   }
-  initMessages() {
+  async initMessages() {
     const stored = localStorage.getItem("messages");
     if (!stored) {
       this.messages = [];
-      return;
+    } else {
+      this.messages = JSON.parse(stored);
     }
-    this.messages = JSON.parse(stored);
-  }
-  render() {
-    let messages = this.messages;
-    if (this.selectedContact) {
-      messages = messages.filter((m2) => m2.from === this.selectedContact.sigPubJwkHash);
-    }
-    return p`
-      <header>
-        <h1>Openchat client</h1>
-        <div>
-        <h2>Hello, ${this.name}</h2>
-        <h3 class="wrap">${this.sigPubJwkHash}</h3>
-        <p class="sharable wrap">${this.sharable}</p>
-        </div>
-      </header>
-      <div class="main">
-        <div class="contacts">
-          <ul class="contact-list">
-            ${this.contacts.map((contact) => p`<li class="contact wrap" @click=${() => this.selectContact(contact)}>${contact.name} [${contact.sigPubJwkHash}]</li>`)}
-          </ul>
-          <input id="contact-addtext" placeholder="Enter a contact string (base64)">
-          <button @click=${this.addContact}>Add</button>
-        </div>
-        <div class="messages">
-          <ul class="contact-list">
-            ${messages.map((message) => p`<li class="message wrap">${message.txt}</li>`)}
-          </ul>
-        </div>
-      </div>
-      <footer>
-      </footer>
-    `;
-  }
-  toggleCompleted(item) {
-    item.completed = !item.completed;
+    const fetched = await fetchMessages(this.host, this.sigPubJwk, this.sigPubJwkHash, await this.getChallengeSig());
+    this.messages.push(...fetched);
+    localStorage.setItem("messages", JSON.stringify(this.messages));
     this.requestUpdate();
   }
+  async getChallengeSig() {
+    if (this.challengeSig && this.challenge.txt && !hasChallengeExpired(this.challenge)) {
+      return this.challengeSig;
+    }
+    const stored = localStorage.getItem("challenge");
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (!hasChallengeExpired(parsed)) {
+        this.challenge = parsed;
+        this.challengeSig = await signChallenge(this.sigKeyPair.privateKey, this.challenge.txt);
+        return this.challengeSig;
+      }
+    }
+    const challenge = await fetchChallenge(this.host, this.sigPubJwkHash);
+    localStorage.setItem("challenge", JSON.stringify(challenge));
+    this.challenge = challenge;
+    this.challengeSig = await signChallenge(this.sigKeyPair.privateKey, challenge.txt);
+    return this.challengeSig;
+  }
   async addContact() {
-    const inputValue = this.input.value;
+    const inputValue = this.contactInput.value;
     if (inputValue.length < 1) {
       console.log("invalid");
       return false;
@@ -817,26 +867,90 @@ var Client = class extends s4 {
       console.log("failed to parse json", jsonString);
       return;
     }
-    if (!contact.sigPubJwk) {
-      console.log("failed, missing sigPubJwk", contact);
+    if (!contact.sigPubJwk || !contact.host) {
+      console.log("failed, missing sigPubJwk or host", contact);
       return;
     }
     const sigPubJwkHashBytes = new Uint8Array(await hash(getJwkBytes(contact.sigPubJwk)));
     contact.sigPubJwkHash = base58().encode(sigPubJwkHashBytes);
     this.contacts.push(contact);
     localStorage.setItem("contacts", JSON.stringify(this.contacts));
-    this.input.value = "";
+    this.contactInput.value = "";
     this.requestUpdate();
   }
   selectContact(contact) {
     this.selectedContact = contact;
     console.log("selected", this.selectedContact);
   }
-  get input() {
+  async handleSendMessage() {
+    const message = this.messageInput.value;
+    if (message.length < 1) {
+      return;
+    }
+    if (!this.selectedContact.sigPubJwkHash) {
+      console.log("no contact selected");
+      return;
+    }
+    const c2 = this.selectedContact;
+    const res = await sendMessage(c2.host, c2.sigPubJwkHash, this.sigPubJwkHash, message);
+    console.log("post result", res);
+    if (res.error) {
+      console.log("error", res);
+      return;
+    }
+    const sentMessage = buildMessage(message, c2.sigPubJwkHash);
+    this.messages.push(sentMessage);
+    localStorage.setItem("messages", JSON.stringify(this.messages));
+    this.requestUpdate();
+  }
+  render() {
+    let messages = this.messages;
+    if (this.selectedContact.sigPubJwk) {
+      messages = messages.filter((m2) => {
+        return m2.from === this.selectedContact.sigPubJwkHash || m2.to === this.selectedContact.sigPubJwkHash;
+      });
+    }
+    return p`
+      <header>
+        <h1>Openchat client</h1>
+        <div>
+          <h2>Hello, ${this.name}</h2>
+          <h3 class="wrap">${this.sigPubJwkHash}</h3>
+          <p class="sharable wrap">${this.sharable}</p>
+        </div>
+      </header>
+      <div class="main">
+        <div class="contacts">
+          <ul class="no-list">
+            ${this.contacts.map((contact) => p`<li class="contact wrap ${this.selectedContact.sigPubJwkHash === contact.sigPubJwkHash ? "selected" : ""}" @click=${() => this.selectContact(contact)}>${contact.name} [${contact.sigPubJwkHash}]</li>`)}
+          </ul>
+          <input id="contact-addtext" placeholder="Sharable (base64)">
+          <button @click=${this.addContact}>Add</button>
+        </div>
+        <div class="messages">
+          <div class="compose">
+              <input id="message-compose" type="text"
+                placeholder="Write a message to ${this.selectedContact.name ? this.selectedContact.name : this.selectedContact.sigPubJwkHash}"/>
+              <button @click=${this.handleSendMessage}>Send</button>
+          </div>
+          <ul class="no-list">
+            ${messages.map((message) => p`<li class="message wrap">${message.m}</li>`)}
+          </ul>
+        </div>
+      </div>
+      <footer>
+      </footer>
+    `;
+  }
+  get contactInput() {
     return this.renderRoot?.querySelector("#contact-addtext") ?? null;
+  }
+  get messageInput() {
+    return this.renderRoot?.querySelector("#message-compose") ?? null;
   }
 };
 __publicField(Client, "properties", {
+  host: {},
   sharable: {},
   name: {},
   sigKeyPair: {},
@@ -844,11 +958,18 @@ __publicField(Client, "properties", {
   sigPubJwk: {},
   sigPubJwkHash: {},
   challenge: {},
+  challengeSig: {},
   selectedContact: {},
   contacts: {},
   messages: {}
 });
 __publicField(Client, "styles", r`
+    header, .main, footer {
+      max-width: 600px
+    }
+    .main > div {
+      margin: 5rem 0;
+    }
     li {
       font-size: 1.2rem;
     }
@@ -865,19 +986,27 @@ __publicField(Client, "styles", r`
     }
     .sharable {
       background-color: #e5e5e5;
-      max-width: 600px;
       display: block;
       padding: 0.5rem;
     }
     .wrap {
       overflow-wrap: anywhere;
     }
-    .contact-list {
+    .no-list{
       list-style: none;
       padding: 0
     }
-    .contact:hover {
+    .contact {
+      padding: 0.5rem;
+    }
+    .contact:hover, .contact.selected {
       background-color: #e5e5e5;
+    }
+    .message {
+      padding: 0.5rem;
+    }
+    .message.background {
+      background-color: #e5e5e5
     }
   `);
 
