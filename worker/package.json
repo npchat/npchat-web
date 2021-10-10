@@ -3,7 +3,7 @@
 	"scripts": {
 		"build": "node ./esbuild.js"
 	},
-	"devDependencies": {
+	"dependencies": {
 		"esbuild": "^0.13.4"
 	}
 }

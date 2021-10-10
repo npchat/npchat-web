@@ -6,12 +6,8 @@
   "license": "MIT",
   "homepage": "https://github.com/dr-useless/openchat#readme",
   "type": "module",
-  "main": "src/index.mjs",
   "scripts": {
-    "build": "cd client; node ./esbuild.js"
-  },
-  "devDependencies": {
-    "esbuild": "^0.13.4"
+    "build": "cd client; npm install; node ./esbuild.js"
   },
   "repository": {
     "type": "git",
