@@ -2,7 +2,7 @@ import { build } from "esbuild"
 
 export const buildOptions = {
 	platform: "neutral",
-	format: 'esm',
+	format: "esm",
 	bundle: true,
 	minify: !isDev(),
 	watch: watch(),

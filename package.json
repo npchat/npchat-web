@@ -7,6 +7,9 @@
   "homepage": "https://github.com/dr-useless/openchat#readme",
   "type": "module",
   "main": "src/index.mjs",
+  "scripts": {
+    "build": "cd client; node ./esbuild.js"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/dr-useless/openchat.git"
