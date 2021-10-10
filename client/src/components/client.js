@@ -1,10 +1,10 @@
 import {LitElement, html, css} from 'lit';
-import { fetchChallenge, hasChallengeExpired, signChallenge } from '../util/auth';
-import { base58 } from '../util/base58';
-import { hash } from '../util/hash';
-import { exportKey, genKeyPair, getJwkBytes, importKey } from '../util/key';
-import { buildMessage, fetchMessages, sendMessage } from '../util/message';
-import { getWebSocket, handshakeWebsocket } from '../util/websocket';
+import { fetchChallenge, hasChallengeExpired, signChallenge } from '../../../util/auth';
+import { base58 } from '../../../util/base58';
+import { hash } from '../../../util/hash';
+import { exportKey, genKeyPair, getJwkBytes, importKey } from '../../../util/key';
+import { buildMessage, fetchMessages, sendMessage } from '../../../util/message';
+import { getWebSocket, handshakeWebsocket } from '../../../util/websocket';
 
 export class Client extends LitElement {
   static properties = {
