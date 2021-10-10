@@ -86,8 +86,8 @@ async function handleRequest(request, env) {
 export class Channel {
 	constructor(state, env) {
 		this.state = state
-		this.challengeTtl = env.CHALLENGE_TTL
-		this.isWebSocketAuthenticated = false
+		this.challengeTtl = new Number(env.CHALLENGE_TTL)
+		this.websocket = null
 		//this.state.blockConcurrencyWhile(async () => )
 	}
 
@@ -127,28 +127,30 @@ export class Channel {
 	}
 
 	async handleSocketSession(request, websocket) {
-		const sigPubJwkHashBase58 = getSigPubJwkHashBase58FromRequest(request)
 		websocket.accept()
 		websocket.addEventListener("message", async event => {
-			const message = JSON.parse(event.data)
-			if (message.sigPubJwk && message.challengeSig) {
-				const isAuthenticated = await this.authenticate(message.sigPubJwk, sigPubJwkHashBase58, message.challengeSig)
+			let message
+			try {
+				message = JSON.parse(event.data)
+			} catch (e) {
+				websocket.send(JSON.stringify({message: "Send only JSON", error: "Handshake failed"}))
+				return
+			}
+			if (message.sigPubJwk && typeof message.challengeSig === "string") {
+				const isAuthenticated = await this.authenticate(message.sigPubJwk, getSigPubJwkHashBase58FromRequest(request), message.challengeSig)
 				if (isAuthenticated) {
-					this.isAuthenticated = true
 					this.websocket = websocket
-					websocket.send(JSON.stringify({message: "You're now authenticated. Authentication will reset when this WebSocket connection is closed."}))
+					websocket.send(JSON.stringify({message: "Handshake done"}))
 				} else {
 					websocket.send(JSON.stringify({message: "Nope. Try again..."}))
 				}
+			} else {
+				websocket.send(JSON.stringify({message: "Missing sigPubJwk or challengeSig", error: "Missing parameters"}))
 			}
 		})
-
-		websocket.addEventListener("close", async () => {
-			this.isAuthenticated = false
-			this.websocket = undefined
+		websocket.addEventListener("close", () => {
+			this.websocket = null
 		})
-
-		websocket.send(JSON.stringify({message:"Authenticate", challenge: await this.getChallenge()}))
 	}
 
 	/**
@@ -175,7 +177,7 @@ export class Channel {
 		@returns {Object} challenge
 	*/
 	makeChallenge() {
-		return {t: Date.now(), exp: Date.now()+new Number(this.challengeTtl), txt: crypto.randomUUID()}
+		return {exp: Date.now()+this.challengeTtl, txt: crypto.randomUUID()}
 	}
 
 	/**
@@ -212,18 +214,17 @@ export class Channel {
 		const sigPubJwkBase58Header = request.headers.get("oc-pk")
 		const signedChallengeBase58Header = request.headers.get("oc-sig")
 		const sigPubJwkHashBase58 = getSigPubJwkHashBase58FromRequest(request)
-		return this.authenticate(sigPubJwkBase58Header, sigPubJwkHashBase58, signedChallengeBase58Header)
+		const sigPubJwkBytes = this.base58().decode(sigPubJwkBase58Header)
+		const sigPubJwk = JSON.parse(new TextDecoder().decode(sigPubJwkBytes))
+		return this.authenticate(sigPubJwk, sigPubJwkHashBase58, signedChallengeBase58Header)
 	}
 
-	async authenticate(sigPubJwkBase58, sigPubJwkHashBase58, signedChallengeBase58) {
-		if (!sigPubJwkBase58 || !signedChallengeBase58) {
-			return false
-		}
-		const base58 = this.base58()
-		const jwkBytes = base58.decode(sigPubJwkBase58)
+	async authenticate(sigPubJwk, sigPubJwkHashBase58, signedChallengeBase58) {
+		const jwkBytes = new TextEncoder().encode(JSON.stringify(sigPubJwk))
 		const jwkHash = await crypto.subtle.digest(hashAlgorithm, jwkBytes)
+		const base58 = this.base58()
 		const jwkHashBase58 = base58.encode(new Uint8Array(jwkHash))
-		// verify sigPubJwkHash is equal to hash of public key
+		// IMPORTANT verify sigPubJwkHash is equal to hash of public key
 		if (jwkHashBase58 !== sigPubJwkHashBase58) {
 			return false
 		}
@@ -240,9 +241,8 @@ export class Channel {
 	async handlePostMessage(request) {
 		const response = new Response(JSON.stringify({message: "Sent"}), defaultResponseOpts());
 		const newMessageText = await request.text()
-		if (this.isAuthenticated && this.websocket && typeof this.websocket.send === 'function') {
+		if (this.websocket) {
 			this.websocket.send(newMessageText)
-			return response
 		}
 		const messages = await this.getStoredMessages()
 		messages.push(JSON.parse(newMessageText))

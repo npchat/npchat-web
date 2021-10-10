@@ -740,7 +740,7 @@ function buildMessage(message, to, from) {
   };
 }
 async function sendMessage(host, toSigPubJwkHash, fromSigPubJwkHash, message) {
-  const resp = await fetch(`https://${host}/${toSigPubJwkHash}`, {
+  const resp = await fetch(`http://${host}/${toSigPubJwkHash}`, {
     method: "POST",
     body: JSON.stringify(buildMessage(message, void 0, fromSigPubJwkHash))
   });
@@ -771,7 +771,7 @@ var Client = class extends s4 {
     this.selectedContact = {};
     this.contacts = [];
     this.messages = [];
-    this.webSocket = {};
+    this.websocket = {};
   }
   connectedCallback() {
     super.connectedCallback();
@@ -913,17 +913,23 @@ var Client = class extends s4 {
     this.requestUpdate();
   }
   async connectWebSocket() {
-    const websocket = getWebSocket(this.host, this.sigPubJwkHash);
-    websocket.addEventListener("message", async (event) => {
+    this.websocket = getWebSocket(this.host, this.sigPubJwkHash);
+    this.websocket.addEventListener("open", async () => {
+      console.log("connection open");
+      handshakeWebsocket(this.websocket, this.sigPubJwk, await this.getChallengeSig());
+    });
+    this.websocket.addEventListener("message", async (event) => {
       const data = JSON.parse(event.data);
-      if (data.challenge) {
-        const challenge = JSON.parse(data.challenge);
-        const challengeSig = await signChallenge(this.sigKeyPair.privateKey, challenge.txt);
-        handshakeWebsocket(websocket, this.sigPubJwk, challengeSig);
-        console.log("handshook");
-        return;
-      }
       console.log("ws got", data);
+      if (data.m && data.from) {
+        this.messages.push(data);
+        this.requestUpdate();
+        localStorage.setItem("messages", JSON.stringify(this.messages));
+      }
+    });
+    this.addEventListener("close", () => {
+      console.log("connection closed");
+      this.websocket = null;
     });
   }
   render() {
@@ -938,8 +944,14 @@ var Client = class extends s4 {
         <h1>Openchat client</h1>
         <div>
           <h2>Hello, ${this.name}</h2>
-          <h3 class="wrap">${this.sigPubJwkHash}</h3>
-          <p class="sharable wrap">${this.sharable}</p>
+          <div class="box">
+            <p class="meta">Your publicKeyHash</p>
+            <p class="wrap select-all">${this.sigPubJwkHash}</p>
+          </div>
+          <div class="box">
+            <p class="meta">Your sharable</p>
+            <p class="wrap select-all">${this.sharable}</p>
+          </div>
         </div>
       </header>
       <div class="main">
@@ -985,7 +997,7 @@ __publicField(Client, "properties", {
   selectedContact: {},
   contacts: {},
   messages: {},
-  webSocket: {}
+  websocket: {}
 });
 __publicField(Client, "styles", r`
     header, .main, footer {
@@ -997,10 +1009,11 @@ __publicField(Client, "styles", r`
     button {
       padding: 0.25rem;
     }
-    .sharable {
+    .box {
       background-color: #e5e5e5;
       display: block;
       padding: 0.5rem;
+      margin: 0.5rem 0;
     }
     .wrap {
       overflow-wrap: anywhere;
@@ -1020,6 +1033,14 @@ __publicField(Client, "styles", r`
     }
     .message.background {
       background-color: #e5e5e5
+    }
+    .meta {
+      color: #333;
+      font-size: 0.8rem;
+      user-select: none;
+    }
+    .select-all {
+      user-select: all;
     }
   `);
 

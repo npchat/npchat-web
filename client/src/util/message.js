@@ -22,7 +22,7 @@ export function buildMessage(message, to, from) {
 }
 
 export async function sendMessage(host, toSigPubJwkHash, fromSigPubJwkHash, message) {
-	const resp = await fetch(`https://${host}/${toSigPubJwkHash}`, {
+	const resp = await fetch(`http://${host}/${toSigPubJwkHash}`, {
 		method: "POST",
 		body: JSON.stringify(buildMessage(message, undefined, fromSigPubJwkHash))
 	})

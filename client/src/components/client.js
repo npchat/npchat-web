@@ -20,7 +20,7 @@ export class Client extends LitElement {
     selectedContact: {},
     contacts: {},
     messages: {},
-    webSocket: {}
+    websocket: {}
   }
 
   static styles = css`
@@ -33,10 +33,11 @@ export class Client extends LitElement {
     button {
       padding: 0.25rem;
     }
-    .sharable {
+    .box {
       background-color: #e5e5e5;
       display: block;
       padding: 0.5rem;
+      margin: 0.5rem 0;
     }
     .wrap {
       overflow-wrap: anywhere;
@@ -57,6 +58,14 @@ export class Client extends LitElement {
     .message.background {
       background-color: #e5e5e5
     }
+    .meta {
+      color: #333;
+      font-size: 0.8rem;
+      user-select: none;
+    }
+    .select-all {
+      user-select: all;
+    }
   `;
 
   constructor() {
@@ -73,7 +82,7 @@ export class Client extends LitElement {
     this.selectedContact = {}
     this.contacts = []
     this.messages = []
-    this.webSocket = {}
+    this.websocket = {}
   }
 
   connectedCallback() {
@@ -233,17 +242,23 @@ export class Client extends LitElement {
   }
 
   async connectWebSocket() {
-    const websocket = getWebSocket(this.host, this.sigPubJwkHash)
-    websocket.addEventListener("message", async event => {
+    this.websocket = getWebSocket(this.host, this.sigPubJwkHash)
+    this.websocket.addEventListener("open", async () => {
+      console.log("connection open")
+      handshakeWebsocket(this.websocket, this.sigPubJwk, await this.getChallengeSig())
+    })
+    this.websocket.addEventListener("message", async event => {
       const data = JSON.parse(event.data)
-      if (data.challenge) {
-        const challenge = JSON.parse(data.challenge)
-        const challengeSig = await signChallenge(this.sigKeyPair.privateKey, challenge.txt)
-        handshakeWebsocket(websocket, this.sigPubJwk, challengeSig)
-        console.log('handshook')
-        return
+      console.log("ws got", data)
+      if (data.m && data.from) {
+        this.messages.push(data)
+        this.requestUpdate()
+        localStorage.setItem("messages", JSON.stringify(this.messages))
       }
-      console.log('ws got', data)
+    })
+    this.addEventListener("close", () => {
+      console.log("connection closed")
+      this.websocket = null
     })
   }
 
@@ -261,8 +276,14 @@ export class Client extends LitElement {
         <h1>Openchat client</h1>
         <div>
           <h2>Hello, ${this.name}</h2>
-          <h3 class="wrap">${this.sigPubJwkHash}</h3>
-          <p class="sharable wrap">${this.sharable}</p>
+          <div class="box">
+            <p class="meta">Your publicKeyHash</p>
+            <p class="wrap select-all">${this.sigPubJwkHash}</p>
+          </div>
+          <div class="box">
+            <p class="meta">Your sharable</p>
+            <p class="wrap select-all">${this.sharable}</p>
+          </div>
         </div>
       </header>
       <div class="main">
