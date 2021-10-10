@@ -10,6 +10,9 @@
   "scripts": {
     "build": "cd client; node ./esbuild.js"
   },
+  "devDependencies": {
+    "esbuild": "^0.13.4"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/dr-useless/openchat.git"
