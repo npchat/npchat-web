@@ -2,6 +2,7 @@ import { base58 } from '../../../util/base58';
 import { hash } from '../../../util/hash';
 import { exportKey, genKeyPair, getJwkBytes, importKey } from '../../../util/key';
 import { buildShareable } from '../../../util/shareable';
+import { generateQR } from '../util/qrcode';
 
 const nameStorageKey = "name"
 const inboxDomainStorageKey = "inboxDomain"
@@ -24,17 +25,19 @@ export class PreferencesController {
 			enc: {
 			}
 		}
+		this.qrCode = {}
 		this.initPromise = this.getKeys().then(() => {
 			this.shareablesDismissed = localStorage.getItem(shareablesDismissedStorageKey) || false
 			this.name = localStorage.getItem(nameStorageKey) || "Anonymous"
 			this.inboxDomain = localStorage.getItem(inboxDomainStorageKey) || "openchat.dr-useless.workers.dev"
-			this.shareable = this.getShareable()
 			const storedAcceptOnlyVerified = localStorage.getItem(acceptOnlyVerifiedStorageKey)
 			this.acceptOnlyVerified = !(storedAcceptOnlyVerified && storedAcceptOnlyVerified === "false") || false
+			this.initShareables()
 			this.store()
 			this.host.requestUpdate()
 		})
 	}
+
 
 	async getKeys() {
     const stored = localStorage.getItem(keysStorageKey)
@@ -65,12 +68,22 @@ export class PreferencesController {
 		return this.keys
   }
 
+	async initShareables() {
+		this.shareable = this.getShareable()
+		this.qrCode = await this.getShareableQR(this.shareable)
+	}
+
 	getShareable() {
 		const sig = this.keys.sig
 		const shareable = buildShareable(this.name, sig.jwk.public, this.inboxDomain)
 		const bytes = new TextEncoder().encode(JSON.stringify(shareable))
     return base58().encode(bytes)
   }
+
+	async getShareableQR(shareable) {
+		const link = `https://${window.location.host}#${shareable}`
+		return await generateQR(link)
+	}
 
 	store() {
 		localStorage.setItem(nameStorageKey, this.name)
@@ -80,21 +93,21 @@ export class PreferencesController {
 		localStorage.setItem(shareablesDismissedStorageKey, this.shareablesDismissed)
 	}
 
-	changeName(name) {
+	async changeName(name) {
 		if (name && name.trim().length > 0) {
 			this.name = name.trim()
 		} else {
 			this.name = "Anonymous"
 		}
-		this.shareable = this.getShareable()
+		await initShareables()
 		this.store()
 		this.host.requestUpdate()
 	}
 
-	changeInboxDomain(inboxDomain) {
+	async changeInboxDomain(inboxDomain) {
 		if (inboxDomain && inboxDomainRegex.test(inboxDomain)) {
 			this.inboxDomain = inboxDomain
-			this.shareable = this.getShareable()
+			await this.initShareables()
 			this.store()
 			this.host.requestUpdate()
 		} else {

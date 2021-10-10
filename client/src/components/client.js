@@ -1,12 +1,12 @@
-import { LitElement, html, css } from 'lit';
-import { challengeKey, fetchChallenge, hasChallengeExpired, signChallenge } from '../../../util/auth';
-import { base58 } from '../../../util/base58';
-import { hash } from '../../../util/hash';
-import { getJwkBytes, importKey } from '../../../util/key';
-import { buildMessage, fetchMessages, messagesKey, sendMessage, verifyMessage } from '../../../util/message';
-import { getWebSocket, handshakeWebsocket } from '../../../util/websocket';
-import { ContactsController } from '../controllers/contacts';
-import { PreferencesController } from '../controllers/preferences';
+import { LitElement, html, css } from "lit";
+import { challengeKey, fetchChallenge, hasChallengeExpired, signChallenge } from "../../../util/auth";
+import { base58 } from "../../../util/base58";
+import { hash } from "../../../util/hash";
+import { getJwkBytes, importKey } from "../../../util/key";
+import { buildMessage, fetchMessages, messagesKey, sendMessage, verifyMessage } from "../../../util/message";
+import { getWebSocket, handshakeWebsocket } from "../../../util/websocket";
+import { ContactsController } from "../controllers/contacts";
+import { PreferencesController } from "../controllers/preferences";
 
 export class Client extends LitElement {
   pref = new PreferencesController(this)
@@ -19,7 +19,7 @@ export class Client extends LitElement {
     websocket: {}
   }
 
-  static styles = css`
+  static styles = css`,,,,
     header, .main, footer {
       max-width: 600px
     }
@@ -89,7 +89,7 @@ export class Client extends LitElement {
     this.pref.initPromise.then(() => {
       this.initMessages()
       .then(() => this.connectWebSocket())
-      .then(() => console.log('init done'))
+      .then(() => console.log("init done"))
     })
   }
 
@@ -128,7 +128,7 @@ export class Client extends LitElement {
   async handleAddContact() {
     const inputValue = this.contactInput.value
     if (inputValue.length < 1) {
-      console.log('invalid')
+      console.log("invalid")
       return false
     }
     const bytes = base58().decode(inputValue)
@@ -137,17 +137,17 @@ export class Client extends LitElement {
     try {
       contact = JSON.parse(jsonString);
     } catch (e) {
-      console.log('failed to parse json', jsonString)
+      console.log("failed to parse json", jsonString)
       return
     }
     if (!this.contacts.isValid(contact)) {
-      console.log('failed, missing keys, inboxDomain or name', contact)
+      console.log("failed, missing keys, inboxDomain or name", contact)
       return
     }
     const publicHashBytes = new Uint8Array(await hash(getJwkBytes(contact.keys.sig.jwk)))
     contact.keys.sig.publicHash = base58().encode(publicHashBytes)
     this.contacts.addContact(contact)
-    this.contactInput.value = '';
+    this.contactInput.value = "";
     this.requestUpdate();
   }
 
@@ -157,13 +157,13 @@ export class Client extends LitElement {
       return
     }
     if (!this.contacts.selected.keys.sig.publicHash) {
-      console.log('no contact selected')
+      console.log("no contact selected")
       return
     }
     const c = this.contacts.selected
     const res = await sendMessage(c.inboxDomain, this.pref.keys.sig.keyPair.privateKey, message, this.pref.keys.sig.publicHash, c.keys.sig.publicHash)
     if (res.error) {
-      console.log('error', res)
+      console.log("error", res)
       return
     }
     this.messageInput.value = ""
@@ -209,10 +209,10 @@ export class Client extends LitElement {
           v: isVerified
         }
         this.messages.push(storable)
-        console.log('stored', storable)
+        console.log("stored", storable)
         this.requestUpdate()
       } else {
-        console.log('rejected unverified message')
+        console.log("rejected unverified message")
       }
     }
   }
@@ -231,7 +231,7 @@ export class Client extends LitElement {
   }
 
   handleDismissShareables() {
-    console.log('dismissed')
+    console.log("dismissed")
     this.pref.dismissShareables()
   }
   
@@ -253,7 +253,7 @@ export class Client extends LitElement {
       return html``
     }
     const dismissTemplate = html`
-      <span>It's in your preferences.</span>
+      <span>It"s in your preferences.</span>
       <button class="dismiss" @click=${this.handleDismissShareables}>Got it</button>
     `;
     return html`
@@ -266,9 +266,14 @@ export class Client extends LitElement {
       <div class="box">
         <p class="meta">Your shareable</p>
         <p class="wrap monospace select-all">${this.pref.shareable}</p>
+        <div class="qr">${this.qrCodeTemplate()}</div>
       </div>
     </div>
     `;
+  }
+
+  qrCodeTemplate() {
+    return html`<img src="${this.pref.qrCode}"/>`
   }
 
   preferencesTemplate() {
@@ -349,6 +354,7 @@ export class Client extends LitElement {
     return html`
     `;
   }
+
   render() {
     let messages = this.messages
     let selectedPubHash
@@ -369,10 +375,10 @@ export class Client extends LitElement {
   
 
   get contactInput() {
-    return this.renderRoot?.querySelector('#contact-addtext') ?? null;
+    return this.renderRoot?.querySelector("#contact-addtext") ?? null;
   }
 
   get messageInput() {
-    return this.renderRoot?.querySelector('#message-compose') ?? null;
+    return this.renderRoot?.querySelector("#message-compose") ?? null;
   }
 }

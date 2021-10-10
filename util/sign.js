@@ -1,6 +1,6 @@
 export const sigAlgorithm = {
 	name: "ECDSA",
-	hash: "SHA-384"
+	hash: "SHA-256"
 }
 
 export async function sign(privCryptoKey, bytes) {

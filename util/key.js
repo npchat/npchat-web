@@ -1,6 +1,6 @@
 export const sigKeyParams = {
 	name: "ECDSA",
-	namedCurve: "P-384"
+	namedCurve: "P-256"
 }
 
 export async function genKeyPair() {
