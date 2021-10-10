@@ -28,19 +28,8 @@ export class Client extends LitElement {
     .main > div {
       margin: 5rem 0;
     }
-    li {
-      font-size: 1.2rem;
-    }
-    .completed {
-      text-decoration-line: line-through;
-      color: #777;
-    }
-    input {
-      font-size: 1.2rem;
-    }
     button {
       padding: 0.25rem;
-      font-size: 1rem;
     }
     .sharable {
       background-color: #e5e5e5;
@@ -89,8 +78,8 @@ export class Client extends LitElement {
     this.initDetails()
     this.initContacts()
     this.initKeys()
-    .then(() => this.initMessages())
     .then(() => this.initSharable())
+    .then(() => this.initMessages())
     .then(() => console.log('init done'))
   }
 
@@ -116,7 +105,6 @@ export class Client extends LitElement {
         publicKey: await importKey(this.sigPubJwk, ["verify"])
       }
     }
-    console.log('initKeys done', this.sigKeyPair, this.sigPubJwkHash)
   }
 
   initDetails() {
@@ -124,12 +112,14 @@ export class Client extends LitElement {
     if (!this.name) {
       // ask user to input a name
       this.name = "Joey"
+      localStorage.setItem("name", this.name)
     }
 
     this.host = localStorage.getItem("host")
     if (!this.host) {
       // ask user to input a host
       this.host = "openchat.dr-useless.workers.dev"
+      localStorage.setItem("host", this.host)
     }
   }
 
@@ -139,9 +129,7 @@ export class Client extends LitElement {
       sigPubJwk: this.sigPubJwk,
       host: this.host
     }
-    
     this.sharable = btoa(JSON.stringify(sharable))
-    console.log('initSharable done')
   }
 
   initContacts() {

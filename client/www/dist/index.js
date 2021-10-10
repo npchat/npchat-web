@@ -768,7 +768,7 @@ var Client = class extends s4 {
     super.connectedCallback();
     this.initDetails();
     this.initContacts();
-    this.initKeys().then(() => this.initMessages()).then(() => this.initSharable()).then(() => console.log("init done"));
+    this.initKeys().then(() => this.initSharable()).then(() => this.initMessages()).then(() => console.log("init done"));
   }
   async initKeys() {
     const storedSigPrivJwk = localStorage.getItem("sigPrivJwk");
@@ -792,16 +792,17 @@ var Client = class extends s4 {
         publicKey: await importKey(this.sigPubJwk, ["verify"])
       };
     }
-    console.log("initKeys done", this.sigKeyPair, this.sigPubJwkHash);
   }
   initDetails() {
     this.name = localStorage.getItem("name");
     if (!this.name) {
       this.name = "Joey";
+      localStorage.setItem("name", this.name);
     }
     this.host = localStorage.getItem("host");
     if (!this.host) {
       this.host = "openchat.dr-useless.workers.dev";
+      localStorage.setItem("host", this.host);
     }
   }
   initSharable() {
@@ -811,7 +812,6 @@ var Client = class extends s4 {
       host: this.host
     };
     this.sharable = btoa(JSON.stringify(sharable));
-    console.log("initSharable done");
   }
   initContacts() {
     const stored = localStorage.getItem("contacts");
@@ -970,19 +970,8 @@ __publicField(Client, "styles", r`
     .main > div {
       margin: 5rem 0;
     }
-    li {
-      font-size: 1.2rem;
-    }
-    .completed {
-      text-decoration-line: line-through;
-      color: #777;
-    }
-    input {
-      font-size: 1.2rem;
-    }
     button {
       padding: 0.25rem;
-      font-size: 1rem;
     }
     .sharable {
       background-color: #e5e5e5;
