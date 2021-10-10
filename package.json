@@ -7,7 +7,7 @@
   "homepage": "https://github.com/dr-useless/openchat#readme",
   "type": "module",
   "scripts": {
-    "build": "cd client; npm install; node ./esbuild.js"
+    "build:client": "cd client; npm install; node ./esbuild.js"
   },
   "repository": {
     "type": "git",
