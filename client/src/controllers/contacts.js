@@ -1,3 +1,7 @@
+import { base58 } from '../../../util/base58';
+import { hash } from '../../../util/hash';
+import { getJwkBytes } from '../../../util/key';
+
 const contactsStorageKey = "contacts"
 
 export class ContactsController {
@@ -13,7 +17,16 @@ export class ContactsController {
 			this.list = JSON.parse(stored)
 			this.selectContact(this.list[0])
 		}
+		this.addFromUrlHash()
 		this.host.requestUpdate()
+	}
+
+	async addFromUrlHash() {
+		const h = window.location.hash.replace('#','')
+		if (h.length > 0) {
+			window.history.pushState({},"", window.location.origin)
+			await this.addContactFromShareable(h);
+		}
 	}
 
 	store() {
@@ -33,6 +46,31 @@ export class ContactsController {
 			this.selectContact(contact)
 			this.host.requestUpdate()
 		}
+	}
+
+	async addContactFromShareable(shareable) {
+    if (!shareable || shareable.length < 1) {
+      console.log("invalid")
+      return false
+    }
+    const bytes = base58().decode(shareable)
+    const jsonString = new TextDecoder().decode(bytes)
+    let contact = {}
+    try {
+      contact = JSON.parse(jsonString);
+    } catch (e) {
+      console.log("failed to parse json", jsonString)
+      return
+    }
+    if (!this.isValid(contact)) {
+      console.log("failed, missing keys, inboxDomain or name", contact)
+      return
+    }
+    const publicHashBytes = new Uint8Array(await hash(getJwkBytes(contact.keys.sig.jwk)))
+    contact.keys.sig.publicHash = base58().encode(publicHashBytes)
+    this.addContact(contact)
+    this.host.requestUpdate();
+		return true;
 	}
 
 	removeContact(contact) {

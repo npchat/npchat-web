@@ -1,8 +1,6 @@
 import { LitElement, html, css } from "lit";
 import { challengeKey, fetchChallenge, hasChallengeExpired, signChallenge } from "../../../util/auth";
-import { base58 } from "../../../util/base58";
-import { hash } from "../../../util/hash";
-import { getJwkBytes, importKey } from "../../../util/key";
+import { importKey } from "../../../util/key";
 import { buildMessage, fetchMessages, messagesKey, sendMessage, verifyMessage } from "../../../util/message";
 import { getWebSocket, handshakeWebsocket } from "../../../util/websocket";
 import { ContactsController } from "../controllers/contacts";
@@ -86,11 +84,10 @@ export class Client extends LitElement {
 
   connectedCallback() {
     super.connectedCallback()
-    this.pref.initPromise.then(() => {
-      this.initMessages()
+    this.pref.initPromise
+      .then(() => this.initMessages())
       .then(() => this.connectWebSocket())
       .then(() => console.log("init done"))
-    })
   }
 
   async initMessages() {
@@ -126,29 +123,10 @@ export class Client extends LitElement {
   }
 
   async handleAddContact() {
-    const inputValue = this.contactInput.value
-    if (inputValue.length < 1) {
-      console.log("invalid")
-      return false
+    const added = this.contacts.addContactFromShareable(this.contactInput.value)
+    if (added) {
+      this.contactInput.value = ""
     }
-    const bytes = base58().decode(inputValue)
-    const jsonString = new TextDecoder().decode(bytes)
-    let contact = {}
-    try {
-      contact = JSON.parse(jsonString);
-    } catch (e) {
-      console.log("failed to parse json", jsonString)
-      return
-    }
-    if (!this.contacts.isValid(contact)) {
-      console.log("failed, missing keys, inboxDomain or name", contact)
-      return
-    }
-    const publicHashBytes = new Uint8Array(await hash(getJwkBytes(contact.keys.sig.jwk)))
-    contact.keys.sig.publicHash = base58().encode(publicHashBytes)
-    this.contacts.addContact(contact)
-    this.contactInput.value = "";
-    this.requestUpdate();
   }
 
   async handleSendMessage() {
@@ -273,7 +251,7 @@ export class Client extends LitElement {
   }
 
   qrCodeTemplate() {
-    return html`<img src="${this.pref.qrCode}"/>`
+    return html`<img srcset="${this.pref.qrCode}"/>`
   }
 
   preferencesTemplate() {

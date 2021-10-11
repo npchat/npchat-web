@@ -8,7 +8,7 @@ export const messagesKey = "messages"
 export async function fetchMessages(domain, sigPubJwk, sigPubJwkHash, challengeSig) {
 	const sigPubJwkBytes = getJwkBytes(sigPubJwk)
 	const sigPubJwkBase58 = base58().encode(sigPubJwkBytes)
-	const resp = await fetch(`https://${domain}/${sigPubJwkHash}`, {
+	const resp = await fetch(`${window.location.protocol}//${domain}/${sigPubJwkHash}`, {
 		headers: {
 			"oc-pk": sigPubJwkBase58,
 			"oc-sig": challengeSig
@@ -36,7 +36,7 @@ export async function buildMessage(sigPriv, messageText, from, to) {
 }
 
 export async function sendMessage(domain, sigPriv, message, from, to) {
-	const resp = await fetch(`https://${domain}/${to}`, {
+	const resp = await fetch(`${window.location.protocol}//${domain}/${to}`, {
 		method: "POST",
 		body: JSON.stringify(await buildMessage(sigPriv, message, from, undefined))
 	})

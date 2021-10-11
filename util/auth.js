@@ -4,7 +4,7 @@ import { sign } from './sign'
 export const challengeKey = "challenge"
 
 export async function fetchChallenge(domain, sigPubJwkHash) {
-	const resp = await fetch(`https://${domain}/${sigPubJwkHash}/challenge`)
+	const resp = await fetch(`${window.location.protocol}//${domain}/${sigPubJwkHash}/challenge`)
 	return resp.json()
 }
 
