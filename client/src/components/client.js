@@ -87,7 +87,6 @@ export class Client extends LitElement {
     this.pref.initPromise
       .then(() => this.initMessages())
       .then(() => this.connectWebSocket())
-      .then(() => console.log("init done"))
   }
 
   async initMessages() {

@@ -99,7 +99,7 @@ export class PreferencesController {
 		} else {
 			this.name = "Anonymous"
 		}
-		await initShareables()
+		await this.initShareables()
 		this.store()
 		this.host.requestUpdate()
 	}
