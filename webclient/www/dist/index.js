@@ -5221,6 +5221,7 @@ __publicField(Base, "styles", r`,,,,
     }
     .wrap {
       overflow-wrap: anywhere;
+      white-space:pre;
       word-wrap:break-word;
     }
     .no-list{
