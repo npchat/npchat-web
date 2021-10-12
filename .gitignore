@@ -1,5 +1,5 @@
 *.DS_STORE
 wrangler.toml
 node_modules
-client/www/dist
+webclient/www/dist
 worker/dist
