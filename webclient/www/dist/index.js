@@ -5180,7 +5180,7 @@ __publicField(Base, "styles", r`,,,,
       padding: 0 .5rem;
     }
     header h1 {
-      font-size: 1.4rem;
+      font-size: .8rem;
       margin: 0;
     }
     header .welcome {
@@ -5190,7 +5190,7 @@ __publicField(Base, "styles", r`,,,,
       display: flex;
     }
     nav > * {
-      padding: 1rem;
+      padding: .5rem;
       display: block;
     }
     nav > *:hover {

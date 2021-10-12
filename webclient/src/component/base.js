@@ -13,7 +13,7 @@ export class Base extends LitElement {
       padding: 0 .5rem;
     }
     header h1 {
-      font-size: 1.4rem;
+      font-size: .8rem;
       margin: 0;
     }
     header .welcome {
@@ -23,7 +23,7 @@ export class Base extends LitElement {
       display: flex;
     }
     nav > * {
-      padding: 1rem;
+      padding: .5rem;
       display: block;
     }
     nav > *:hover {
