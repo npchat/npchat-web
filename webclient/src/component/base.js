@@ -54,8 +54,7 @@ export class Base extends LitElement {
     }
     .wrap {
       overflow-wrap: anywhere;
-      word-wrap: break-word;
-      overflow-wrap: break-word;
+      word-break: break-all;
     }
     .no-list{
       list-style: none;
