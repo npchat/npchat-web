@@ -1,4 +1,4 @@
-# openchat
+# npchat
 ## A simple & secure messaging protocol
 This is simply a transport protocol, encryption & verification of data is the responsiblity of each client implementation.
 
