@@ -27,7 +27,7 @@ export class PreferenceController {
 		this.acceptOnlyVerified = localStorage.getItem(acceptOnlyVerifiedStorageKey) !== "false"
 		this.inboxDomain = localStorage.getItem(inboxDomainStorageKey) || defaultDomain
 		this.name = localStorage.getItem(nameStorageKey) || "Anonymous"
-		this.shareablesDismissed = localStorage.getItem(shareablesDismissedStorageKey) !== "false"
+		this.shareablesDismissed = localStorage.getItem(shareablesDismissedStorageKey) || false
 	}
 
 	async init() {
@@ -92,7 +92,6 @@ export class PreferenceController {
 		localStorage.setItem(inboxDomainStorageKey, this.inboxDomain)
 		localStorage.setItem(keysStorageKey, JSON.stringify(this.keys))
 		localStorage.setItem(acceptOnlyVerifiedStorageKey, this.acceptOnlyVerified)
-		localStorage.setItem(shareablesDismissedStorageKey, this.shareablesDismissed)
 		localStorage.setItem(shareableAsLinkStorageKey, this.shareableAsLink)
 	}
 
@@ -130,7 +129,7 @@ export class PreferenceController {
 
 	dismissShareables() {
 		this.shareablesDismissed = true
+		localStorage.setItem(shareablesDismissedStorageKey, "true")
 		this.host.requestUpdate()
-		this.store()
 	}
 }
