@@ -135,7 +135,7 @@ export class Channel {
 				const isAuthenticated = await this.authenticate(message.sigPubJwk, getSigPubJwkHashBase58FromRequest(request), message.challengeSig)
 				if (isAuthenticated) {
 					this.websocket = websocket
-					websocket.send(JSON.stringify({message: "Handshake done"}))
+					websocket.send(JSON.stringify({message: "🤝 Handshake done"}))
 				} else {
 					websocket.send(JSON.stringify({message: "Nope. Try again..."}))
 				}

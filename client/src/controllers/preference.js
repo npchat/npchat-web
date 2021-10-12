@@ -9,35 +9,33 @@ const inboxDomainStorageKey = "inboxDomain"
 const keysStorageKey = "keys"
 const acceptOnlyVerifiedStorageKey = "acceptOnlyVerified"
 const shareablesDismissedStorageKey = "shareablesDismissed"
+const shareableAsLinkStorageKey = "shareableAsLink"
+const defaultDomain = "openchat.dr-useless.workers.dev"
 
 const inboxDomainRegex = /^(?=.{1,255}$)[0-9A-Za-z](?:(?:[0-9A-Za-z]|-){0,61}[0-9A-Za-z])?(?:\.[0-9A-Za-z](?:(?:[0-9A-Za-z]|-){0,61}[0-9A-Za-z])?)*\.?$/
 
-export class PreferencesController {
+export class PreferenceController {
 	host;
+	keys = {}
+	qrCode = {}
 
 	constructor(host) {
 		this.host = host
 		host.addController(this)
-		this.keys = {
-			sig: {
-				publicHash: ""
-			},
-			enc: {
-			}
-		}
-		this.qrCode = {}
-		this.initPromise = this.getKeys().then(() => {
-			this.shareablesDismissed = localStorage.getItem(shareablesDismissedStorageKey) || false
-			this.name = localStorage.getItem(nameStorageKey) || "Anonymous"
-			this.inboxDomain = localStorage.getItem(inboxDomainStorageKey) || "openchat.dr-useless.workers.dev"
-			const storedAcceptOnlyVerified = localStorage.getItem(acceptOnlyVerifiedStorageKey)
-			this.acceptOnlyVerified = !(storedAcceptOnlyVerified && storedAcceptOnlyVerified === "false") || false
-			this.initShareables()
-			this.store()
-			this.host.requestUpdate()
-		})
+
+		this.shareableAsLink = localStorage.getItem(shareableAsLinkStorageKey) !== "false"
+		this.acceptOnlyVerified = localStorage.getItem(acceptOnlyVerifiedStorageKey) !== "false"
+		this.inboxDomain = localStorage.getItem(inboxDomainStorageKey) || defaultDomain
+		this.name = localStorage.getItem(nameStorageKey) || "Anonymous"
+		this.shareablesDismissed = localStorage.getItem(shareablesDismissedStorageKey) !== "false"
 	}
 
+	async init() {
+		await this.getKeys()
+		await this.initShareables()
+		this.store()
+		this.host.requestUpdate()
+	}
 
 	async getKeys() {
     const stored = localStorage.getItem(keysStorageKey)
@@ -70,7 +68,8 @@ export class PreferencesController {
 
 	async initShareables() {
 		this.shareable = this.getShareable()
-		this.qrCode = await this.getShareableQR(this.shareable)
+		this.shareableLink = this.getShareableLink(this.shareable)
+		this.qrCode = await this.getShareableQR(this.shareableLink)
 	}
 
 	getShareable() {
@@ -80,9 +79,12 @@ export class PreferencesController {
     return base58().encode(bytes)
   }
 
-	async getShareableQR(shareable) {
-		const link = `https://${window.location.host}#${shareable}`
-		return await generateQR(link)
+	async getShareableQR(shareableLink) {
+		return await generateQR(shareableLink, {errorCorrectionLevel: "L"})
+	}
+
+	getShareableLink(shareable) {
+		return `https://${window.location.host}#${shareable}`
 	}
 
 	store() {
@@ -91,13 +93,18 @@ export class PreferencesController {
 		localStorage.setItem(keysStorageKey, JSON.stringify(this.keys))
 		localStorage.setItem(acceptOnlyVerifiedStorageKey, this.acceptOnlyVerified)
 		localStorage.setItem(shareablesDismissedStorageKey, this.shareablesDismissed)
+		localStorage.setItem(shareableAsLinkStorageKey, this.shareableAsLink)
 	}
 
-	async changeName(name) {
-		if (name && name.trim().length > 0) {
-			this.name = name.trim()
+	async changeName(name, enforceNotBlank) {
+		if (enforceNotBlank) {
+			if (name && name.trim().length > 0) {
+				this.name = name.trim()
+			} else {
+				this.name = "Anonymous"
+			}
 		} else {
-			this.name = "Anonymous"
+			this.name = name.trim()
 		}
 		await this.initShareables()
 		this.store()
@@ -105,14 +112,13 @@ export class PreferencesController {
 	}
 
 	async changeInboxDomain(inboxDomain) {
-		if (inboxDomain && inboxDomainRegex.test(inboxDomain)) {
+		if (inboxDomain.trim().length > 0 && inboxDomainRegex.test(inboxDomain)) {
 			this.inboxDomain = inboxDomain
-			await this.initShareables()
-			this.store()
-			this.host.requestUpdate()
 		} else {
-			console.log('invalid domain')
+			this.inboxDomain = defaultDomain
 		}
+		await this.initShareables()
+		this.store()
 	}
 
 	changeAcceptOnlyVerified(acceptOnlyVerified) {

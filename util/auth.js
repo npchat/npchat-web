@@ -4,12 +4,19 @@ import { sign } from './sign'
 export const challengeKey = "challenge"
 
 export async function fetchChallenge(domain, sigPubJwkHash) {
-	const resp = await fetch(`${window.location.protocol}//${domain}/${sigPubJwkHash}/challenge`)
-	return resp.json()
+	try {
+		const resp = await fetch(`https://${domain}/${sigPubJwkHash}/challenge`)
+		return resp.json()
+	} catch (e) {
+		console.log("failed to fetch challenge", e)
+		return null
+	}
 }
 
 export function hasChallengeExpired(challenge) {
-	// check expiry (not t) to prevent issue when changing challengeTtl
+	if (!challenge || !challenge.exp) {
+		return true
+	}
 	if (Date.now() > challenge.exp) {
 		return true
 	}

@@ -4,14 +4,15 @@ import { getJwkBytes } from '../../../util/key';
 
 const contactsStorageKey = "contacts"
 
-export class ContactsController {
+export class ContactController {
 	host;
+
+	list = []
+	selected = {}
 
 	constructor(host) {
 		this.host = host
 		host.addController(this)
-		this.list = []
-		this.selected = {}
 		const stored = localStorage.getItem(contactsStorageKey)
 		if (stored) {
 			this.list = JSON.parse(stored)
@@ -31,7 +32,6 @@ export class ContactsController {
 
 	store() {
 		localStorage.setItem(contactsStorageKey, JSON.stringify(this.list))
-		console.log('stored contacts')
 	}
 
 	addContact(contact) {
