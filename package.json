@@ -1,13 +1,13 @@
 {
-  "name": "openchat",
-  "version": "0.0.1",
-  "description": "A simple messaging protocol. Agnostic about recipient host. Build or choose a client. Host a node or use openchat.dr-useless.workers.dev.",
+  "name": "npchat",
+  "version": "0.1.0",
+  "description": "Non-proprietary chat. A simple messaging protocol. Agnostic of recipient host. Build or choose a client. Host a node or use openchat.dr-useless.workers.dev. Infinately scaleable, provably secure, free for everyone.",
   "author": "dr-useless",
   "license": "MIT",
   "homepage": "https://github.com/dr-useless/openchat#readme",
   "type": "module",
   "scripts": {
-    "build": "cd client; npm install; node ./esbuild.js"
+    "build": "cd webclient; npm install; node ./esbuild.js"
   },
   "repository": {
     "type": "git",

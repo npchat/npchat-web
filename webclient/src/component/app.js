@@ -6,7 +6,7 @@ import { MessageController } from '../controller/message';
 import { PreferenceController } from "../controller/preference";
 import { Base } from './base';
 
-export class Client extends Base {
+export class App extends Base {
   pref = new PreferenceController(this)
   contact = new ContactController(this)
   auth = new AuthController(this)
@@ -127,7 +127,7 @@ export class Client extends Base {
           <a href="#" @click=${e => this.selectMenu(e, "preferences")}>⚙️ Preferences</a>
           <a href="#" @click=${e => this.selectMenu(e, "contacts")}>💬 Contacts</a>
         </nav>
-        <h1>openchat client</h1>
+        <h1>npchat webclient</h1>
         <span class="welcome">Hello, ${this.pref.name} ☺️</span>
         
       </header>
@@ -140,7 +140,7 @@ export class Client extends Base {
     }
     const dismissTemplate = html`
       <div class="intro">
-        <h2>Thanks for trying out openchat</h2>
+        <h2>Thanks for trying out npchat</h2>
         <p>Here is your shareable. This is your name & publicKey, encoded as base58. Give it to someone else, and get theirs to start chatting.</p>
         <p>You can find this again in ⚙️ Preferences</span>
         <button class="dismiss" @click=${this.handleDismissShareables}>Got it</button>
@@ -168,10 +168,10 @@ export class Client extends Base {
 
   preferencesMenuTemplate() {
     return html`
-        <openchat-menu
+        <npchat-menu
             .content=${this.preferencesTemplate()}
             .isOpen=${this.selectedMenu === "preferences"}>
-        </openchat-menu>
+        </npchat-menu>
       </div>
     `;
   }
@@ -192,7 +192,7 @@ export class Client extends Base {
           </div>
           <div class="preferences-group">
             <h3>🌐 Domain</h3>
-            <p>This must point to a service that implements the <a href="https://github.com/dr-useless/openchat">openchat protocol</a>.</p>
+            <p>This must point to a service that implements the <a href="https://github.com/dr-useless/npchat">npchat protocol</a>.</p>
             <label>
               <span>Domain</span>
               <input type="text" id="preferences-domain"
@@ -203,7 +203,7 @@ export class Client extends Base {
           </div>
           <div class="preferences-group">
             <h3>🔒 Security</h3>
-            <p>The openchat protocol is designed to be provably secure, hostable anywhere & interoperable across hosts.</p>
+            <p>The npchat protocol is designed to be provably secure, hostable anywhere & interoperable across hosts.</p>
             <p>A key trait of this design is that anyone who has your publicKeyHash & inbox domain can send you messages.</p>
             <p>You cannot trust the authenticity of any message without verifying it cryptographically.</p>
             <p>Two conditions must be met for a message to be verified: it must be signed by the sender & the sender must be in your contacts list. You can choose to accept only messages that have been verified.</p>
@@ -229,10 +229,10 @@ export class Client extends Base {
   
   contactsMenuTemplate(selectedPubHash) {
     return html`
-        <openchat-menu
+        <npchat-menu
             .content=${this.contactsTemplate(selectedPubHash)}
             .isOpen=${this.selectedMenu === "contacts"}>
-        </openchat-menu>
+        </npchat-menu>
       </div>
     `;
   }

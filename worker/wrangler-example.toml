@@ -1,4 +1,4 @@
-name = "openchat"
+name = "npchat"
 type = "javascript"
 account_id = "[YOUR-CF-ACCOUNT-ID]"
 workers_dev = true

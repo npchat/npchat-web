@@ -1,6 +1,6 @@
 /**
-	openchat implementation
-	using Cloudflare Workers & Durable Objects
+	npchat protocol JS implementation
+	a Cloudflare Worker using Durable Objects
 	https://developers.cloudflare.com/workers/learning/using-durable-objects
 */
 

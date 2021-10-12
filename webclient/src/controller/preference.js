@@ -10,7 +10,7 @@ const keysStorageKey = "keys"
 const acceptOnlyVerifiedStorageKey = "acceptOnlyVerified"
 const shareablesDismissedStorageKey = "shareablesDismissed"
 const shareableAsLinkStorageKey = "shareableAsLink"
-const defaultDomain = "openchat.dr-useless.workers.dev"
+const defaultDomain = "npchat.dr-useless.workers.dev"
 
 const inboxDomainRegex = /^(?=.{1,255}$)[0-9A-Za-z](?:(?:[0-9A-Za-z]|-){0,61}[0-9A-Za-z])?(?:\.[0-9A-Za-z](?:(?:[0-9A-Za-z]|-){0,61}[0-9A-Za-z])?)*\.?$/
 
