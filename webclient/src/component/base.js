@@ -14,7 +14,7 @@ export class Base extends LitElement {
     }
     header h1 {
       font-size: .8rem;
-      margin: 0;
+      margin: 0 .2rem;
     }
     header .welcome {
       display: none
@@ -39,7 +39,7 @@ export class Base extends LitElement {
       padding: .5rem;
 		}
     button, input {
-      padding: 0.25rem;
+      padding: 0.5rem;
       font-size: 1rem;
     }
     input[type=text] {
@@ -75,6 +75,12 @@ export class Base extends LitElement {
     .message.sent {
       
     }
+    .compose {
+      display: flex;
+    }
+    #message-compose {
+      flex-grow: 1;
+    }
     .meta {
       color: #555;
       font-size: .8rem;
@@ -101,7 +107,7 @@ export class Base extends LitElement {
 				width: 49%
 			}
       header h1 {
-        font-size: 1.8rem
+        font-size: 1rem
       }
       header .welcome {
         display: block

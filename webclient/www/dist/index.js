@@ -5181,7 +5181,7 @@ __publicField(Base, "styles", r`,,,,
     }
     header h1 {
       font-size: .8rem;
-      margin: 0;
+      margin: 0 .2rem;
     }
     header .welcome {
       display: none
@@ -5206,7 +5206,7 @@ __publicField(Base, "styles", r`,,,,
       padding: .5rem;
 		}
     button, input {
-      padding: 0.25rem;
+      padding: 0.5rem;
       font-size: 1rem;
     }
     input[type=text] {
@@ -5242,6 +5242,12 @@ __publicField(Base, "styles", r`,,,,
     .message.sent {
       
     }
+    .compose {
+      display: flex;
+    }
+    #message-compose {
+      flex-grow: 1;
+    }
     .meta {
       color: #555;
       font-size: .8rem;
@@ -5268,7 +5274,7 @@ __publicField(Base, "styles", r`,,,,
 				width: 49%
 			}
       header h1 {
-        font-size: 1.8rem
+        font-size: 1rem
       }
       header .welcome {
         display: block
