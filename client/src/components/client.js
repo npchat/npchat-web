@@ -122,16 +122,19 @@ export class Client extends LitElement {
     }
   }
 
-  async handleSendMessage() {
+  async handleSendMessage(event) {
+    event.preventDefault()
     const c = this.contact.selected
     if (!c.keys) {
       console.log("no contact selected")
       return
     }
-    const sent = await this.message.handleSendMessage(c.inboxDomain, c.keys.sig.publicHash, this.messageInput.value)
-    if (sent) {
-      this.messageInput.value = ""
-    }
+    await this.message.handleSendMessage(c.inboxDomain, c.keys.sig.publicHash, this.messageInput.value)
+    this.messageInput.value = ""
+  }
+
+  async handleMessageInputKeyUp(event) {
+    console.log(event)
   }
 
   async connectWebSocket() {
@@ -280,11 +283,11 @@ export class Client extends LitElement {
         <ul class="no-list">
           ${messages.map(m => this.messageTemplate(m))}
         </ul>
-        <div class="compose">
+        <form class="compose" @submit=${this.handleSendMessage}>
           <input id="message-compose" type="text"
             placeholder="Write a message to ${this.contact.selected.name}"/>
-          <button @click=${this.handleSendMessage}>Send</button>
-        </div>
+          <button type="submit">Send</button>
+        </form>
       </div>
     `;
   }
