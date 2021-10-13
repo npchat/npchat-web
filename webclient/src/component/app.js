@@ -25,7 +25,7 @@ export class App extends Base {
 
   constructor() {
     super()
-    this.selectedMenu = "contacts"
+    this.selectedMenu = "preferences" //TODO: revert
     this.initClient()
   }
 
@@ -49,24 +49,6 @@ export class App extends Base {
       this.isWebsocketOpen = false
     }
     return true
-  }
-
-  async handleAddContact(event) {
-    const added = this.contact.addContactFromShareable(event.target.value)
-    if (added) {
-      event.target.value = ""
-    }
-  }
-
-  async handleSendMessage(event) {
-    event.preventDefault()
-    const c = this.contact.selected
-    if (!c.keys) {
-      console.log("no contact selected")
-      return
-    }
-    await this.message.handleSendMessage(c.inboxDomain, c.keys.sig.publicHash, this.messageInput.value)
-    this.messageInput.value = ""
   }
 
   async connectWebSocket() {
@@ -94,6 +76,24 @@ export class App extends Base {
     });
   }
 
+  async handleAddContact(event) {
+    const added = this.contact.addContactFromShareable(event.target.value)
+    if (added) {
+      event.target.value = ""
+    }
+  }
+
+  async handleSendMessage(event) {
+    event.preventDefault()
+    const c = this.contact.selected
+    if (!c.keys) {
+      console.log("no contact selected")
+      return
+    }
+    await this.message.handleSendMessage(c.inboxDomain, c.keys.sig.publicHash, this.messageInput.value)
+    this.messageInput.value = ""
+  }
+
   handleChangeName(event, enforceNotBlank) {
     this.pref.changeName(event.target.value, enforceNotBlank)
   }
@@ -107,12 +107,8 @@ export class App extends Base {
     this.pref.changeAcceptOnlyVerified(event.target.checked)
   }
 
-  handleDismissShareables() {
-    this.pref.dismissShareables()
-  }
-
-  selectMenu(menuName) {
-    this.selectedMenu = menuName
+  handleDismissWelcome() {
+    this.pref.dismissWelcome()
   }
 
   selectMenu(event, menuName) {
@@ -134,31 +130,37 @@ export class App extends Base {
     `;
   }
 
-  shareableTemplate(isDismissable) {
-    if (isDismissable && this.pref.shareablesDismissed) {
-      return html``
-    }
-    const dismissTemplate = html`
+  welcomeTemplate() {
+    return html`
       <div class="intro">
         <h2>Thanks for trying out npchat</h2>
-        <p>Here is your shareable. This is your name & publicKey, encoded as base58. Give it to someone else, and get theirs to start chatting.</p>
+        <p>A non-profit, non-proprietary, private & secure messaging service.</p>
+        <p>To begin, please enter a name. This will help other people identify you in their contact list.</p>
+        ${this.nameInputTemplate()}
+        <p>Below is your shareable. This contains your name & publicKey. Give it to someone else, and get theirs to start chatting.</p>
         <p>You can find this again in ⚙️ Preferences</span>
-        <button class="dismiss" @click=${this.handleDismissShareables}>Got it</button>
+        <button class="dismiss" @click=${this.handleDismissWelcome}>Got it</button>
+        ${this.shareableTemplate(false)}
       </div>
     `;
-    return html`
-    <div class="shareable">
-      ${isDismissable ? dismissTemplate : undefined}
-      <div class="box">
-        <p class="meta">Your shareable</p>
-        <p class="wrap monospace select-all">${this.pref.shareable}</p>
-        <div class="qr">${this.qrCodeTemplate()}</div>
-      </div>
-      <div class="box">
+  }
+
+  shareableTemplate(showPublicKeyHash) {
+    const publicKeyHashTemplate = html`
+      <div class="box background">
         <p class="meta">Your publicKeyHash</p>
         <p class="wrap monospace select-all">${this.pref.keys.sig && this.pref.keys.sig.publicHash}</p>
       </div>
-    </div>
+    `;
+    return html`
+      <div class="shareable">
+        <div class="box background">
+          <p class="meta">Your shareable</p>
+          <p class="wrap monospace select-all">${this.pref.shareable}</p>
+          <div class="qr">${this.qrCodeTemplate()}</div>
+        </div>
+        ${showPublicKeyHash ? publicKeyHashTemplate : undefined}
+      </div>
     `;
   }
 
@@ -176,44 +178,49 @@ export class App extends Base {
     `;
   }
 
+  nameInputTemplate() {
+    return html`
+      <label>
+        <span>Your name</span>
+        <input type="text" id="preferences-name"
+            .value=${this.pref.name}
+            @input=${e => this.handleChangeName(e, false)}
+            @change=${e => this.handleChangeName(e, true)}/>
+      </label>
+    `;
+  }
+
   preferencesTemplate() {
     return html`
       <div id="preferences" class="preferences">
         <div class="preferences-group">
-            <h3>🔗 Shareable</h3>
-            ${this.shareableTemplate()}
-            <label>
-              <span>Your name</span>
-              <input type="text" id="preferences-name"
-                  .value=${this.pref.name}
-                  @input=${e => this.handleChangeName(e, false)}
-                  @change=${e => this.handleChangeName(e, true)}/>
-            </label>
-          </div>
-          <div class="preferences-group">
-            <h3>🌐 Domain</h3>
-            <p>This must point to a service that implements the <a href="https://github.com/dr-useless/npchat">npchat protocol</a>.</p>
-            <label>
-              <span>Domain</span>
-              <input type="text" id="preferences-domain"
-                  .value=${this.pref.inboxDomain}
-                  @change=${e => this.handleChangeInboxDomain(e)}/>
-            </label>
-            ${this.statusTemplate()}
-          </div>
-          <div class="preferences-group">
-            <h3>🔒 Security</h3>
-            <p>The npchat protocol is designed to be provably secure, hostable anywhere & interoperable across hosts.</p>
-            <p>A key trait of this design is that anyone who has your publicKeyHash & inbox domain can send you messages.</p>
-            <p>You cannot trust the authenticity of any message without verifying it cryptographically.</p>
-            <p>Two conditions must be met for a message to be verified: it must be signed by the sender & the sender must be in your contacts list. You can choose to accept only messages that have been verified.</p>
-            <label>
-              <span>Accept only verified messages (recommended)</span>
-              <input type="checkbox" id="preferences-accept-only-verified"
-                  .checked=${this.pref.acceptOnlyVerified}
-                  @change=${e => this.handleChangeAcceptOnlyVerified(e)}/>
-            </label>
-          </div>
+          <h3>🔗 Shareable</h3>
+          ${this.shareableTemplate(true)}
+          ${this.nameInputTemplate()}
+        </div>
+        <div class="preferences-group">
+          <h3>🌐 Domain</h3>
+          <p>This must point to a service that implements the <a href="https://github.com/dr-useless/npchat">npchat protocol</a>.</p>
+          <label>
+            <span>Domain</span>
+            <input type="text" id="preferences-domain"
+                .value=${this.pref.inboxDomain}
+                @change=${e => this.handleChangeInboxDomain(e)}/>
+          </label>
+          ${this.statusTemplate()}
+        </div>
+        <div class="preferences-group">
+          <h3>🔒 Security</h3>
+          <p>The npchat protocol is designed to be provably secure, hostable anywhere & interoperable across hosts.</p>
+          <p>A key trait of this design is that anyone who has your publicKeyHash & inbox domain can send you messages.</p>
+          <p>You cannot trust the authenticity of any message without verifying it cryptographically.</p>
+          <p>Two conditions must be met for a message to be verified: it must be signed by the sender & the sender must be in your contacts list. You can choose to accept only messages that have been verified.</p>
+          <label>
+            <span>Accept only verified messages (recommended)</span>
+            <input type="checkbox" id="preferences-accept-only-verified"
+                .checked=${this.pref.acceptOnlyVerified}
+                @change=${e => this.handleChangeAcceptOnlyVerified(e)}/>
+          </label>
         </div>
       </div>
     `;
@@ -258,10 +265,15 @@ export class App extends Base {
   }
 
   messagesTemplate(messages) {
+    let prevMessageTime
     return html`
       <div id="messages" class="messages">
         <ul class="no-list">
-          ${messages.map(m => this.messageTemplate(m))}
+          ${messages.map(m => {
+            const template = this.messageTemplate(m, prevMessageTime)
+            prevMessageTime = m.t
+            return template
+          })}
         </ul>
         <form class="compose" @submit=${this.handleSendMessage}>
           <input id="message-compose" type="text"
@@ -272,10 +284,29 @@ export class App extends Base {
     `;
   }
 
-  messageTemplate(message) {
+  messageTemplate(message, prevMessageTime) {
     const sent = message.f === this.pref.keys.sig.publicHash
     const v = message.v === true
-    return html`<li class="message wrap ${v ? "verified" : "warn"} ${sent ? "sent" : "recieved"}"><div class="message-header">${v ? "verified" : ""}</div><div>${message.m}</div></li>`
+    const timeElapsedPrev = message.t - (prevMessageTime || message.t)
+    const msToDayMultiplier = 0.00000001157407
+    const daysElapsedPrev = timeElapsedPrev * msToDayMultiplier
+
+    const messageAge = Date.now() - message.t
+    let timeElapsedString;
+
+    if (daysElapsedPrev >= 1) {
+      timeElapsedString = `${Math.floor(messageAge * msToDayMultiplier)} day${daysElapsedPrev>1?"s":""} ago`
+    }
+
+    return html`
+      <li class="meta milestone background">${timeElapsedString}</span>
+      <li class="message wrap ${!v ? "warn" : ""} ${sent ? "sent" : "recieved"}">
+        <div class="message-body">
+          ${message.m}
+        </div>
+        <div class="message-footer">
+          <span class="meta smaller">${v ? "🔑" : "⚠️"}</span>
+      </li>`
   }
 
   render() {
@@ -292,7 +323,7 @@ export class App extends Base {
       ${this.headerTemplate()}
       <div class="main">
         <div>
-          ${this.shareableTemplate(true)}
+          ${this.pref.welcomeDismissed ? undefined : this.welcomeTemplate()}
           ${this.preferencesMenuTemplate()}
           ${this.contactsMenuTemplate(selectedPubHash)}
         </div>

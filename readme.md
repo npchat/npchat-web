@@ -36,12 +36,12 @@ The signing keys are an ECDSA P-385 key pair. The signing algorithm is ECDSA SHA
 ```JS
 const sigKeyParams = {
 				name: "ECDSA",
-				namedCurve: "P-384"
+				namedCurve: "P-256"
 			}
 			
 const sigAlgorithm = {
 	name: "ECDSA",
-	hash: "SHA-384"
+	hash: "SHA-256"
 }
 ```
 
@@ -171,3 +171,26 @@ Import as base58 text or QR code. The data should decode to a JSON object:
 `sigPubJwk` and `encPubJwk` are optional.
 If `sigPubJwk` is omitted, a message signature cannot be verified
 If `encPubJwk` is omitted, a shared secret cannot be derived, and so a message cannot be encrypted without another key echange mechanism.
+
+## Next in pipeline
+### Webclient
+- LocalStorage data import & export (messages, contacts, preferences, keys)
+- PWA push notification using service worker & a new Cloudflare worker
+- end-to-end encrypted messages using ECDH & AES-GCM 256
+- end-to-end encrypted voice & video calls using WebRTC, ECDH & AES-GCM 256
+
+### Protocol
+- WebSocket connection between client & a contact's Channel
+
+### Not sure
+Not sure whether to do this in protocol or client only...
+#### send images & videos
+There are two options:
+- Client uploads to a serverless media-store (KV), and sends a link.
+		This approach allows the protocol to remain as simple as possible, without adding complexity to the client either
+- Implement this in the protocol
+
+
+## Underlying goal
+Maintain proper separation of concerns & absolute minimalism.
+Add value, not features.

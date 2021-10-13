@@ -26,12 +26,13 @@ export class Base extends LitElement {
       padding: .5rem;
       display: block;
     }
-    nav > *:hover {
-      background-color: #e5e5e5
-    }
     a {
       text-decoration: none;
       color: #000;
+      transition: background-color 0.2s
+    }
+    a:hover {
+      background-color: #e5e5e5
     }
     .main {
 			display: flex;
@@ -45,8 +46,10 @@ export class Base extends LitElement {
     input[type=text] {
       width: 300px;
     }
-    .box {
+    .background {
       background-color: #f5f5f5;
+    }
+    .box {
       display: block;
       padding: 0.5rem;
       margin: 1rem 0;
@@ -66,14 +69,16 @@ export class Base extends LitElement {
     .contact:hover, .contact.selected {
       background-color: #e5e5e5;
     }
-    .message {
-      padding: 0.5rem;
+    .messages ul {
+      display: flex;
+      flex-direction: column;
     }
-    .message.background {
-      background-color: #e5e5e5
+    .message .body {
+      width: 100%
+
     }
+    .message b
     .message.sent {
-      
     }
     .compose {
       display: flex;
@@ -85,6 +90,12 @@ export class Base extends LitElement {
       color: #555;
       font-size: .8rem;
       user-select: none;
+    }
+    .small {
+      font-size: .6rem;
+    }
+    .smaller {
+      font-size: .5rem;
     }
     .select-all {
       user-select: all;

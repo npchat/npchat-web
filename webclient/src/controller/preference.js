@@ -8,8 +8,7 @@ const nameStorageKey = "name"
 const inboxDomainStorageKey = "inboxDomain"
 const keysStorageKey = "keys"
 const acceptOnlyVerifiedStorageKey = "acceptOnlyVerified"
-const shareablesDismissedStorageKey = "shareablesDismissed"
-const shareableAsLinkStorageKey = "shareableAsLink"
+const welcomeDismissedStorageKey = "welcomeDismissed"
 const defaultDomain = "npchat.dr-useless.workers.dev"
 
 const inboxDomainRegex = /^(?=.{1,255}$)[0-9A-Za-z](?:(?:[0-9A-Za-z]|-){0,61}[0-9A-Za-z])?(?:\.[0-9A-Za-z](?:(?:[0-9A-Za-z]|-){0,61}[0-9A-Za-z])?)*\.?$/
@@ -22,12 +21,10 @@ export class PreferenceController {
 	constructor(host) {
 		this.host = host
 		host.addController(this)
-
-		this.shareableAsLink = localStorage.getItem(shareableAsLinkStorageKey) !== "false"
 		this.acceptOnlyVerified = localStorage.getItem(acceptOnlyVerifiedStorageKey) !== "false"
 		this.inboxDomain = localStorage.getItem(inboxDomainStorageKey) || defaultDomain
 		this.name = localStorage.getItem(nameStorageKey) || "Anonymous"
-		this.shareablesDismissed = localStorage.getItem(shareablesDismissedStorageKey) || false
+		this.welcomeDismissed = localStorage.getItem(welcomeDismissedStorageKey) || false
 	}
 
 	async init() {
@@ -92,7 +89,6 @@ export class PreferenceController {
 		localStorage.setItem(inboxDomainStorageKey, this.inboxDomain)
 		localStorage.setItem(keysStorageKey, JSON.stringify(this.keys))
 		localStorage.setItem(acceptOnlyVerifiedStorageKey, this.acceptOnlyVerified)
-		localStorage.setItem(shareableAsLinkStorageKey, this.shareableAsLink)
 	}
 
 	async changeName(name, enforceNotBlank) {
@@ -127,9 +123,9 @@ export class PreferenceController {
 		this.host.requestUpdate()
 	}
 
-	dismissShareables() {
-		this.shareablesDismissed = true
-		localStorage.setItem(shareablesDismissedStorageKey, "true")
+	dismissWelcome() {
+		this.welcomeDismissed = true
+		localStorage.setItem(welcomeDismissedStorageKey, "true")
 		this.host.requestUpdate()
 	}
 }

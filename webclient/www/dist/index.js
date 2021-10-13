@@ -5057,8 +5057,7 @@ var nameStorageKey = "name";
 var inboxDomainStorageKey = "inboxDomain";
 var keysStorageKey = "keys";
 var acceptOnlyVerifiedStorageKey = "acceptOnlyVerified";
-var shareablesDismissedStorageKey = "shareablesDismissed";
-var shareableAsLinkStorageKey = "shareableAsLink";
+var welcomeDismissedStorageKey = "welcomeDismissed";
 var defaultDomain = "npchat.dr-useless.workers.dev";
 var inboxDomainRegex = /^(?=.{1,255}$)[0-9A-Za-z](?:(?:[0-9A-Za-z]|-){0,61}[0-9A-Za-z])?(?:\.[0-9A-Za-z](?:(?:[0-9A-Za-z]|-){0,61}[0-9A-Za-z])?)*\.?$/;
 var PreferenceController = class {
@@ -5068,11 +5067,10 @@ var PreferenceController = class {
   constructor(host) {
     this.host = host;
     host.addController(this);
-    this.shareableAsLink = localStorage.getItem(shareableAsLinkStorageKey) !== "false";
     this.acceptOnlyVerified = localStorage.getItem(acceptOnlyVerifiedStorageKey) !== "false";
     this.inboxDomain = localStorage.getItem(inboxDomainStorageKey) || defaultDomain;
     this.name = localStorage.getItem(nameStorageKey) || "Anonymous";
-    this.shareablesDismissed = localStorage.getItem(shareablesDismissedStorageKey) || false;
+    this.welcomeDismissed = localStorage.getItem(welcomeDismissedStorageKey) || false;
   }
   async init() {
     await this.getKeys();
@@ -5128,7 +5126,6 @@ var PreferenceController = class {
     localStorage.setItem(inboxDomainStorageKey, this.inboxDomain);
     localStorage.setItem(keysStorageKey, JSON.stringify(this.keys));
     localStorage.setItem(acceptOnlyVerifiedStorageKey, this.acceptOnlyVerified);
-    localStorage.setItem(shareableAsLinkStorageKey, this.shareableAsLink);
   }
   async changeName(name, enforceNotBlank) {
     if (enforceNotBlank) {
@@ -5159,9 +5156,9 @@ var PreferenceController = class {
     this.store();
     this.host.requestUpdate();
   }
-  dismissShareables() {
-    this.shareablesDismissed = true;
-    localStorage.setItem(shareablesDismissedStorageKey, "true");
+  dismissWelcome() {
+    this.welcomeDismissed = true;
+    localStorage.setItem(welcomeDismissedStorageKey, "true");
     this.host.requestUpdate();
   }
 };
@@ -5193,12 +5190,13 @@ __publicField(Base, "styles", r`,,,,
       padding: .5rem;
       display: block;
     }
-    nav > *:hover {
-      background-color: #e5e5e5
-    }
     a {
       text-decoration: none;
       color: #000;
+      transition: background-color 0.2s
+    }
+    a:hover {
+      background-color: #e5e5e5
     }
     .main {
 			display: flex;
@@ -5212,8 +5210,10 @@ __publicField(Base, "styles", r`,,,,
     input[type=text] {
       width: 300px;
     }
-    .box {
+    .background {
       background-color: #f5f5f5;
+    }
+    .box {
       display: block;
       padding: 0.5rem;
       margin: 1rem 0;
@@ -5233,14 +5233,16 @@ __publicField(Base, "styles", r`,,,,
     .contact:hover, .contact.selected {
       background-color: #e5e5e5;
     }
-    .message {
-      padding: 0.5rem;
+    .messages ul {
+      display: flex;
+      flex-direction: column;
     }
-    .message.background {
-      background-color: #e5e5e5
+    .message .body {
+      width: 100%
+
     }
+    .message b
     .message.sent {
-      
     }
     .compose {
       display: flex;
@@ -5252,6 +5254,12 @@ __publicField(Base, "styles", r`,,,,
       color: #555;
       font-size: .8rem;
       user-select: none;
+    }
+    .small {
+      font-size: .6rem;
+    }
+    .smaller {
+      font-size: .5rem;
     }
     .select-all {
       user-select: all;
@@ -5290,7 +5298,7 @@ var App = class extends Base {
   message = new MessageController(this);
   constructor() {
     super();
-    this.selectedMenu = "contacts";
+    this.selectedMenu = "preferences";
     this.initClient();
   }
   async initClient() {
@@ -5313,22 +5321,6 @@ var App = class extends Base {
       this.isWebsocketOpen = false;
     }
     return true;
-  }
-  async handleAddContact(event) {
-    const added = this.contact.addContactFromShareable(event.target.value);
-    if (added) {
-      event.target.value = "";
-    }
-  }
-  async handleSendMessage(event) {
-    event.preventDefault();
-    const c2 = this.contact.selected;
-    if (!c2.keys) {
-      console.log("no contact selected");
-      return;
-    }
-    await this.message.handleSendMessage(c2.inboxDomain, c2.keys.sig.publicHash, this.messageInput.value);
-    this.messageInput.value = "";
   }
   async connectWebSocket() {
     return new Promise((resolve, reject) => {
@@ -5354,6 +5346,22 @@ var App = class extends Base {
       });
     });
   }
+  async handleAddContact(event) {
+    const added = this.contact.addContactFromShareable(event.target.value);
+    if (added) {
+      event.target.value = "";
+    }
+  }
+  async handleSendMessage(event) {
+    event.preventDefault();
+    const c2 = this.contact.selected;
+    if (!c2.keys) {
+      console.log("no contact selected");
+      return;
+    }
+    await this.message.handleSendMessage(c2.inboxDomain, c2.keys.sig.publicHash, this.messageInput.value);
+    this.messageInput.value = "";
+  }
   handleChangeName(event, enforceNotBlank) {
     this.pref.changeName(event.target.value, enforceNotBlank);
   }
@@ -5364,11 +5372,8 @@ var App = class extends Base {
   handleChangeAcceptOnlyVerified(event) {
     this.pref.changeAcceptOnlyVerified(event.target.checked);
   }
-  handleDismissShareables() {
-    this.pref.dismissShareables();
-  }
-  selectMenu(menuName) {
-    this.selectedMenu = menuName;
+  handleDismissWelcome() {
+    this.pref.dismissWelcome();
   }
   selectMenu(event, menuName) {
     event.preventDefault();
@@ -5387,31 +5392,36 @@ var App = class extends Base {
       </header>
     `;
   }
-  shareableTemplate(isDismissable) {
-    if (isDismissable && this.pref.shareablesDismissed) {
-      return p``;
-    }
-    const dismissTemplate = p`
+  welcomeTemplate() {
+    return p`
       <div class="intro">
         <h2>Thanks for trying out npchat</h2>
-        <p>Here is your shareable. This is your name & publicKey, encoded as base58. Give it to someone else, and get theirs to start chatting.</p>
+        <p>A non-profit, non-proprietary, private & secure messaging service.</p>
+        <p>To begin, please enter a name. This will help other people identify you in their contact list.</p>
+        ${this.nameInputTemplate()}
+        <p>Below is your shareable. This contains your name & publicKey. Give it to someone else, and get theirs to start chatting.</p>
         <p>You can find this again in ⚙️ Preferences</span>
-        <button class="dismiss" @click=${this.handleDismissShareables}>Got it</button>
+        <button class="dismiss" @click=${this.handleDismissWelcome}>Got it</button>
+        ${this.shareableTemplate(false)}
       </div>
     `;
-    return p`
-    <div class="shareable">
-      ${isDismissable ? dismissTemplate : void 0}
-      <div class="box">
-        <p class="meta">Your shareable</p>
-        <p class="wrap monospace select-all">${this.pref.shareable}</p>
-        <div class="qr">${this.qrCodeTemplate()}</div>
-      </div>
-      <div class="box">
+  }
+  shareableTemplate(showPublicKeyHash) {
+    const publicKeyHashTemplate = p`
+      <div class="box background">
         <p class="meta">Your publicKeyHash</p>
         <p class="wrap monospace select-all">${this.pref.keys.sig && this.pref.keys.sig.publicHash}</p>
       </div>
-    </div>
+    `;
+    return p`
+      <div class="shareable">
+        <div class="box background">
+          <p class="meta">Your shareable</p>
+          <p class="wrap monospace select-all">${this.pref.shareable}</p>
+          <div class="qr">${this.qrCodeTemplate()}</div>
+        </div>
+        ${showPublicKeyHash ? publicKeyHashTemplate : void 0}
+      </div>
     `;
   }
   qrCodeTemplate() {
@@ -5426,44 +5436,48 @@ var App = class extends Base {
       </div>
     `;
   }
+  nameInputTemplate() {
+    return p`
+      <label>
+        <span>Your name</span>
+        <input type="text" id="preferences-name"
+            .value=${this.pref.name}
+            @input=${(e4) => this.handleChangeName(e4, false)}
+            @change=${(e4) => this.handleChangeName(e4, true)}/>
+      </label>
+    `;
+  }
   preferencesTemplate() {
     return p`
       <div id="preferences" class="preferences">
         <div class="preferences-group">
-            <h3>🔗 Shareable</h3>
-            ${this.shareableTemplate()}
-            <label>
-              <span>Your name</span>
-              <input type="text" id="preferences-name"
-                  .value=${this.pref.name}
-                  @input=${(e4) => this.handleChangeName(e4, false)}
-                  @change=${(e4) => this.handleChangeName(e4, true)}/>
-            </label>
-          </div>
-          <div class="preferences-group">
-            <h3>🌐 Domain</h3>
-            <p>This must point to a service that implements the <a href="https://github.com/dr-useless/npchat">npchat protocol</a>.</p>
-            <label>
-              <span>Domain</span>
-              <input type="text" id="preferences-domain"
-                  .value=${this.pref.inboxDomain}
-                  @change=${(e4) => this.handleChangeInboxDomain(e4)}/>
-            </label>
-            ${this.statusTemplate()}
-          </div>
-          <div class="preferences-group">
-            <h3>🔒 Security</h3>
-            <p>The npchat protocol is designed to be provably secure, hostable anywhere & interoperable across hosts.</p>
-            <p>A key trait of this design is that anyone who has your publicKeyHash & inbox domain can send you messages.</p>
-            <p>You cannot trust the authenticity of any message without verifying it cryptographically.</p>
-            <p>Two conditions must be met for a message to be verified: it must be signed by the sender & the sender must be in your contacts list. You can choose to accept only messages that have been verified.</p>
-            <label>
-              <span>Accept only verified messages (recommended)</span>
-              <input type="checkbox" id="preferences-accept-only-verified"
-                  .checked=${this.pref.acceptOnlyVerified}
-                  @change=${(e4) => this.handleChangeAcceptOnlyVerified(e4)}/>
-            </label>
-          </div>
+          <h3>🔗 Shareable</h3>
+          ${this.shareableTemplate(true)}
+          ${this.nameInputTemplate()}
+        </div>
+        <div class="preferences-group">
+          <h3>🌐 Domain</h3>
+          <p>This must point to a service that implements the <a href="https://github.com/dr-useless/npchat">npchat protocol</a>.</p>
+          <label>
+            <span>Domain</span>
+            <input type="text" id="preferences-domain"
+                .value=${this.pref.inboxDomain}
+                @change=${(e4) => this.handleChangeInboxDomain(e4)}/>
+          </label>
+          ${this.statusTemplate()}
+        </div>
+        <div class="preferences-group">
+          <h3>🔒 Security</h3>
+          <p>The npchat protocol is designed to be provably secure, hostable anywhere & interoperable across hosts.</p>
+          <p>A key trait of this design is that anyone who has your publicKeyHash & inbox domain can send you messages.</p>
+          <p>You cannot trust the authenticity of any message without verifying it cryptographically.</p>
+          <p>Two conditions must be met for a message to be verified: it must be signed by the sender & the sender must be in your contacts list. You can choose to accept only messages that have been verified.</p>
+          <label>
+            <span>Accept only verified messages (recommended)</span>
+            <input type="checkbox" id="preferences-accept-only-verified"
+                .checked=${this.pref.acceptOnlyVerified}
+                @change=${(e4) => this.handleChangeAcceptOnlyVerified(e4)}/>
+          </label>
         </div>
       </div>
     `;
@@ -5503,10 +5517,15 @@ var App = class extends Base {
     `;
   }
   messagesTemplate(messages) {
+    let prevMessageTime;
     return p`
       <div id="messages" class="messages">
         <ul class="no-list">
-          ${messages.map((m2) => this.messageTemplate(m2))}
+          ${messages.map((m2) => {
+      const template = this.messageTemplate(m2, prevMessageTime);
+      prevMessageTime = m2.t;
+      return template;
+    })}
         </ul>
         <form class="compose" @submit=${this.handleSendMessage}>
           <input id="message-compose" type="text"
@@ -5516,10 +5535,26 @@ var App = class extends Base {
       </div>
     `;
   }
-  messageTemplate(message) {
+  messageTemplate(message, prevMessageTime) {
     const sent = message.f === this.pref.keys.sig.publicHash;
     const v2 = message.v === true;
-    return p`<li class="message wrap ${v2 ? "verified" : "warn"} ${sent ? "sent" : "recieved"}"><div class="message-header">${v2 ? "verified" : ""}</div><div>${message.m}</div></li>`;
+    const timeElapsedPrev = message.t - (prevMessageTime || message.t);
+    const msToDayMultiplier = 1157407e-14;
+    const daysElapsedPrev = timeElapsedPrev * msToDayMultiplier;
+    const messageAge = Date.now() - message.t;
+    let timeElapsedString;
+    if (daysElapsedPrev >= 1) {
+      timeElapsedString = `${Math.floor(messageAge * msToDayMultiplier)} day${daysElapsedPrev > 1 ? "s" : ""} ago`;
+    }
+    return p`
+      <li class="meta milestone background">${timeElapsedString}</span>
+      <li class="message wrap ${!v2 ? "warn" : ""} ${sent ? "sent" : "recieved"}">
+        <div class="message-body">
+          ${message.m}
+        </div>
+        <div class="message-footer">
+          <span class="meta smaller">${v2 ? "\u{1F511}" : "\u26A0\uFE0F"}</span>
+      </li>`;
   }
   render() {
     let messages = this.message.list || [];
@@ -5533,7 +5568,7 @@ var App = class extends Base {
       ${this.headerTemplate()}
       <div class="main">
         <div>
-          ${this.shareableTemplate(true)}
+          ${this.pref.welcomeDismissed ? void 0 : this.welcomeTemplate()}
           ${this.preferencesMenuTemplate()}
           ${this.contactsMenuTemplate(selectedPubHash)}
         </div>
