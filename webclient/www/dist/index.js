@@ -5029,13 +5029,15 @@ var MessageController = class {
 // src/util/shareable.js
 function buildShareable(name, sigJwk, inboxDomain) {
   return {
-    name,
-    keys: {
-      sig: {
-        jwk: sigJwk
-      }
-    },
-    inboxDomain
+    shareable: {
+      name,
+      keys: {
+        sig: {
+          jwk: sigJwk
+        }
+      },
+      inboxDomain
+    }
   };
 }
 
@@ -5137,8 +5139,8 @@ var PreferenceController = class {
     const bytes = new TextEncoder().encode(JSON.stringify(shareable));
     return base58().encode(bytes);
   }
-  async getQRCodeAsDataUrl(shareableLink) {
-    return await generateQR(shareableLink, { errorCorrectionLevel: "L" });
+  async getQRCodeAsDataUrl(link) {
+    return await generateQR(link, { errorCorrectionLevel: "L" });
   }
   getShareableLink(shareable) {
     return `https://${window.location.host}#${shareable}`;
@@ -5380,6 +5382,10 @@ var App = class extends Base {
       try {
         const obj = JSON.parse(text);
         console.log(obj);
+        if (obj.shareable) {
+          this.pref.addContactFromShareable(obj.shareable);
+          return;
+        }
         this.pref.inboxDomain = obj.inboxDomain || this.pref.inboxDomain;
         this.pref.name = obj.name || this.pref.name;
         this.pref.keys = obj.keys || this.pref.keys;

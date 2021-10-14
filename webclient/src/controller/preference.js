@@ -103,8 +103,8 @@ export class PreferenceController {
     return base58().encode(bytes)
   }
 
-	async getQRCodeAsDataUrl(shareableLink) {
-		return await generateQR(shareableLink, {errorCorrectionLevel: "L"})
+	async getQRCodeAsDataUrl(link) {
+		return await generateQR(link, {errorCorrectionLevel: "L"})
 	}
 
 	getShareableLink(shareable) {
