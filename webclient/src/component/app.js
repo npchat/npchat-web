@@ -30,12 +30,12 @@ export class App extends Base {
     this.selectedMenu = "preferences" //TODO: revert
     this.exportHidden = true
     this.initClient()
-    this.importFromUrlHash()
   }
 
   async initClient() {
     this.contact.init()
     await this.pref.init()
+    this.importFromUrlHash()
     try {
       await this.auth.init()
     } catch (e) {
@@ -81,7 +81,7 @@ export class App extends Base {
     });
   }
 
-  importFromUrlHash() {
+  async importFromUrlHash() {
 		const h = window.location.hash.replace('#','')
     window.location.hash = ""
 		if (h.length > 0) {
@@ -91,7 +91,7 @@ export class App extends Base {
         const obj = JSON.parse(text)
         console.log(obj)
         if (obj.contact) {
-          this.pref.addContact(obj.contact)
+          await this.contact.addContact(obj.contact)
         } else {
           this.pref.inboxDomain = obj.inboxDomain || this.pref.inboxDomain
           this.pref.name = obj.name || this.pref.name

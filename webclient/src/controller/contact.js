@@ -29,8 +29,10 @@ export class ContactController {
 		localStorage.setItem(contactsStorageKey, JSON.stringify(this.list))
 	}
 
-	addContact(contact) {
+	async addContact(contact) {
 		if (this.isValid(contact)) {
+			const publicHashBytes = new Uint8Array(await hash(getJwkBytes(contact.keys.sig.jwk)))
+    	contact.keys.sig.publicHash = base58().encode(publicHashBytes)
 			const existing = this.list.find(c => this.matches(c, contact))
 			if (existing) {
 				Object.assign(existing, contact)
@@ -61,9 +63,7 @@ export class ContactController {
       console.log("failed, missing keys, inboxDomain or name", contact)
       return
     }
-    const publicHashBytes = new Uint8Array(await hash(getJwkBytes(contact.keys.sig.jwk)))
-    contact.keys.sig.publicHash = base58().encode(publicHashBytes)
-    this.addContact(contact)
+    await this.addContact(contact)
     this.host.requestUpdate();
 		return true;
 	}
