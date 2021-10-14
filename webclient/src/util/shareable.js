@@ -1,6 +1,6 @@
 export function buildShareable(name, sigJwk, inboxDomain) {
 	return {
-		shareable: {
+		contact: {
 			name: name,
 			keys: {
 				sig: {

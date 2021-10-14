@@ -52,7 +52,7 @@ export class ContactController {
     const jsonString = new TextDecoder().decode(bytes)
     let contact = {}
     try {
-      contact = JSON.parse(jsonString);
+      contact = JSON.parse(jsonString).contact;
     } catch (e) {
       console.log("failed to parse json", jsonString)
       return

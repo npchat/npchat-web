@@ -90,8 +90,8 @@ export class App extends Base {
       try {
         const obj = JSON.parse(text)
         console.log(obj)
-        if (obj.shareable) {
-          this.pref.addContactFromShareable(obj.shareable)
+        if (obj.contact) {
+          this.pref.addContact(obj.contact)
         } else {
           this.pref.inboxDomain = obj.inboxDomain || this.pref.inboxDomain
           this.pref.name = obj.name || this.pref.name
