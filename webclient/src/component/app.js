@@ -29,8 +29,8 @@ export class App extends Base {
     super()
     this.selectedMenu = "preferences" //TODO: revert
     this.exportHidden = true
-    this.importFromUrlHash()
     this.initClient()
+    this.importFromUrlHash()
   }
 
   async initClient() {
