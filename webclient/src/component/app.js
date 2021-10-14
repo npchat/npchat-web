@@ -1,4 +1,5 @@
 import { html } from "lit";
+import { base58 } from '../../../util/base58';
 import { getWebSocket, handshakeWebsocket } from "../../../util/websocket";
 import { AuthController } from '../controller/auth';
 import { ContactController } from "../controller/contact";
@@ -20,16 +21,20 @@ export class App extends Base {
     websocket: {},
     isWebsocketOpen: {},
     isAuthed: {},
-    selectedMenu: {}
+    selectedMenu: {},
+    exportHidden: {}
   }
 
   constructor() {
     super()
     this.selectedMenu = "preferences" //TODO: revert
+    this.exportHidden = true
+    this.importFromUrlHash()
     this.initClient()
   }
 
   async initClient() {
+    this.contact.init()
     await this.pref.init()
     try {
       await this.auth.init()
@@ -76,6 +81,29 @@ export class App extends Base {
     });
   }
 
+  importFromUrlHash() {
+		const h = window.location.hash.replace('#','')
+    //window.location.hash = ""
+		if (h.length > 0) {
+      const bytes = base58().decode(h)
+      const text = new TextDecoder().decode(bytes)
+      try {
+        const obj = JSON.parse(text)
+        console.log(obj)
+        this.pref.inboxDomain = obj.inboxDomain || this.pref.inboxDomain
+        this.pref.name = obj.name || this.pref.name
+        this.pref.keys = obj.keys || this.pref.keys
+        this.pref.store()
+        console.log(this.pref.keys.sig)
+        this.contact.list = obj.contacts || this.contact.list
+        this.contact.store()
+      } catch (e) {
+        console.log("import failed", e)
+      }
+		}
+	}
+
+
   async handleAddContact(event) {
     const added = this.contact.addContactFromShareable(event.target.value)
     if (added) {
@@ -115,6 +143,14 @@ export class App extends Base {
     event.preventDefault()
     this.selectedMenu = menuName
   }
+
+  async showExport() {
+    this.exportHidden = !this.exportHidden
+  }
+
+  async pushAllMessages() {
+    await this.message.pushAllMessages()
+  }
   
   headerTemplate() {
     return html `
@@ -125,7 +161,6 @@ export class App extends Base {
         </nav>
         <h1>npchat webclient</h1>
         <span class="welcome">Hello, ${this.pref.name} ☺️</span>
-        
       </header>
     `;
   }
@@ -157,15 +192,15 @@ export class App extends Base {
         <div class="box background">
           <p class="meta">Your shareable</p>
           <p class="wrap monospace select-all">${this.pref.shareable}</p>
-          <div class="qr">${this.qrCodeTemplate()}</div>
+          <div class="qr">${this.qrCodeTemplate(this.pref.qrCodeShareable)}</div>
         </div>
         ${showPublicKeyHash ? publicKeyHashTemplate : undefined}
       </div>
     `;
   }
 
-  qrCodeTemplate() {
-    return html`<img srcset="${this.pref.qrCode}"/>`
+  qrCodeTemplate(imgDataUrl) {
+    return html`<img srcset="${imgDataUrl}"/>`
   }
 
   preferencesMenuTemplate() {
@@ -222,6 +257,22 @@ export class App extends Base {
                 @change=${e => this.handleChangeAcceptOnlyVerified(e)}/>
           </label>
         </div>
+        <div class="preferences-group">
+          <h3>💾 Import / Export</h3>
+          <p>Either scan the QR code or open the link using another device. This will sync your name, keys & inbox domain.</p>
+          <p>Warning: This feature is unsafe if anyone can see your screen.</p>
+          <div class="export">
+            <button @click=${() => this.showExport()}>${this.exportHidden ? "Show" : "Hide"} sensitive data</button>
+            <div ?hidden=${this.exportHidden}>
+              <div class="box background">
+                <div class="wrap monospace select-all">${this.pref.exportLink}</div>
+                <div class="qr">${this.qrCodeTemplate(this.pref.exportQRCode)}</div>
+              </div>
+            </div>
+          </div>
+          <p>You can push all messages to the inbox so that your other device can collect them. They can only be collected once each time, so you may need to push them again.</p>
+          <button @click=${() => this.pushAllMessages()}>Push all messages to sync</button>
+        </div>
       </div>
     `;
   }
@@ -277,7 +328,7 @@ export class App extends Base {
         </ul>
         <form class="compose" @submit=${this.handleSendMessage}>
           <input id="message-compose" type="text"
-            placeholder="Write a message to ${this.contact.selected.name}"/>
+            placeholder="Write a message to ${this.contact.selected ? this.contact.selected.name : ""}"/>
           <button type="submit">Send</button>
         </form>
       </div>
@@ -312,7 +363,7 @@ export class App extends Base {
   render() {
     let messages = this.message.list || []
     let selectedPubHash
-    if (this.contact.selected.name) {
+    if (this.contact.selected && this.contact.selected.keys) {
       selectedPubHash = this.contact.selected.keys.sig.publicHash
       messages = (this.message.list || []).filter(m => m.f === selectedPubHash || !m.to)
     }

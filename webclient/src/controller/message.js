@@ -48,13 +48,8 @@ export class MessageController {
         console.log("no match, hash or sig", data)
       }
       if (isVerified || !this.host.pref.acceptOnlyVerified) {
-        const storable = {
-          t: data.t,
-          m: data.m,
-          f: data.f,
-          h: data.h,
-          v: isVerified // don't eat bytes with sig
-        } 
+        const storable = data
+        storable.v = isVerified
         this.list.push(storable)
         if (doStore) {
           this.store()
@@ -85,6 +80,14 @@ export class MessageController {
     this.store()
     this.host.requestUpdate()
 	}
+
+  async pushAllMessages() {
+    const resp = await fetch(`https://${this.host.pref.inboxDomain}/${this.host.pref.keys.sig.publicHash}`, {
+		method: "POST",
+		body: JSON.stringify(this.list)
+	})
+	return resp.json()
+  }
 }
 
 

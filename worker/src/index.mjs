@@ -224,12 +224,16 @@ export class Channel {
 	*/
 	async handlePostMessage(request) {
 		const response = new Response(JSON.stringify({message: "Sent"}), defaultResponseOpts());
-		const newMessageText = await request.text()
+		const messageData = await request.json()
 		if (this.websocket) {
-			this.websocket.send(newMessageText)
+			this.websocket.send(JSON.stringify(messageData))
 		}
 		const messages = await this.getStoredMessages()
-		messages.push(JSON.parse(newMessageText))
+		if (Array.isArray(messageData)) {
+			messages.push(...messageData)
+		} else {
+			messages.push(messageData)
+		}
 		await this.storeMessages(messages)
 		return response
 	}

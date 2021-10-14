@@ -13,21 +13,16 @@ export class ContactController {
 	constructor(host) {
 		this.host = host
 		host.addController(this)
+		this.init()
+	}
+
+	init() {
 		const stored = localStorage.getItem(contactsStorageKey)
 		if (stored) {
 			this.list = JSON.parse(stored)
 			this.selectContact(this.list[0])
 		}
-		this.addFromUrlHash()
 		this.host.requestUpdate()
-	}
-
-	async addFromUrlHash() {
-		const h = window.location.hash.replace('#','')
-		if (h.length > 0) {
-			window.history.pushState({},"", window.location.origin)
-			await this.addContactFromShareable(h);
-		}
 	}
 
 	store() {

@@ -4610,14 +4610,6 @@ var n4 = globalThis.litElementPolyfillSupport;
 n4 == null || n4({ LitElement: s4 });
 ((o4 = globalThis.litElementVersions) !== null && o4 !== void 0 ? o4 : globalThis.litElementVersions = []).push("3.0.1");
 
-// ../util/websocket.js
-function getWebSocket(domain, sigPubJwkHash) {
-  return new WebSocket(`wss://${domain}/${sigPubJwkHash}`);
-}
-function handshakeWebsocket(websocket, sigPubJwk, challengeSig) {
-  websocket.send(JSON.stringify({ sigPubJwk, challengeSig }));
-}
-
 // ../util/base58.js
 function base58() {
   const result = {};
@@ -4709,6 +4701,14 @@ function base58() {
     return new Uint8Array(bytes.reverse());
   };
   return result;
+}
+
+// ../util/websocket.js
+function getWebSocket(domain, sigPubJwkHash) {
+  return new WebSocket(`wss://${domain}/${sigPubJwkHash}`);
+}
+function handshakeWebsocket(websocket, sigPubJwk, challengeSig) {
+  websocket.send(JSON.stringify({ sigPubJwk, challengeSig }));
 }
 
 // ../util/sign.js
@@ -4815,20 +4815,15 @@ var ContactController = class {
   constructor(host) {
     this.host = host;
     host.addController(this);
+    this.init();
+  }
+  init() {
     const stored = localStorage.getItem(contactsStorageKey);
     if (stored) {
       this.list = JSON.parse(stored);
       this.selectContact(this.list[0]);
     }
-    this.addFromUrlHash();
     this.host.requestUpdate();
-  }
-  async addFromUrlHash() {
-    const h3 = window.location.hash.replace("#", "");
-    if (h3.length > 0) {
-      window.history.pushState({}, "", window.location.origin);
-      await this.addContactFromShareable(h3);
-    }
   }
   store() {
     localStorage.setItem(contactsStorageKey, JSON.stringify(this.list));
@@ -4992,13 +4987,8 @@ var MessageController = class {
         console.log("no match, hash or sig", data);
       }
       if (isVerified || !this.host.pref.acceptOnlyVerified) {
-        const storable = {
-          t: data.t,
-          m: data.m,
-          f: data.f,
-          h: data.h,
-          v: isVerified
-        };
+        const storable = data;
+        storable.v = isVerified;
         this.list.push(storable);
         if (doStore) {
           this.store();
@@ -5027,9 +5017,16 @@ var MessageController = class {
     this.store();
     this.host.requestUpdate();
   }
+  async pushAllMessages() {
+    const resp = await fetch(`https://${this.host.pref.inboxDomain}/${this.host.pref.keys.sig.publicHash}`, {
+      method: "POST",
+      body: JSON.stringify(this.list)
+    });
+    return resp.json();
+  }
 };
 
-// ../util/shareable.js
+// src/util/shareable.js
 function buildShareable(name, sigJwk, inboxDomain) {
   return {
     name,
@@ -5063,7 +5060,9 @@ var inboxDomainRegex = /^(?=.{1,255}$)[0-9A-Za-z](?:(?:[0-9A-Za-z]|-){0,61}[0-9A
 var PreferenceController = class {
   host;
   keys = {};
-  qrCode = {};
+  qrCodeShareable = {};
+  exportLink = {};
+  exportQRCode = {};
   constructor(host) {
     this.host = host;
     host.addController(this);
@@ -5075,6 +5074,7 @@ var PreferenceController = class {
   async init() {
     await this.getKeys();
     await this.initShareables();
+    await this.initExport();
     this.store();
     this.host.requestUpdate();
   }
@@ -5093,7 +5093,7 @@ var PreferenceController = class {
       };
       const hashBytes = new Uint8Array(await hash(getJwkBytes(this.keys.sig.jwk.public)));
       this.keys.sig.publicHash = base58().encode(hashBytes);
-      localStorage.setItem(keysStorageKey, this.keys);
+      localStorage.setItem(keysStorageKey, JSON.stringify(this.keys));
       return;
     }
     const storedKeys = JSON.parse(stored);
@@ -5107,7 +5107,29 @@ var PreferenceController = class {
   async initShareables() {
     this.shareable = this.getShareable();
     this.shareableLink = this.getShareableLink(this.shareable);
-    this.qrCode = await this.getShareableQR(this.shareableLink);
+    this.qrCodeShareable = await this.getQRCodeAsDataUrl(this.shareableLink);
+  }
+  async initExport() {
+    this.exportLink = `https://${window.location.host}#${this.getExportBase58()}`;
+    this.exportQRCode = await this.getQRCodeAsDataUrl(this.exportLink);
+  }
+  getExportBase58() {
+    const data = {
+      keys: {
+        sig: {
+          jwk: {
+            public: this.keys.sig.jwk.public,
+            private: this.keys.sig.jwk.private
+          },
+          publicHash: this.keys.sig.publicHash
+        }
+      },
+      name: this.name,
+      inboxDomain: this.inboxDomain,
+      contacts: this.host.contact.list
+    };
+    const bytes = new TextEncoder().encode(JSON.stringify(data));
+    return base58().encode(bytes);
   }
   getShareable() {
     const sig = this.keys.sig;
@@ -5115,7 +5137,7 @@ var PreferenceController = class {
     const bytes = new TextEncoder().encode(JSON.stringify(shareable));
     return base58().encode(bytes);
   }
-  async getShareableQR(shareableLink) {
+  async getQRCodeAsDataUrl(shareableLink) {
     return await generateQR(shareableLink, { errorCorrectionLevel: "L" });
   }
   getShareableLink(shareable) {
@@ -5126,6 +5148,7 @@ var PreferenceController = class {
     localStorage.setItem(inboxDomainStorageKey, this.inboxDomain);
     localStorage.setItem(keysStorageKey, JSON.stringify(this.keys));
     localStorage.setItem(acceptOnlyVerifiedStorageKey, this.acceptOnlyVerified);
+    localStorage.setItem(keysStorageKey, JSON.stringify(this.keys));
   }
   async changeName(name, enforceNotBlank) {
     if (enforceNotBlank) {
@@ -5137,7 +5160,7 @@ var PreferenceController = class {
     } else {
       this.name = name.trim();
     }
-    await this.initShareables();
+    await this.init();
     this.store();
     this.host.requestUpdate();
   }
@@ -5147,7 +5170,7 @@ var PreferenceController = class {
     } else {
       this.inboxDomain = defaultDomain;
     }
-    await this.initShareables();
+    await this.init();
     this.store();
   }
   changeAcceptOnlyVerified(acceptOnlyVerified) {
@@ -5299,9 +5322,12 @@ var App = class extends Base {
   constructor() {
     super();
     this.selectedMenu = "preferences";
+    this.exportHidden = true;
+    this.importFromUrlHash();
     this.initClient();
   }
   async initClient() {
+    this.contact.init();
     await this.pref.init();
     try {
       await this.auth.init();
@@ -5346,6 +5372,26 @@ var App = class extends Base {
       });
     });
   }
+  importFromUrlHash() {
+    const h3 = window.location.hash.replace("#", "");
+    if (h3.length > 0) {
+      const bytes = base58().decode(h3);
+      const text = new TextDecoder().decode(bytes);
+      try {
+        const obj = JSON.parse(text);
+        console.log(obj);
+        this.pref.inboxDomain = obj.inboxDomain || this.pref.inboxDomain;
+        this.pref.name = obj.name || this.pref.name;
+        this.pref.keys = obj.keys || this.pref.keys;
+        this.pref.store();
+        console.log(this.pref.keys.sig);
+        this.contact.list = obj.contacts || this.contact.list;
+        this.contact.store();
+      } catch (e4) {
+        console.log("import failed", e4);
+      }
+    }
+  }
   async handleAddContact(event) {
     const added = this.contact.addContactFromShareable(event.target.value);
     if (added) {
@@ -5379,6 +5425,12 @@ var App = class extends Base {
     event.preventDefault();
     this.selectedMenu = menuName;
   }
+  async showExport() {
+    this.exportHidden = !this.exportHidden;
+  }
+  async pushAllMessages() {
+    await this.message.pushAllMessages();
+  }
   headerTemplate() {
     return p`
       <header>
@@ -5388,7 +5440,6 @@ var App = class extends Base {
         </nav>
         <h1>npchat webclient</h1>
         <span class="welcome">Hello, ${this.pref.name} ☺️</span>
-        
       </header>
     `;
   }
@@ -5418,14 +5469,14 @@ var App = class extends Base {
         <div class="box background">
           <p class="meta">Your shareable</p>
           <p class="wrap monospace select-all">${this.pref.shareable}</p>
-          <div class="qr">${this.qrCodeTemplate()}</div>
+          <div class="qr">${this.qrCodeTemplate(this.pref.qrCodeShareable)}</div>
         </div>
         ${showPublicKeyHash ? publicKeyHashTemplate : void 0}
       </div>
     `;
   }
-  qrCodeTemplate() {
-    return p`<img srcset="${this.pref.qrCode}"/>`;
+  qrCodeTemplate(imgDataUrl) {
+    return p`<img srcset="${imgDataUrl}"/>`;
   }
   preferencesMenuTemplate() {
     return p`
@@ -5479,6 +5530,22 @@ var App = class extends Base {
                 @change=${(e4) => this.handleChangeAcceptOnlyVerified(e4)}/>
           </label>
         </div>
+        <div class="preferences-group">
+          <h3>💾 Import / Export</h3>
+          <p>Either scan the QR code or open the link using another device. This will sync your name, keys & inbox domain.</p>
+          <p>Warning: This feature is unsafe if anyone can see your screen.</p>
+          <div class="export">
+            <button @click=${() => this.showExport()}>${this.exportHidden ? "Show" : "Hide"} sensitive data</button>
+            <div ?hidden=${this.exportHidden}>
+              <div class="box background">
+                <div class="wrap monospace select-all">${this.pref.exportLink}</div>
+                <div class="qr">${this.qrCodeTemplate(this.pref.exportQRCode)}</div>
+              </div>
+            </div>
+          </div>
+          <p>You can push all messages to the inbox so that your other device can collect them. They can only be collected once each time, so you may need to push them again.</p>
+          <button @click=${() => this.pushAllMessages()}>Push all messages to sync</button>
+        </div>
       </div>
     `;
   }
@@ -5529,7 +5596,7 @@ var App = class extends Base {
         </ul>
         <form class="compose" @submit=${this.handleSendMessage}>
           <input id="message-compose" type="text"
-            placeholder="Write a message to ${this.contact.selected.name}"/>
+            placeholder="Write a message to ${this.contact.selected ? this.contact.selected.name : ""}"/>
           <button type="submit">Send</button>
         </form>
       </div>
@@ -5559,7 +5626,7 @@ var App = class extends Base {
   render() {
     let messages = this.message.list || [];
     let selectedPubHash;
-    if (this.contact.selected.name) {
+    if (this.contact.selected && this.contact.selected.keys) {
       selectedPubHash = this.contact.selected.keys.sig.publicHash;
       messages = (this.message.list || []).filter((m2) => m2.f === selectedPubHash || !m2.to);
     }
@@ -5591,7 +5658,8 @@ __publicField(App, "properties", {
   websocket: {},
   isWebsocketOpen: {},
   isAuthed: {},
-  selectedMenu: {}
+  selectedMenu: {},
+  exportHidden: {}
 });
 
 // src/component/menu.js

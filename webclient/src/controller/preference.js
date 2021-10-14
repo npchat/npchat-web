@@ -1,7 +1,7 @@
 import { base58 } from '../../../util/base58';
 import { hash } from '../../../util/hash';
 import { exportKey, genKeyPair, getJwkBytes, importKey } from '../../../util/key';
-import { buildShareable } from '../../../util/shareable';
+import { buildShareable } from '../util/shareable';
 import { generateQR } from '../util/qrcode';
 
 const nameStorageKey = "name"
@@ -16,7 +16,9 @@ const inboxDomainRegex = /^(?=.{1,255}$)[0-9A-Za-z](?:(?:[0-9A-Za-z]|-){0,61}[0-
 export class PreferenceController {
 	host;
 	keys = {}
-	qrCode = {}
+	qrCodeShareable = {}
+	exportLink = {}
+	exportQRCode = {}
 
 	constructor(host) {
 		this.host = host
@@ -30,6 +32,7 @@ export class PreferenceController {
 	async init() {
 		await this.getKeys()
 		await this.initShareables()
+		await this.initExport()
 		this.store()
 		this.host.requestUpdate()
 	}
@@ -51,7 +54,7 @@ export class PreferenceController {
 			}
       const hashBytes = new Uint8Array(await hash(getJwkBytes(this.keys.sig.jwk.public)))
       this.keys.sig.publicHash = base58().encode(hashBytes)
-			localStorage.setItem(keysStorageKey, this.keys)
+			localStorage.setItem(keysStorageKey, JSON.stringify(this.keys))
 			return
     } 
 		const storedKeys = JSON.parse(stored)
@@ -66,7 +69,31 @@ export class PreferenceController {
 	async initShareables() {
 		this.shareable = this.getShareable()
 		this.shareableLink = this.getShareableLink(this.shareable)
-		this.qrCode = await this.getShareableQR(this.shareableLink)
+		this.qrCodeShareable = await this.getQRCodeAsDataUrl(this.shareableLink)
+	}
+
+	async initExport() {
+		this.exportLink = `https://${window.location.host}#${this.getExportBase58()}`
+		this.exportQRCode = await this.getQRCodeAsDataUrl(this.exportLink)
+	}
+
+	getExportBase58() {
+		const data = {
+			keys: {
+				sig: {
+					jwk: {
+						public: this.keys.sig.jwk.public,
+						private: this.keys.sig.jwk.private
+					},
+					publicHash: this.keys.sig.publicHash
+				}
+			},
+			name: this.name,
+			inboxDomain: this.inboxDomain,
+			contacts: this.host.contact.list
+		}
+		const bytes = new TextEncoder().encode(JSON.stringify(data))
+		return base58().encode(bytes)
 	}
 
 	getShareable() {
@@ -76,7 +103,7 @@ export class PreferenceController {
     return base58().encode(bytes)
   }
 
-	async getShareableQR(shareableLink) {
+	async getQRCodeAsDataUrl(shareableLink) {
 		return await generateQR(shareableLink, {errorCorrectionLevel: "L"})
 	}
 
@@ -89,6 +116,7 @@ export class PreferenceController {
 		localStorage.setItem(inboxDomainStorageKey, this.inboxDomain)
 		localStorage.setItem(keysStorageKey, JSON.stringify(this.keys))
 		localStorage.setItem(acceptOnlyVerifiedStorageKey, this.acceptOnlyVerified)
+		localStorage.setItem(keysStorageKey, JSON.stringify(this.keys))
 	}
 
 	async changeName(name, enforceNotBlank) {
@@ -101,7 +129,7 @@ export class PreferenceController {
 		} else {
 			this.name = name.trim()
 		}
-		await this.initShareables()
+		await this.init()
 		this.store()
 		this.host.requestUpdate()
 	}
@@ -112,7 +140,7 @@ export class PreferenceController {
 		} else {
 			this.inboxDomain = defaultDomain
 		}
-		await this.initShareables()
+		await this.init()
 		this.store()
 	}
 
