@@ -39,12 +39,12 @@ export class Base extends LitElement {
 			flex-wrap: wrap;
       padding: .5rem;
 		}
+    .main > * {
+      width: 100%;
+    }
     button, input {
       padding: 0.5rem;
       font-size: 1rem;
-    }
-    input[type=text] {
-      width: 300px;
     }
     .background {
       background-color: #f5f5f5;
@@ -115,13 +115,17 @@ export class Base extends LitElement {
     }
 		@media(min-width: 750px) {
 			.main > * {
-				width: 49%
+				width: calc(50% - 1rem)
 			}
       header h1 {
         font-size: 1rem
       }
       header .welcome {
         display: block
+      }
+      .messages {
+        padding: .5rem;
+        border-left: 2px solid #e5e5e5;
       }
 		}
   `;

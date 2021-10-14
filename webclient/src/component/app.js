@@ -107,7 +107,6 @@ export class App extends Base {
 		}
 	}
 
-
   async handleAddContact(event) {
     const added = this.contact.addContactFromShareable(event.target.value)
     if (added) {
@@ -124,6 +123,7 @@ export class App extends Base {
     }
     await this.message.handleSendMessage(c.inboxDomain, c.keys.sig.publicHash, this.messageInput.value)
     this.messageInput.value = ""
+    this.messageInput.scrollIntoView({block: "end", inline: "nearest"})
   }
 
   handleChangeName(event, enforceNotBlank) {
@@ -331,7 +331,7 @@ export class App extends Base {
           })}
         </ul>
         ${this.contact.selected && this.contact.selected.keys
-          ? html`<form class="compose" @submit=${this.handleSendMessage} >
+          ? html`<form class="compose" @submit=${this.handleSendMessage}>
               <input id="message-compose" type="text"
                 placeholder="Write a message to ${this.contact.selected ? this.contact.selected.name : ""}"/>
               <button type="submit">Send</button>
