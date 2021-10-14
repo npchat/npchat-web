@@ -330,11 +330,14 @@ export class App extends Base {
             return template
           })}
         </ul>
-        <form class="compose" @submit=${this.handleSendMessage}>
-          <input id="message-compose" type="text"
-            placeholder="Write a message to ${this.contact.selected ? this.contact.selected.name : ""}"/>
-          <button type="submit">Send</button>
-        </form>
+        ${this.contact.selected && this.contact.selected.keys
+          ? html`<form class="compose" @submit=${this.handleSendMessage} >
+              <input id="message-compose" type="text"
+                placeholder="Write a message to ${this.contact.selected ? this.contact.selected.name : ""}"/>
+              <button type="submit">Send</button>
+            </form>`
+        : undefined
+        }
       </div>
     `;
   }
