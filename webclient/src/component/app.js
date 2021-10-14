@@ -92,15 +92,15 @@ export class App extends Base {
         console.log(obj)
         if (obj.shareable) {
           this.pref.addContactFromShareable(obj.shareable)
-          return
+        } else {
+          this.pref.inboxDomain = obj.inboxDomain || this.pref.inboxDomain
+          this.pref.name = obj.name || this.pref.name
+          this.pref.keys = obj.keys || this.pref.keys
+          this.contact.list = obj.contacts || this.contact.list
+          this.contact.store()
         }
-        this.pref.inboxDomain = obj.inboxDomain || this.pref.inboxDomain
-        this.pref.name = obj.name || this.pref.name
-        this.pref.keys = obj.keys || this.pref.keys
         this.pref.store()
-        console.log(this.pref.keys.sig)
-        this.contact.list = obj.contacts || this.contact.list
-        this.contact.store()
+        this.initClient()
       } catch (e) {
         console.log("import failed", e)
       }
