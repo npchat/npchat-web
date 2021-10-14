@@ -264,7 +264,7 @@ export class App extends Base {
         <div class="preferences-group">
           <h3>💾 Import / Export</h3>
           <p>Either scan the QR code or open the link using another device. This will sync your name, keys & inbox domain.</p>
-          <p>Warning: This feature is unsafe if anyone can see your screen.</p>
+          <p class="warn">⚠️ This feature is unsafe if anyone can see your screen.</p>
           <div class="export">
             <button @click=${() => this.showExport()}>${this.exportHidden ? "Show" : "Hide"} sensitive data</button>
             <div ?hidden=${this.exportHidden}>
@@ -312,9 +312,9 @@ export class App extends Base {
 
   contactTemplate(c, selectedPubHash) {
     return html`
-      <li class="contact wrap ${selectedPubHash === c.keys.sig.publicHash ? "selected" : ""}"
-          @click=${() => this.contact.selectContact(c)}>
-        ${c.name} [${c.keys.sig.publicHash}]
+      <li class="contact wrap ${selectedPubHash === c.keys.sig.publicHash ? "selected" : ""}">
+        <span @click=${() => this.contact.select(c)}>${c.name} [${c.keys.sig.publicHash}]</span>
+        <span @click=${() => this.contact.remove(c)}>🗑️</span>
       </li>
     `;
   }

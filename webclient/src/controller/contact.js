@@ -20,7 +20,7 @@ export class ContactController {
 		const stored = localStorage.getItem(contactsStorageKey)
 		if (stored) {
 			this.list = JSON.parse(stored)
-			this.selectContact(this.list[0])
+			this.select(this.list[0])
 		}
 		this.host.requestUpdate()
 	}
@@ -40,7 +40,7 @@ export class ContactController {
 				this.list.push(contact)
 			}
 			this.store()
-			this.selectContact(contact)
+			this.select(contact)
 			this.host.requestUpdate()
 		}
 	}
@@ -68,17 +68,19 @@ export class ContactController {
 		return true;
 	}
 
-	removeContact(contact) {
+	remove(contact) {
 		const index = this.list.findIndex(c => this.matches(c, contact))
-		if (this.index >= 0) {
-			this.list = this.list.splice(index, 1);
+		if (index > -1) {
+			this.list.splice(index, 1)
+			this.selected = undefined
 			console.log('removed')
+			this.host.requestUpdate()
 		} else {
 			console.log('not found')
 		}
 	}
 
-	selectContact(contact) {
+	select(contact) {
 		this.selected = contact
     console.log('selected', this.selected)
 		this.host.requestUpdate()
