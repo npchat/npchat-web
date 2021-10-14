@@ -83,7 +83,7 @@ export class App extends Base {
 
   importFromUrlHash() {
 		const h = window.location.hash.replace('#','')
-    //window.location.hash = ""
+    window.location.hash = ""
 		if (h.length > 0) {
       const bytes = base58().decode(h)
       const text = new TextDecoder().decode(bytes)
