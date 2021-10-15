@@ -1,8 +1,8 @@
-import { base58 } from '../../../util/base58';
-import { hash } from '../../../util/hash';
-import { exportKey, genKeyPair, getJwkBytes, importKey } from '../../../util/key';
-import { buildShareable } from '../util/shareable';
-import { generateQR } from '../util/qrcode';
+import { base58 } from "../../../util/base58";
+import { hash } from "../../../util/hash";
+import { exportKey, genKeyPair, getJwkBytes, importKey } from "../../../util/key";
+import { buildShareable } from "../util/shareable";
+import { generateQR } from "../util/qrcode";
 
 const nameStorageKey = "name"
 const inboxDomainStorageKey = "inboxDomain"
@@ -146,7 +146,7 @@ export class PreferenceController {
 
 	changeAcceptOnlyVerified(acceptOnlyVerified) {
 		this.acceptOnlyVerified = acceptOnlyVerified
-		console.log('changed to', this.acceptOnlyVerified)
+		console.log("changed to", this.acceptOnlyVerified)
 		this.store()
 		this.host.requestUpdate()
 	}

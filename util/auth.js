@@ -1,17 +1,5 @@
-import { base58 } from './base58'
-import { sign } from './sign'
-
-export const challengeKey = "challenge"
-
-export async function fetchChallenge(domain, sigPubJwkHash) {
-	try {
-		const resp = await fetch(`https://${domain}/${sigPubJwkHash}/challenge`)
-		return resp.json()
-	} catch (e) {
-		console.log("failed to fetch challenge", e)
-		return null
-	}
-}
+import { base58 } from "./base58"
+import { sign } from "./sign"
 
 export function hasChallengeExpired(challenge) {
 	if (!challenge || !challenge.exp) {

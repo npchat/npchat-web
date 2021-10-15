@@ -1,5 +1,5 @@
 import { html } from "lit";
-import { Base } from './base';
+import { Base } from "./base";
 
 export class Menu extends Base {
   static properties = {

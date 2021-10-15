@@ -1,21 +1,8 @@
-import { base58 } from './base58'
-import { hash } from './hash'
-import { getJwkBytes } from './key'
-import { sign, verify } from './sign'
+import { base58 } from "./base58"
+import { hash } from "./hash"
+import { sign, verify } from "./sign"
 
 export const messagesKey = "messages"
-
-export async function fetchMessages(domain, sigPubJwk, sigPubJwkHash, challengeSig) {
-	const sigPubJwkBytes = getJwkBytes(sigPubJwk)
-	const sigPubJwkBase58 = base58().encode(sigPubJwkBytes)
-	const resp = await fetch(`${window.location.protocol}//${domain}/${sigPubJwkHash}`, {
-		headers: {
-			"oc-pk": sigPubJwkBase58,
-			"oc-sig": challengeSig
-		}
-	})
-	return (await resp.json()).messages
-}
 
 export async function buildMessage(sigPriv, messageText, from) {
 	const hashable = buildMessageBody(messageText, from)

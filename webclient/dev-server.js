@@ -1,5 +1,5 @@
 import { serve } from "esbuild"
-import { buildOptions } from './esbuild.js'
+import { buildOptions } from "./esbuild.js"
 
 const serveOptions = { servedir: "www" }
 

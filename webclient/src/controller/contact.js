@@ -1,6 +1,6 @@
-import { base58 } from '../../../util/base58';
-import { hash } from '../../../util/hash';
-import { getJwkBytes } from '../../../util/key';
+import { base58 } from "../../../util/base58";
+import { hash } from "../../../util/hash";
+import { getJwkBytes } from "../../../util/key";
 
 const contactsStorageKey = "contacts"
 
@@ -73,16 +73,16 @@ export class ContactController {
 		if (index > -1) {
 			this.list.splice(index, 1)
 			this.selected = undefined
-			console.log('removed')
+			console.log("removed")
 			this.host.requestUpdate()
 		} else {
-			console.log('not found')
+			console.log("not found")
 		}
 	}
 
 	select(contact) {
 		this.selected = contact
-    console.log('selected', this.selected)
+    console.log("selected", this.selected)
 		this.host.requestUpdate()
 	}
 

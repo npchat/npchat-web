@@ -10,16 +10,16 @@ export const buildOptions = {
 	outdir: "www/dist"
 }
 
-build(buildOptions).then(() => console.log(`ESBuild: ${isDev()?'dev':'prod'} build done.`))
+build(buildOptions).then(() => console.log(`ESBuild: ${isDev()?"dev":"prod"} build done.`))
 
 function watch() {
 	if (shouldWatch()) {
 		return {
 			onRebuild(e) {
 				if (e) {
-					console.error('ESBuild: watch build failed', e)
+					console.error("ESBuild: watch build failed", e)
 				} else {
-					console.log('ESBuild: watch build succeeded')
+					console.log("ESBuild: watch build succeeded")
 				}
 			}
 		}
@@ -28,10 +28,10 @@ function watch() {
 }
 
 function shouldWatch() {
-	return isDev() && process.argv.indexOf('--watch') >= 0
+	return isDev() && process.argv.indexOf("--watch") >= 0
 }
 
 function isDev() {
-	return process.argv.indexOf('--dev') >= 0
+	return process.argv.indexOf("--dev") >= 0
 }
 

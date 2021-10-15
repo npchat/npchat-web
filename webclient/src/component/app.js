@@ -1,26 +1,24 @@
 import { html } from "lit";
-import { base58 } from '../../../util/base58';
-import { getWebSocket, handshakeWebsocket } from "../../../util/websocket";
-import { AuthController } from '../controller/auth';
+import { M } from "qrcode/build/qrcode";
+import { signChallenge } from "../../../util/auth";
+import { base58 } from "../../../util/base58";
+import { getWebSocket } from "../../../util/websocket";
 import { ContactController } from "../controller/contact";
-import { MessageController } from '../controller/message';
+import { MessageController } from "../controller/message";
 import { PreferenceController } from "../controller/preference";
-import { Base } from './base';
+import { Base } from "./base";
 
 export class App extends Base {
   pref = new PreferenceController(this)
   contact = new ContactController(this)
-  auth = new AuthController(this)
   message = new MessageController(this)
 
   static properties = {
     pref: {},
     contact: {},
-    auth: {},
     message: {},
-    websocket: {},
-    isWebsocketOpen: {},
-    isAuthed: {},
+    webSocket: {},
+    isConnected: {},
     selectedMenu: {},
     exportHidden: {}
   }
@@ -36,39 +34,40 @@ export class App extends Base {
     this.contact.init()
     await this.pref.init()
     this.importFromUrlHash()
-    try {
-      await this.auth.init()
-    } catch (e) {
-      this.isAuthed = false
-      this.isWebsocketOpen = false
-      this.auth.challenge = null
-      console.log("auth failed", e)
-      return false
-    }
-    this.isAuthed = true
     await this.message.init()
     try {
-      await this.connectWebSocket()
+      await this.connectwebSocket()
+      this.isConnected = true
     } catch (e) {
-      console.log("websocket connection failed", e)
-      this.isWebsocketOpen = false
+      console.log("WebSocket connection failed", e)
+      this.isConnected = false
     }
     return true
   }
 
-  async connectWebSocket() {
+  async connectwebSocket() {
+    this.webSocket = undefined
+    this.isConnected = false
     return new Promise((resolve, reject) => {
-      this.websocket = getWebSocket(this.pref.inboxDomain, this.pref.keys.sig.publicHash)
-      this.websocket.addEventListener("open", async () => {
-        this.isWebsocketOpen = true
-        handshakeWebsocket(this.websocket, this.pref.keys.sig.jwk.public, await this.auth.getChallengeSig())
+      this.webSocket = getWebSocket(this.pref.inboxDomain, this.pref.keys.sig.publicHash)
+      this.webSocket.addEventListener("open", () => {
+        this.webSocket.send(JSON.stringify({get: "challenge"}))
       })
-      this.websocket.addEventListener("message", async event => {
-        const data = JSON.parse(event.data)
-        if (data.t && data.m && data.f) {
-          await this.message.handleRecievedMessage(data, true)
+      this.webSocket.addEventListener("message", async event => {
+        let data
+        try {
+          data = JSON.parse(event.data)
+        } catch (e) {
+          console.log("Failed to parse JSON", e)
+          return
         }
         if (!data.error) {
+          if (data.challenge) {
+            const sig = await signChallenge(this.pref.keys.sig.keyPair.privateKey, data.challenge)
+            this.webSocket.send(JSON.stringify({jwk: this.pref.keys.sig.jwk.public, sig: sig}))
+            return
+          }
+          await this.message.handleReceivedMessage(data, true)
           resolve(data)
         } else {
           reject(data)
@@ -76,20 +75,20 @@ export class App extends Base {
       })
       this.addEventListener("close", () => {
         console.log("connection closed")
-        this.isWebsocketOpen = false
+        this.isConnected = false
+        this.webSocket = undefined
       })
     });
   }
 
   async importFromUrlHash() {
-		const h = window.location.hash.replace('#','')
+		const h = window.location.hash.replace("#","")
     window.location.hash = ""
 		if (h.length > 0) {
       const bytes = base58().decode(h)
       const text = new TextDecoder().decode(bytes)
       try {
         const obj = JSON.parse(text)
-        console.log(obj)
         if (obj.contact) {
           await this.contact.addContact(obj.contact)
         } else {
@@ -118,7 +117,6 @@ export class App extends Base {
     event.preventDefault()
     const c = this.contact.selected
     if (!c.keys) {
-      console.log("no contact selected")
       return
     }
     await this.message.handleSendMessage(c.inboxDomain, c.keys.sig.publicHash, this.messageInput.value)
@@ -152,10 +150,6 @@ export class App extends Base {
     this.exportHidden = !this.exportHidden
   }
 
-  async pushAllMessages() {
-    await this.message.pushAllMessages()
-  }
-  
   headerTemplate() {
     return html `
       <header>
@@ -264,6 +258,7 @@ export class App extends Base {
         <div class="preferences-group">
           <h3>💾 Import / Export</h3>
           <p>Either scan the QR code or open the link using another device. This will sync your name, keys & inbox domain.</p>
+          <a href="https://qrcodescannerpro.com/scan-qr-code" target="_blank" rel="noreferrer noopener">Online QR code scanner</a>
           <p class="warn">⚠️ This feature is unsafe if anyone can see your screen.</p>
           <div class="export">
             <button @click=${() => this.showExport()}>${this.exportHidden ? "Show" : "Hide"} sensitive data</button>
@@ -275,7 +270,7 @@ export class App extends Base {
             </div>
           </div>
           <p>You can push all messages to the inbox so that your other device can collect them. They can only be collected once each time, so you may need to push them again.</p>
-          <button @click=${() => this.pushAllMessages()}>Push all messages to sync</button>
+          <button @click=${() => this.message.pushAll()}>Push all messages to sync</button>
         </div>
       </div>
     `;
@@ -283,9 +278,8 @@ export class App extends Base {
 
   statusTemplate() {
     return html`
-      <span class="error" ?hidden=${this.isAuthed}>💥 Connection failed</span>
-      <span class="warn" ?hidden=${!this.isAuthed || this.isWebsocketOpen}>⚠️ No WebSocket connection</span>
-      <span ?hidden=${!this.isAuthed || !this.isWebsocketOpen}>👍 Connected</span>
+      <span class="error" ?hidden=${this.isConnected}>💥 WebSocket connection failed</span>
+      <span ?hidden=${!this.isConnected}>👍 Connected</span>
     `;
   }
   
@@ -345,25 +339,31 @@ export class App extends Base {
   messageTemplate(message, prevMessageTime) {
     const sent = message.f === this.pref.keys.sig.publicHash
     const v = message.v === true
-    const timeElapsedPrev = message.t - (prevMessageTime || message.t)
     const msToDayMultiplier = 0.00000001157407
-    const daysElapsedPrev = timeElapsedPrev * msToDayMultiplier
+    let time = new Date(message.t).toISOString()
+    time = time.split(".")[0]
+    if ((Date.now() - message.t) * msToDayMultiplier < 1) {
+      time = time.split("T")[1]
+    }
+
+    const timeElapsedPrev = message.t - (prevMessageTime || message.t)
+    const daysElapsedPrev = Math.floor(timeElapsedPrev * msToDayMultiplier)
 
     const messageAge = Date.now() - message.t
+    const messageAgeDays = Math.floor(messageAge * msToDayMultiplier)
     let timeElapsedString;
 
-    if (daysElapsedPrev >= 1) {
-      timeElapsedString = `${Math.floor(messageAge * msToDayMultiplier)} day${daysElapsedPrev>1?"s":""} ago`
+    if (daysElapsedPrev >= 1 && messageAgeDays > 0) {
+      timeElapsedString = `${messageAgeDays} day${messageAgeDays>1?"s":""} ago`
     }
 
     return html`
-      <li class="meta milestone background">${timeElapsedString}</span>
-      <li class="message wrap ${!v ? "warn" : ""} ${sent ? "sent" : "recieved"}">
+      ${timeElapsedString ? html`<li class="meta milestone background">${timeElapsedString}</span>` : undefined}
+      <li class="message wrap ${!v ? "warn" : ""} ${sent ? "sent" : "received"}">
         <div class="message-body">
-          ${message.m}
+          <span class="message-text">${message.m}</span>
+          <span class="meta smaller">${time} ${v ? "" : "⚠️"}</span>
         </div>
-        <div class="message-footer">
-          <span class="meta smaller">${v ? "🔑" : "⚠️"}</span>
       </li>`
   }
 
@@ -372,7 +372,7 @@ export class App extends Base {
     let selectedPubHash
     if (this.contact.selected && this.contact.selected.keys) {
       selectedPubHash = this.contact.selected.keys.sig.publicHash
-      messages = (this.message.list || []).filter(m => m.f === selectedPubHash || !m.to)
+      messages = this.message.list.filter(m => m.f === selectedPubHash || m.to === selectedPubHash)
     }
     messages = messages
     .slice(-20, messages.length)

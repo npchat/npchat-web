@@ -73,12 +73,25 @@ export class Base extends LitElement {
       display: flex;
       flex-direction: column;
     }
-    .message .body {
-      width: 100%
+    .message {
+      display: flex;
+      margin: .2rem 0;
+    }
+    .message.sent {
+      justify-content: right;
+    }
+    .message-body {
+      padding: .5rem;
+      border-radius: 5px;
+      display: flex;
+      flex-wrap: wrap;
+    }
+    .message-text {
+      width: 100%;
 
     }
-    .message b
-    .message.sent {
+    .message.received .message-body {
+      background-color: #e5e5e5;
     }
     .compose {
       display: flex;

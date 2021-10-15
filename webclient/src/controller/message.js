@@ -1,5 +1,5 @@
-import { importKey } from '../../../util/key';
-import { sendMessage, messagesKey, fetchMessages, buildMessage, verifyMessage } from "../../../util/message"
+import { importKey } from "../../../util/key";
+import { sendMessage, messagesKey, buildMessage, verifyMessage } from "../../../util/message"
 
 export class MessageController {
 	host;
@@ -23,16 +23,9 @@ export class MessageController {
       console.log("failed to parse stored messages")
       this.list = []
     }
-		const fetched = await this.getMessages()
-	  return Promise.all(fetched.map(async m => await this.handleRecievedMessage(m, false)))
-      .then(() => this.store())
-	}
+  }
 
-	async getMessages() {
-		return await fetchMessages(this.host.pref.inboxDomain, this.host.pref.keys.sig.jwk.public, this.host.pref.keys.sig.publicHash, await this.host.auth.getChallengeSig())
-	}
-
-	async handleRecievedMessage(data, doStore) {
+	async handleReceivedMessage(data, doStore) {
     if (data.m && data.f && data.h) {
       const exists = this.list.find(m => m.h === data.h)
       if (exists) {
@@ -81,12 +74,9 @@ export class MessageController {
     this.host.requestUpdate()
 	}
 
-  async pushAllMessages() {
-    const resp = await fetch(`https://${this.host.pref.inboxDomain}/${this.host.pref.keys.sig.publicHash}`, {
-		method: "POST",
-		body: JSON.stringify(this.list)
-	})
-	return resp.json()
+  pushAll() {
+    const ws = this.host.webSocket
+    this.list.forEach(m => ws.send(JSON.stringify(m)))
   }
 }
 
