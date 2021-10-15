@@ -40,7 +40,7 @@ export class MessageController {
       } else {
         console.log("no match, hash or sig", data)
       }
-      if (isVerified || !this.host.pref.acceptOnlyVerified) {
+      if (isVerified) {
         const storable = data
         storable.v = isVerified
         this.list.push(storable)

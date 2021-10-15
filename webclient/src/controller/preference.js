@@ -7,7 +7,6 @@ import { generateQR } from "../util/qrcode";
 const nameStorageKey = "name"
 const inboxDomainStorageKey = "inboxDomain"
 const keysStorageKey = "keys"
-const acceptOnlyVerifiedStorageKey = "acceptOnlyVerified"
 const welcomeDismissedStorageKey = "welcomeDismissed"
 const defaultDomain = "npchat.dr-useless.workers.dev"
 
@@ -23,7 +22,6 @@ export class PreferenceController {
 	constructor(host) {
 		this.host = host
 		host.addController(this)
-		this.acceptOnlyVerified = localStorage.getItem(acceptOnlyVerifiedStorageKey) !== "false"
 		this.inboxDomain = localStorage.getItem(inboxDomainStorageKey) || defaultDomain
 		this.name = localStorage.getItem(nameStorageKey) || "Anonymous"
 		this.welcomeDismissed = localStorage.getItem(welcomeDismissedStorageKey) || false
@@ -115,7 +113,6 @@ export class PreferenceController {
 		localStorage.setItem(nameStorageKey, this.name)
 		localStorage.setItem(inboxDomainStorageKey, this.inboxDomain)
 		localStorage.setItem(keysStorageKey, JSON.stringify(this.keys))
-		localStorage.setItem(acceptOnlyVerifiedStorageKey, this.acceptOnlyVerified)
 		localStorage.setItem(keysStorageKey, JSON.stringify(this.keys))
 	}
 
@@ -142,13 +139,6 @@ export class PreferenceController {
 		}
 		await this.init()
 		this.store()
-	}
-
-	changeAcceptOnlyVerified(acceptOnlyVerified) {
-		this.acceptOnlyVerified = acceptOnlyVerified
-		console.log("changed to", this.acceptOnlyVerified)
-		this.store()
-		this.host.requestUpdate()
 	}
 
 	dismissWelcome() {

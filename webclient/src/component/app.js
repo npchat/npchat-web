@@ -133,10 +133,6 @@ export class App extends Base {
     await this.initClient()
   }
 
-  handleChangeAcceptOnlyVerified(event) {
-    this.pref.changeAcceptOnlyVerified(event.target.checked)
-  }
-
   handleDismissWelcome() {
     this.pref.dismissWelcome()
   }
@@ -242,19 +238,6 @@ export class App extends Base {
                 @change=${e => this.handleChangeInboxDomain(e)}/>
           </label>
           ${this.statusTemplate()}
-        </div>
-        <div class="preferences-group">
-          <h3>🔒 Security</h3>
-          <p>The npchat protocol is designed to be provably secure, hostable anywhere & interoperable across hosts.</p>
-          <p>A key trait of this design is that anyone who has your publicKeyHash & inbox domain can send you messages.</p>
-          <p>You cannot trust the authenticity of any message without verifying it cryptographically.</p>
-          <p>Two conditions must be met for a message to be verified: it must be signed by the sender & the sender must be in your contacts list. You can choose to accept only messages that have been verified.</p>
-          <label>
-            <span>Accept only verified messages (recommended)</span>
-            <input type="checkbox" id="preferences-accept-only-verified"
-                .checked=${this.pref.acceptOnlyVerified}
-                @change=${e => this.handleChangeAcceptOnlyVerified(e)}/>
-          </label>
         </div>
         <div class="preferences-group">
           <h3>💾 Import / Export</h3>
