@@ -95,7 +95,7 @@ export class App extends Base {
           this.pref.inboxDomain = obj.inboxDomain || this.pref.inboxDomain
           this.pref.name = obj.name || this.pref.name
           this.pref.keys = obj.keys || this.pref.keys
-          this.contact.list = obj.contacts || this.contact.list
+          obj.contacts.forEach(c => this.contact.addContact(c))
           this.contact.store()
         }
         this.pref.store()
@@ -312,7 +312,6 @@ export class App extends Base {
           ? html`<form class="compose" @submit=${this.handleSendMessage}>
               <input id="message-compose" type="text"
                 placeholder="Write a message to ${this.contact.selected ? this.contact.selected.name : ""}"/>
-              <button type="submit">Send</button>
             </form>`
         : undefined
         }
