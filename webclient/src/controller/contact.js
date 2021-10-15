@@ -73,6 +73,9 @@ export class ContactController {
 		if (index > -1) {
 			this.list.splice(index, 1)
 			this.selected = undefined
+			this.store()
+			this.host.message.list = this.host.message.list.filter(m => m.f !== contact.keys.sig.publicHash)
+			this.host.message.store()
 			console.log("removed")
 			this.host.requestUpdate()
 		} else {

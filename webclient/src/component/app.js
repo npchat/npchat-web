@@ -159,6 +159,7 @@ export class App extends Base {
         </nav>
         <h1>npchat webclient</h1>
         <span class="welcome">Hello, ${this.pref.name} ☺️</span>
+        <div class="status ${this.isConnected ? "connected" : ""}"></div>
       </header>
     `;
   }

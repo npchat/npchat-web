@@ -19,6 +19,16 @@ export class Base extends LitElement {
     header .welcome {
       display: none
     }
+    header .status {
+      display: block;
+      width: 10px;
+      height:10px;
+      border-radius: 10px;
+      background-color: orange;
+    }
+    header .status.connected {
+      background-color: green;
+    }
     nav {
       display: flex;
     }
