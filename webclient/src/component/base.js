@@ -138,7 +138,7 @@ export class Base extends LitElement {
     }
 		@media(min-width: 750px) {
 			.main > * {
-				width: calc(50% - 1rem)
+				width: calc(50% - .6rem)
 			}
       header h1 {
         font-size: 1rem

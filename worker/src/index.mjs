@@ -82,7 +82,7 @@ export class Channel {
 		this.state = state
 		this.challengeTtl = new Number(env.CHALLENGE_TTL)
 		this.challenge = {}
-		this.webSockets = []
+		this.authedSockets = []
 	}
 
 	async fetch(request) {
@@ -114,13 +114,13 @@ export class Channel {
 
 	async handleSocketSession(request, ws) {
 		ws.accept()
-		ws.addEventListener("message", e => this.handleHandshake(request, ws, e))
+		ws.addEventListener("message", e => this.handleWebSocketMessage(request, ws, e))
 		ws.addEventListener("close", () => {
-			this.webSockets = this.webSockets.filter(w => !Object.is(w, ws))
+			this.authedSockets = this.authedSockets.filter(w => !Object.is(w, ws))
 		})
 	}
 
-	async handleHandshake(request, ws, event) {
+	async handleWebSocketMessage(request, ws, event) {
 		let data
 		try {
 			data = JSON.parse(event.data)
@@ -136,20 +136,28 @@ export class Channel {
 		if (data.jwk && data.sig) {
 			const isAuthenticated = await this.authenticate(data.jwk, getPublicHashFromRequest(request), data.sig)
 			if (isAuthenticated) {
-				this.webSockets.push(ws)
+				this.authedSockets.push(ws)
 				ws.send(JSON.stringify({message: "Handshake done"}))
 				const messages = await this.getStoredMessages()
 				messages.forEach(m => {
 					 ws.send(JSON.stringify(m))
 				})
 				await this.storeMessages([])
-				ws.addEventListener("message", )
 			} else {
 				ws.send(JSON.stringify({message: "Nope. Try again...", error: "Authentication failed"}))
 				ws.close()
 			}
-		} else {
-			ws.send(JSON.stringify({message: "Missing jwk or sig", error: "Missing parameters"}))
+		}
+		if (!this.authedSockets.find(w => Object.is(w, ws))) {
+			ws.send(JSON.stringify({message: "Unauthorized", error: "Unauthorized"}))
+			return
+		}
+		// WS is authed...
+
+		if (data.t && data.m && data.h) {
+			const messages = await this.getStoredMessages()
+			messages.push(data)
+			await this.storeMessages(messages)
 		}
 	}
 
@@ -182,9 +190,9 @@ export class Channel {
 		const response = new Response(JSON.stringify({message: "Sent"}), defaultResponseOpts());
 		const messageData = await request.json()
 		if (Array.isArray(messageData)) {
-			if (this.webSockets.length > 0) {
+			if (this.authedSockets.length > 0) {
 				messageData.forEach(m => {
-					this.webSockets.forEach(ws => ws.send(JSON.stringify(m)))
+					this.authedSockets.forEach(ws => ws.send(JSON.stringify(m)))
 				})
 			} else {
 				const messages = await this.getStoredMessages()
@@ -192,8 +200,8 @@ export class Channel {
 				await this.storeMessages(messages)
 			}
 		} else {
-			if (this.webSockets.length > 0) {
-				this.webSockets.forEach(ws => ws.send(JSON.stringify(messageData)))
+			if (this.authedSockets.length > 0) {
+				this.authedSockets.forEach(ws => ws.send(JSON.stringify(messageData)))
 			} else {
 				const messages = await this.getStoredMessages()
 				messages.push(messageData)
