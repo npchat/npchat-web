@@ -67,8 +67,8 @@ export class MessageController {
       return
     }
     // build a local version for storage
-    const sentMessage = await buildMessage(undefined, message, this.host.pref.keys.sig.publicHash, publicHash)
-    sentMessage.v = true
+    const sentMessage = await buildMessage(undefined, message, this.host.pref.keys.sig.publicHash)
+    Object.assign(sentMessage, {to: publicHash, v: true})
     this.list.push(sentMessage)
     this.store()
     this.host.requestUpdate()

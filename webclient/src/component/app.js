@@ -360,6 +360,7 @@ export class App extends Base {
     messages = messages
     .slice(-20, messages.length)
     .sort((a, b) => a.t > b.t)
+
     return html`
       ${this.headerTemplate()}
       <div class="main">
