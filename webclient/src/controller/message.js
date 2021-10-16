@@ -75,22 +75,26 @@ export class MessageController {
       return
     }
     const myKeys = this.host.pref.keys
-    const res = await sendMessage(contact.domain, myKeys.auth.keyPair.privateKey, myKeys.dh.keyPair.privateKey, messageText, myKeys.auth.publicHash, contact.keys.auth.publicHash, contact.keys.dh.jwk)
+    const message = await buildMessage(myKeys.auth.keyPair.privateKey, myKeys.dh.keyPair.privateKey, messageText, myKeys.auth.publicHash, contact.keys.dh.jwk)
+    const res = await sendMessage(contact.domain, contact.keys.auth.publicHash, message)
     if (res.error) {
       console.log("Failed to send message", res)
       return
     }
-    // build a local version for storage
-    //const sentMessage = await buildMessage(undefined, messageText, this.host.pref.keys.auth.publicHash)
-    //Object.assign(sentMessage, {to: publicHash, v: true})
-    //this.list.push(sentMessage)
-    //this.store()
+    message.mP = messageText
+    message.to = contact.keys.auth.publicHash
+    this.list.push(message)
+    this.store()
     this.host.requestUpdate()
 	}
 
   pushAll() {
     const ws = this.host.webSocket
-    this.list.forEach(m => ws.send(JSON.stringify(m)))
+    this.list.forEach(m => {
+      let mCleaned = m;
+      Object.assign(mCleaned, {mP: undefined})
+      ws.send(JSON.stringify(mCleaned))
+    })
   }
 }
 

@@ -4,7 +4,7 @@
 	https://developers.cloudflare.com/workers/learning/using-durable-objects
 */
 
-import { importKey } from '../../util/key'
+import { importAuthKey } from '../../util/key'
 import { hasChallengeExpired, verify } from '../../util/auth'
 import { base58 } from '../../util/base58'
 import { messagesKey } from '../../util/message'
@@ -206,7 +206,7 @@ export class Channel {
 		if (jwkHashBase58 !== publicKeyHash) {
 			return false
 		}
-		const authPubKey = await importKey(jwk, ["verify"])
+		const authPubKey = await importAuthKey(jwk, ["verify"])
 		const authChallengeBytes = b58.decode(auth)
 		return await this.verifyChallenge(authPubKey, authChallengeBytes)
 	}

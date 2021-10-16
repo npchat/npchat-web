@@ -350,7 +350,7 @@ export class App extends Base {
     let selectedPubHash
     if (this.contact.selected && this.contact.selected.keys) {
       selectedPubHash = this.contact.selected.keys.auth.publicHash
-      messages = this.message.list.filter(m => m.f === selectedPubHash || m.to === selectedPubHash)
+      messages = this.message.list.filter(m => (m.f === selectedPubHash && !m.to) || m.to === selectedPubHash)
     }
     messages = messages
     .slice(-20, messages.length)

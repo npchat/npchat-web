@@ -139,7 +139,6 @@ export class PreferenceController {
 			this.name = name.trim()
 		}
 		await this.init()
-		this.store()
 		this.host.requestUpdate()
 	}
 
@@ -150,7 +149,6 @@ export class PreferenceController {
 			this.domain = defaultDomain
 		}
 		await this.init()
-		this.store()
 	}
 
 	dismissWelcome() {

@@ -30,10 +30,10 @@ export async function buildMessage(authPriv, dhPrivateKey, messageText, from, to
 	return message
 }
 
-export async function sendMessage(domain, authPriv, dhPrivateKey, messageText, from, toPublicKeyHash, toDHPublicJwk) {
+export async function sendMessage(domain, toPublicKeyHash, builtMessage) {
 	const resp = await fetch(`https://${domain}/${toPublicKeyHash}`, {
 		method: "POST",
-		body: JSON.stringify(await buildMessage(authPriv, dhPrivateKey, messageText, from, toDHPublicJwk))
+		body: JSON.stringify(builtMessage)
 	})
 	return resp.json()
 }
