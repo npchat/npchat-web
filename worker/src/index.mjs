@@ -4,8 +4,8 @@
 	https://developers.cloudflare.com/workers/learning/using-durable-objects
 */
 
-import { importAuthKey } from '../../util/key'
-import { hasChallengeExpired, verify } from '../../util/auth'
+import { genAuthKeyPair, importAuthKey } from '../../util/key'
+import { sign, verify } from '../../util/auth'
 import { base58 } from '../../util/base58'
 import { hash } from '../../util/hash'
 
@@ -80,8 +80,8 @@ export class Channel {
 		this.state = state
 		this.state.blockConcurrencyWhile(async () => {
 			this.messages = await this.getStoredMessages()
+			this.keyPair = await genAuthKeyPair()
 		})
-		this.challengeTtl = new Number(env.CHALLENGE_TTL)
 		this.authedSockets = []
 	}
 
@@ -129,12 +129,11 @@ export class Channel {
 			return
 		}
 		if (data.get === "challenge") {
-			this.challenge = await this.makeChallenge()
-			ws.send(JSON.stringify({challenge: this.challenge.txt}))
+			ws.send(JSON.stringify({challenge: await this.makeChallenge()}))
 			return
 		}
-		if (data.jwk && data.auth) {
-			const isAuthenticated = await this.authenticate(data.jwk, getAuthPubKeyHashFromRequest(request), data.auth)
+		if (data.jwk && data.challenge && data.solution) {
+			const isAuthenticated = await this.authenticate(data, getAuthPubKeyHashFromRequest(request))
 			if (isAuthenticated) {
 				this.authedSockets.push(ws)
 				ws.send(JSON.stringify({message: "Handshake done"}))
@@ -153,7 +152,7 @@ export class Channel {
 			return
 		}
 		// WS is authed...
-		
+
 		if (data.t && data.m && data.h) {
 			this.messages.push(data)
 			await this.storeMessages(this.messages)
@@ -188,45 +187,42 @@ export class Channel {
 	}
 
 	async makeChallenge() {
-		// Date.now() is only used to salt the UUID
-		const randomString = crypto.randomUUID()+Date.now()
-		const challengeHash = await hash(new TextEncoder().encode(randomString))
+		// timecode is only used to salt the UUID
+		const randomBytes = new TextEncoder().encode(crypto.randomUUID()+Date.now())
+		const challengeBytes = new Uint8Array(await hash(randomBytes))
+		const challengeSignature = new Uint8Array(await sign(this.keyPair.privateKey, challengeBytes))
+		const b58 = base58()
 		return {
-			exp: Date.now()+this.challengeTtl,
-			txt: base58().encode(new Uint8Array(challengeHash))
+			txt: b58.encode(challengeBytes),
+			sig: b58.encode(challengeSignature)
 		}
 	}
 
-	async authenticate(jwk, publicKeyHash, auth) {
-		const jwkBytes = new TextEncoder().encode(JSON.stringify(jwk))
-		const jwkHash = await hash(jwkBytes)
+	async authenticate(data, publicKeyHash) {
+		const jwkBytes = new TextEncoder().encode(JSON.stringify(data.jwk))
+		const jwkHash = new Uint8Array(await hash(jwkBytes))
 		const b58 = base58()
-		const jwkHashBase58 = b58.encode(new Uint8Array(jwkHash))
-		// IMPORTANT verify publicKeyHash is equal to hash of public key
+		const jwkHashBase58 = b58.encode(jwkHash)
+		// verify publicKeyHash is equal to hash of public key
 		if (jwkHashBase58 !== publicKeyHash) {
 			return false
 		}
-		const authPubKey = await importAuthKey(jwk, ["verify"])
-		const authChallengeBytes = b58.decode(auth)
-		return await this.verifyChallenge(authPubKey, authChallengeBytes)
+		const solutionBytes = b58.decode(data.solution)
+		const authPublicKey = await importAuthKey(data.jwk, ["verify"])
+		return await this.verifyChallenge(data.challenge, solutionBytes, authPublicKey)
 	}
 
-		/**
-		@param {CryptoKey} authPubKey Public auth key
-		@param {Uint8Array} authChallengeBytes Signed challenge ByteArray
-		@returns {Promise<boolean>} isVerified
-	*/
-	async verifyChallenge(authPubKey, authChallengeBytes) {
-		if (hasChallengeExpired(this.challenge)) {
-			return false
-		}
-		const challengeBytes = new TextEncoder().encode(this.challenge.txt)
-		return await verify(authPubKey, authChallengeBytes, challengeBytes)
+	async verifyChallenge(challenge, solutionBytes, authPublicKey) {
+		const b58 = base58()
+		const challengeSignature = b58.decode(challenge.sig)
+		const challengeBytes = b58.decode(challenge.txt)
+		const isChallengeAuthentic = await verify(this.keyPair.publicKey, challengeSignature, challengeBytes)
+		if (!isChallengeAuthentic) return false
+		const isChallengeSolutionValid = await verify(authPublicKey, solutionBytes, challengeBytes)
+		if (!isChallengeSolutionValid) return false
+		return true
 	}
 
-	/**
-		@returns {Promise<Object>} Promise for stored messages
-	*/
 	async getStoredMessages() {
 		const stored = await this.state.storage.get("messages")
 		if (!stored) {
@@ -235,10 +231,6 @@ export class Channel {
 		return JSON.parse(stored)
 	}
 
-	/**
-		@param {Object[]} messages Array of messages
-		@returns {Promise} stored
-	*/
 	async storeMessages(messages) {
 		return await this.state.storage.put("messages", JSON.stringify(messages))
 	}

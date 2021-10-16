@@ -5,18 +5,8 @@ export const authAlgorithm = {
 	hash: "SHA-256"
 }
 
-export function hasChallengeExpired(challenge) {
-	if (!challenge || !challenge.exp) {
-		return true
-	}
-	if (Date.now() > challenge.exp) {
-		return true
-	}
-	return false
-}
-
 export async function signChallenge(privateKey, challengeText) {
-	const bytes = new TextEncoder().encode(challengeText)
+	const bytes = new base58().decode(challengeText)
 	const sig = new Uint8Array(await sign(privateKey, bytes))
 	return base58().encode(sig)
 }

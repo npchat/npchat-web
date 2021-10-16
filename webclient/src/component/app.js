@@ -1,5 +1,4 @@
 import { html } from "lit";
-import { M } from "qrcode/build/qrcode";
 import { signChallenge } from "../../../util/auth";
 import { base58 } from "../../../util/base58";
 import { getWebSocket } from "../util/websocket";
@@ -65,8 +64,12 @@ export class App extends Base {
         }
         if (!data.error) {
           if (data.challenge) {
-            const sig = await signChallenge(this.pref.keys.auth.keyPair.privateKey, data.challenge)
-            this.webSocket.send(JSON.stringify({jwk: this.pref.keys.auth.jwk.public, auth: sig}))
+            const challengeResponse = {
+              jwk: this.pref.keys.auth.jwk.public,
+              challenge: data.challenge,
+              solution: await signChallenge(this.pref.keys.auth.keyPair.privateKey, data.challenge.txt)
+            }
+            this.webSocket.send(JSON.stringify(challengeResponse))
             return
           }
           await this.message.handleReceivedMessage(data, true)
