@@ -1,10 +1,8 @@
-import { sign, verify } from "./auth"
-import { base58 } from "./base58"
-import { hash } from "./hash"
-import { deriveKey, importDHKey } from "./key"
-import { encrypt, getIV } from "./privacy"
-
-export const messagesKey = "messages"
+import { sign, verify } from "../../../util/auth"
+import { base58 } from "../../../util/base58"
+import { hash } from "../../../util/hash"
+import { deriveKey, importDHKey } from "../../../util/key"
+import { encrypt, getIV } from "../../../util/privacy"
 
 export async function buildMessage(authPriv, dhPrivateKey, messageText, from, toDHPublicJwk) {
 	const t = Date.now()

@@ -41,6 +41,11 @@ export class Base extends LitElement {
       color: #000;
       transition: background-color 0.2s
     }
+    a.link {
+      background-color: #f5f5f5;
+      display: inline-block;
+      padding: 0.25rem;
+    }
     a:hover {
       background-color: #e5e5e5
     }
@@ -75,9 +80,13 @@ export class Base extends LitElement {
     }
     .contact {
       padding: 0.5rem;
+      display: flex;
     }
     .contact:hover, .contact.selected {
       background-color: #e5e5e5;
+    }
+    .contact .label {
+      flex-grow: 1
     }
     .messages ul {
       display: flex;

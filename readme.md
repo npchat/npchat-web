@@ -1,26 +1,82 @@
 # npchat
 ## A simple & secure messaging protocol
-This is simply a transport protocol, encryption & verification of data is the responsiblity of each client implementation.
+This is an application-layer protocol for secure messaging across hosts.
 
-This protocol does, however, specify standards that clients should follow for interoperability.
+A message is sent to any contact on any host using their `authPublicKeyHash` as an ID.
 
-A client generates or imports an ECDSA P-384 key pair.
-The hash of the public key is the address & id, called `authPubKeyHash`.
-
-A client can send messages for any `authPubKeyHash` at any host that implements this protocol.
-
-A client can authenticate with any host to fetch messages by signing the host's current challenge for the given `authPubKeyHash`.
+A client connects to their host by requesting a WebSocket upgrade.
+After a successful handshake, the client will receive all messages sent to them immediately.
+If a reciepient is offline, their messages are stored on the host until collected after the next successful handshake.
 
 ## Channel
+A `Channel` is an inbox on a host for a single `authPublicKeyHash`.
+It facilitates one-way communication from any sender to the owner of the keys corresponding to the given `authPublicKeyHash`
+
 As implemented here, a Channel is a [Durable Object](https://developers.cloudflare.com/workers/learning/using-durable-objects).
 
-It can in fact be a simple JSON object that holds state for a given `authPubKeyHash` (the users public id).
+The host's state for any given `authPublicKeyHash` must contain:
+- all messages not yet collected
+- authenticated WebSocket connections
 
-The state must contain:
-- challenge, a JSON object
-- messages, an array of messages not yet fetched
+Notice that no keys are ever stored on the host.
 
-Everything else is derived from the request.
+### 1. Request WebSocket upgrade
+```JS
+const webSocket = new WebSocket(`wss://${domain}/${publicKeyHash}`)
+```
+
+### 2. Handshake
+The purpose of this handshake is to authenticate a request for a websocket session.
+
+#### 2.1 Authentication
+1. Client requests a challenge
+```JS
+// webclient/src/component/app.js  async connectWebSocket()
+webSocket.addEventListener("open", () => {
+	webSocket.send(JSON.stringify({get: "challenge"}))
+})
+```
+2. Server responds with
+```JSON
+{
+	"exp" : 1634413304391,
+	"challenge" : "4uhc5DdN3xethCiZsyvU6aRbYj1asgP8YFPYcoLBum8F"
+	}
+```
+This implementation hashes with SHA-256 a randomUUID salted with the current timecode. Challenges should expire within minutes. A new one is generated for each handshake.
+```JS
+async makeChallenge() {
+	// Date.now() is only used to salt the UUID
+	const randomString = crypto.randomUUID()+Date.now()
+	const challengeHash = await hash(new TextEncoder().encode(randomString))
+	return {
+		exp: Date.now()+this.challengeTtl,
+		txt: base58().encode(new Uint8Array(challengeHash))
+	}
+}
+```
+
+3. Client signs challenge with their ECDSA P-256 private key
+```JS
+const authAlgorithm = {
+	name: "ECDSA",
+	hash: "SHA-256"
+}
+export async function sign(privCryptoKey, bytes) {
+	return crypto.subtle.sign(authAlgorithm, privCryptoKey, bytes)
+}
+```
+
+#### 2.2 Post-authentication
+- the host pushes all stored messages to the client, and removes them from storage
+- any incomming messages are pushed immediately to the client
+
+
+
+
+### Message format
+
+### Contact format
 
 ## Keys
 A client must generate a ECDSA P-384 key pair.
@@ -96,85 +152,36 @@ const jwk = await crypto.subtle.exportKey("jwk", cryptoKey)
 
 
 ### Types
-#### authPub & authPriv
-The CryptoKeyPair containing `authPub` & `authPriv` CryptoKeys.
-
-#### authPubJwk & authPrivJwk
-The public & private signing KeyPair represented as JWK. The algorithm used is:
+#### ECDSA P-256 for Auth
+The CryptoKeyPair used to sign & verify messages & authenticate with a server.
 ```JSON
 {
 	"name": "ECDSA",
-	"namedCurve": "P-384"
+	"namedCurve": "P-256"
 }
 ```
 
-#### authPubKeyHash
-A public address, used as the root ID for each Channel. It is derived by hashing the `authPubJwk` (public signing key) using `SHA-256`.
+#### ECDH P-256 Diffie-Hellman for encryption
+A shared secret is derived after exchanging public keys. This shared secret is used to encrypt each message with a unique random IV.
 ```JS
-const jwkHash = await crypto.subtle.digest("SHA-256", jwkBytes)
-```
-
-## Authentication
-Fetching messages for the given `authPubKeyHash` requires authentication.
-
-### 1. Request challenge
-First, you need the current challenge. Make a request such as:
-```JS
-const challengeJson = await fetch(`${contact.host}/${contact.authPubKeyHash}/challenge`)
-```
-It will return something like
-```JSON
-{
-	"t": 1633623658420,
-	"exp": 1633624258420,
-	"txt": "718d6400-e992-41e3-821a-50e69a89688f"
+const dhKeyParams = {
+	name: "ECDH",
+	namedCurve: "P-256"
 }
-```
-You should store it locally & check it's expiry date before requesting again.
-
-### 2. Sign Challenge
-Use `authPriv` to sign the challenge text.
-```JS
-const challengeBytes = new TextEncoder().encode(challenge.txt)
-const signedChallenge = await crypto.subtle.sign(sigAlgorithm, authPriv, challengeBytes)
-const signedChallengeBase58 = base58().encode(new Uint8Array(signedChallenge))
-
-```
-
-
-## The client
-### Authentication
-- check for stored challenge
-	- if found & not expired, return it
-	- if not found or expired, request a new one using `GET {host}/{authPubKeyHash}/challenge`
-- sign challenge using privateKey
-- perform authenticated request by setting in header: oc-pk (publicKey) & oc-sig (signedChallenge)
-
-### Message encryption suggestion
-This is just a suggestion for a message encryption implementation.
-
-A client should import the public encryption (not signing) key of the recipient, and derive the shared secred using the senders private encryption key. A symmetrical algorithm such as AES-GCM 256 can be used to encrypt the message with the shared secred. This can be done using elliptic-curves with ECDH (Elliptic-Curve Diffie-Hellman).
-
-### Contact import suggestion
-Import as base58 text or QR code. The data should decode to a JSON object:
-```JSON
-{
-	"host": "https://any.host",
-	"authPubKeyHash": "{authPubKeyHash}",
-	"authPubJwk": "{authPubJwk}",
-	"encPubJwk": "{encPubJwk}"
+const aesMode = "AES-GCM"
+const aesKeyParams = {
+	name: aesMode,
+	length: 256
 }
 ```
 
 ## Next in pipeline
 ### Webclient
-- LocalStorage data import & export (messages, contacts, preferences, keys)
 - PWA push notification using service worker & a new Cloudflare worker
-- end-to-end encrypted messages using ECDH & AES-GCM 256
-- end-to-end encrypted voice & video calls using WebRTC, ECDH & AES-GCM 256
+- end-to-end encrypted voice & video calls using WebRTC
 
-### Protocol
-- WebSocket connection between client & a contact's Channel
+### Server
+Make challenge stateless by signing with a server private key, and verifying it when returned with the client's solution. This fixes a current flaw, where an attacker can continuously request a new challenge, preventing a user from authenticating. For this implementation, the key pair will be regenerated each time the Durable Object is instantiated. This is the simplest way to ensure that the keys are changed periodically.
 
 ### Not sure
 Not sure whether to do this in protocol or client only...
@@ -183,8 +190,3 @@ There are two options:
 - Client uploads to a serverless media-store (KV), and sends a link.
 		This approach allows the protocol to remain as simple as possible, without adding complexity to the client either
 - Implement this in the protocol
-
-
-## Underlying goal
-Maintain proper separation of concerns & absolute minimalism.
-Add value, not features.

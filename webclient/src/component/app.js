@@ -2,7 +2,7 @@ import { html } from "lit";
 import { M } from "qrcode/build/qrcode";
 import { signChallenge } from "../../../util/auth";
 import { base58 } from "../../../util/base58";
-import { getWebSocket } from "../../../util/websocket";
+import { getWebSocket } from "../util/websocket";
 import { ContactController } from "../controller/contact";
 import { MessageController } from "../controller/message";
 import { PreferenceController } from "../controller/preference";
@@ -20,13 +20,15 @@ export class App extends Base {
     webSocket: {},
     isConnected: {},
     selectedMenu: {},
-    exportHidden: {}
+    exportLinkHidden: {},
+    exportQRHidden: {}
   }
 
   constructor() {
     super()
-    this.selectedMenu = "preferences" //TODO: revert
-    this.exportHidden = true
+    this.selectedMenu = "contacts"
+    this.exportLinkHidden = true
+    this.exportQRHidden = true
     this.initClient()
   }
 
@@ -36,7 +38,7 @@ export class App extends Base {
     this.importFromUrlHash()
     await this.message.init()
     try {
-      await this.connectwebSocket()
+      await this.connectWebSocket()
       this.isConnected = true
     } catch (e) {
       console.log("WebSocket connection failed", e)
@@ -45,7 +47,7 @@ export class App extends Base {
     return true
   }
 
-  async connectwebSocket() {
+  async connectWebSocket() {
     this.webSocket = undefined
     this.isConnected = false
     return new Promise((resolve, reject) => {
@@ -138,8 +140,14 @@ export class App extends Base {
     this.selectedMenu = menuName
   }
 
-  async showExport() {
-    this.exportHidden = !this.exportHidden
+  toggleExportLink() {
+    this.exportLinkHidden = !this.exportLinkHidden
+    this.exportQRHidden = true
+  }
+
+  toggleExportQR() {
+    this.exportQRHidden = !this.exportQRHidden
+    this.exportLinkHidden = true
   }
 
   headerTemplate() {
@@ -238,13 +246,18 @@ export class App extends Base {
         <div class="preferences-group">
           <h3>💾 Import / Export</h3>
           <p>Either scan the QR code or open the link using another device. This will sync your name, keys & domain.</p>
-          <a href="https://qrcodescannerpro.com/scan-qr-code" target="_blank" rel="noreferrer noopener">Online QR code scanner</a>
-          <p class="warn">⚠️ This feature is unsafe if anyone can see your screen.</p>
+          <a href="https://qrcodescannerpro.com/scan-qr-code" target="_blank" rel="noreferrer noopener" class="link">Online QR code scanner</a>
           <div class="export">
-            <button @click=${() => this.showExport()}>${this.exportHidden ? "Show" : "Hide"} sensitive data</button>
-            <div ?hidden=${this.exportHidden}>
+            <p class="warn">⚠️ This is unsafe if anyone can see your screen.</p>
+            <button @click=${() => this.toggleExportLink()}>${this.exportLinkHidden ? "Show" : "Hide"} link</button>
+            <button @click=${() => this.toggleExportQR()}>${this.exportQRHidden ? "Show" : "Hide"} QR code</button>
+            <div ?hidden=${this.exportLinkHidden}>
               <div class="box background">
                 <div class="wrap monospace select-all">${this.pref.exportLink}</div>
+              </div>
+            </div>
+            <div ?hidden=${this.exportQRHidden}>
+              <div class="box background">
                 <div class="qr">${this.qrCodeTemplate(this.pref.exportQRCode)}</div>
               </div>
             </div>
@@ -287,7 +300,7 @@ export class App extends Base {
   contactTemplate(c, selectedPubHash) {
     return html`
       <li class="contact wrap ${selectedPubHash === c.keys.auth.publicHash ? "selected" : ""}">
-        <span @click=${() => this.contact.select(c)}>${c.name} [${c.keys.auth.publicHash}]</span>
+        <span @click=${() => this.contact.select(c)} class="label">${c.name} [${c.keys.auth.publicHash}]</span>
         <span @click=${() => this.contact.remove(c)}>🗑️</span>
       </li>
     `;

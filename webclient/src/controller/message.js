@@ -1,6 +1,6 @@
 import { base58 } from "../../../util/base58";
 import { deriveKey, importAuthKey, importDHKey } from "../../../util/key";
-import { sendMessage, messagesKey, buildMessage, verifyMessage } from "../../../util/message"
+import { sendMessage, messagesKey, buildMessage, verifyMessage } from "../util/message"
 import { decrypt } from "../../../util/privacy";
 
 export class MessageController {

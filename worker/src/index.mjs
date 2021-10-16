@@ -7,20 +7,20 @@
 import { importAuthKey } from '../../util/key'
 import { hasChallengeExpired, verify } from '../../util/auth'
 import { base58 } from '../../util/base58'
-import { messagesKey } from '../../util/message'
 import { hash } from '../../util/hash'
 
 /**
 	@returns {Object} default response options
 */
-const defaultResponseOpts = () => { return {
-	headers: {
-		"Access-Control-Allow-Origin": "*",
-		"Access-Control-ALlow-Methods": "GET, POST, OPTIONS",
-		"Access-Control-Max-Age": 86400,
-		"Vary": "Origin"
-	},
-	status: 200
+const defaultResponseOpts = () => {
+	return {
+		headers: {
+			"Access-Control-Allow-Origin": "*",
+			"Access-Control-ALlow-Methods": "GET, POST, OPTIONS",
+			"Access-Control-Max-Age": 86400,
+			"Vary": "Origin"
+		},
+		status: 200
 	}
 }
 
@@ -70,7 +70,6 @@ async function handleRequest(request, env) {
 	Storage for one-way messaging.
 	
 	Current state holds:
-	- challenge
 	- messages
 
 	Environment sets:
@@ -79,8 +78,10 @@ async function handleRequest(request, env) {
 export class Channel {
 	constructor(state, env) {
 		this.state = state
+		this.state.blockConcurrencyWhile(async () => {
+			this.messages = await this.getStoredMessages()
+		})
 		this.challengeTtl = new Number(env.CHALLENGE_TTL)
-		this.challenge = {}
 		this.authedSockets = []
 	}
 
@@ -137,11 +138,11 @@ export class Channel {
 			if (isAuthenticated) {
 				this.authedSockets.push(ws)
 				ws.send(JSON.stringify({message: "Handshake done"}))
-				const messages = await this.getStoredMessages()
-				messages.forEach(m => {
+				this.messages.forEach(m => {
 					 ws.send(JSON.stringify(m))
 				})
 				await this.storeMessages([])
+				this.messages = []
 			} else {
 				ws.send(JSON.stringify({message: "Nope. Try again...", error: "Authentication failed"}))
 				ws.close()
@@ -152,11 +153,10 @@ export class Channel {
 			return
 		}
 		// WS is authed...
-
+		
 		if (data.t && data.m && data.h) {
-			const messages = await this.getStoredMessages()
-			messages.push(data)
-			await this.storeMessages(messages)
+			this.messages.push(data)
+			await this.storeMessages(this.messages)
 		}
 	}
 
@@ -173,24 +173,24 @@ export class Channel {
 					this.authedSockets.forEach(ws => ws.send(JSON.stringify(m)))
 				})
 			} else {
-				const messages = await this.getStoredMessages()
-				messages.push(...messageData)
-				await this.storeMessages(messages)
+				this.messages.push(...messageData)
+				await this.storeMessages(this.messages)
 			}
 		} else {
 			if (this.authedSockets.length > 0) {
 				this.authedSockets.forEach(ws => ws.send(JSON.stringify(messageData)))
 			} else {
-				const messages = await this.getStoredMessages()
-				messages.push(messageData)
-				await this.storeMessages(messages)
+				this.messages.push(messageData)
+				await this.storeMessages(this.messages)
 			}
 		}
 		return response
 	}
 
 	async makeChallenge() {
-		const challengeHash = await hash(new TextEncoder().encode(crypto.randomUUID()))
+		// Date.now() is only used to salt the UUID
+		const randomString = crypto.randomUUID()+Date.now()
+		const challengeHash = await hash(new TextEncoder().encode(randomString))
 		return {
 			exp: Date.now()+this.challengeTtl,
 			txt: base58().encode(new Uint8Array(challengeHash))
@@ -228,7 +228,7 @@ export class Channel {
 		@returns {Promise<Object>} Promise for stored messages
 	*/
 	async getStoredMessages() {
-		const stored = await this.state.storage.get(messagesKey)
+		const stored = await this.state.storage.get("messages")
 		if (!stored) {
 			return []
 		}
@@ -240,6 +240,6 @@ export class Channel {
 		@returns {Promise} stored
 	*/
 	async storeMessages(messages) {
-		return await this.state.storage.put(messagesKey, JSON.stringify(messages))
+		return await this.state.storage.put("messages", JSON.stringify(messages))
 	}
 }
