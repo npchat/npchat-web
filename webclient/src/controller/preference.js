@@ -1,16 +1,16 @@
 import { base58 } from "../../../util/base58";
 import { hash } from "../../../util/hash";
-import { exportKey, genKeyPair, getJwkBytes, importKey } from "../../../util/key";
+import { deriveKey, exportKey, genAuthKeyPair, genDHKeyPair, getJwkBytes, importAuthKey, importDHKey } from "../../../util/key";
 import { buildShareable } from "../util/shareable";
 import { generateQR } from "../util/qrcode";
 
 const nameStorageKey = "name"
-const inboxDomainStorageKey = "inboxDomain"
+const domainStorageKey = "domain"
 const keysStorageKey = "keys"
 const welcomeDismissedStorageKey = "welcomeDismissed"
 const defaultDomain = "npchat.dr-useless.workers.dev"
 
-const inboxDomainRegex = /^(?=.{1,255}$)[0-9A-Za-z](?:(?:[0-9A-Za-z]|-){0,61}[0-9A-Za-z])?(?:\.[0-9A-Za-z](?:(?:[0-9A-Za-z]|-){0,61}[0-9A-Za-z])?)*\.?$/
+const domainRegex = /^(?=.{1,255}$)[0-9A-Za-z](?:(?:[0-9A-Za-z]|-){0,61}[0-9A-Za-z])?(?:\.[0-9A-Za-z](?:(?:[0-9A-Za-z]|-){0,61}[0-9A-Za-z])?)*\.?$/
 
 export class PreferenceController {
 	host;
@@ -22,7 +22,7 @@ export class PreferenceController {
 	constructor(host) {
 		this.host = host
 		host.addController(this)
-		this.inboxDomain = localStorage.getItem(inboxDomainStorageKey) || defaultDomain
+		this.domain = localStorage.getItem(domainStorageKey) || defaultDomain
 		this.name = localStorage.getItem(nameStorageKey) || "Anonymous"
 		this.welcomeDismissed = localStorage.getItem(welcomeDismissedStorageKey) || false
 	}
@@ -40,26 +40,35 @@ export class PreferenceController {
     if (!stored) {
 			// generate keys
       this.keys = {
-				sig: {
-					keyPair: await genKeyPair()
+				auth: {
+					keyPair: await genAuthKeyPair()
 				},
-				enc: {
+				dh: {
+					keyPair: await genDHKeyPair()
 				}
 			}
-      this.keys.sig.jwk = {
-				private: await exportKey(this.keys.sig.keyPair.privateKey),
-				public: await exportKey(this.keys.sig.keyPair.publicKey)
+      this.keys.auth.jwk = {
+				public: await exportKey(this.keys.auth.keyPair.publicKey),
+				private: await exportKey(this.keys.auth.keyPair.privateKey)
 			}
-      const hashBytes = new Uint8Array(await hash(getJwkBytes(this.keys.sig.jwk.public)))
-      this.keys.sig.publicHash = base58().encode(hashBytes)
+			this.keys.dh.jwk = {
+				public: await exportKey(this.keys.dh.keyPair.publicKey),
+				private: await exportKey(this.keys.dh.keyPair.privateKey)
+			}
+      const hashBytes = new Uint8Array(await hash(getJwkBytes(this.keys.auth.jwk.public)))
+      this.keys.auth.publicHash = base58().encode(hashBytes)
 			localStorage.setItem(keysStorageKey, JSON.stringify(this.keys))
 			return
     } 
 		const storedKeys = JSON.parse(stored)
 		this.keys = storedKeys
-		this.keys.sig.keyPair = {
-			privateKey: await importKey(this.keys.sig.jwk.private, ["sign"]),
-			publicKey: await importKey(this.keys.sig.jwk.public, ["verify"])
+		this.keys.auth.keyPair = {
+			privateKey: await importAuthKey(this.keys.auth.jwk.private, ["sign"]),
+			publicKey: await importAuthKey(this.keys.auth.jwk.public, ["verify"])
+		}
+		this.keys.dh.keyPair = {
+			privateKey: await importDHKey(this.keys.dh.jwk.private, ["deriveKey"]),
+			publicKey: await importDHKey(this.keys.dh.jwk.public, [])
 		}
 		return this.keys
   }
@@ -78,16 +87,20 @@ export class PreferenceController {
 	getExportBase58() {
 		const data = {
 			keys: {
-				sig: {
+				auth: {
 					jwk: {
-						public: this.keys.sig.jwk.public,
-						private: this.keys.sig.jwk.private
+						public: this.keys.auth.jwk.public,
+						private: this.keys.auth.jwk.private
 					},
-					publicHash: this.keys.sig.publicHash
+					publicHash: this.keys.auth.publicHash
+				},
+				dh: {
+					public: this.keys.dh.jwk.public,
+					private: this.keys.dh.jwk.private
 				}
 			},
 			name: this.name,
-			inboxDomain: this.inboxDomain,
+			domain: this.domain,
 			contacts: this.host.contact.list
 		}
 		const bytes = new TextEncoder().encode(JSON.stringify(data))
@@ -95,8 +108,7 @@ export class PreferenceController {
 	}
 
 	getShareable() {
-		const sig = this.keys.sig
-		const shareable = buildShareable(this.name, sig.jwk.public, this.inboxDomain)
+		const shareable = buildShareable(this.name, this.keys.auth.jwk.public, this.keys.dh.jwk.public, this.domain)
 		const bytes = new TextEncoder().encode(JSON.stringify(shareable))
     return base58().encode(bytes)
   }
@@ -111,7 +123,7 @@ export class PreferenceController {
 
 	store() {
 		localStorage.setItem(nameStorageKey, this.name)
-		localStorage.setItem(inboxDomainStorageKey, this.inboxDomain)
+		localStorage.setItem(domainStorageKey, this.domain)
 		localStorage.setItem(keysStorageKey, JSON.stringify(this.keys))
 		localStorage.setItem(keysStorageKey, JSON.stringify(this.keys))
 	}
@@ -131,11 +143,11 @@ export class PreferenceController {
 		this.host.requestUpdate()
 	}
 
-	async changeInboxDomain(inboxDomain) {
-		if (inboxDomain.trim().length > 0 && inboxDomainRegex.test(inboxDomain)) {
-			this.inboxDomain = inboxDomain
+	async changeDomain(domain) {
+		if (domain.trim().length > 0 && domainRegex.test(domain)) {
+			this.domain = domain
 		} else {
-			this.inboxDomain = defaultDomain
+			this.domain = defaultDomain
 		}
 		await this.init()
 		this.store()

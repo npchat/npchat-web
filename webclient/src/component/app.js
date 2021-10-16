@@ -49,7 +49,7 @@ export class App extends Base {
     this.webSocket = undefined
     this.isConnected = false
     return new Promise((resolve, reject) => {
-      this.webSocket = getWebSocket(this.pref.inboxDomain, this.pref.keys.sig.publicHash)
+      this.webSocket = getWebSocket(this.pref.domain, this.pref.keys.auth.publicHash)
       this.webSocket.addEventListener("open", () => {
         this.webSocket.send(JSON.stringify({get: "challenge"}))
       })
@@ -63,8 +63,8 @@ export class App extends Base {
         }
         if (!data.error) {
           if (data.challenge) {
-            const sig = await signChallenge(this.pref.keys.sig.keyPair.privateKey, data.challenge)
-            this.webSocket.send(JSON.stringify({jwk: this.pref.keys.sig.jwk.public, sig: sig}))
+            const sig = await signChallenge(this.pref.keys.auth.keyPair.privateKey, data.challenge)
+            this.webSocket.send(JSON.stringify({jwk: this.pref.keys.auth.jwk.public, auth: sig}))
             return
           }
           await this.message.handleReceivedMessage(data, true)
@@ -74,7 +74,7 @@ export class App extends Base {
         }
       })
       this.addEventListener("close", () => {
-        console.log("connection closed")
+        console.log("Connection closed")
         this.isConnected = false
         this.webSocket = undefined
       })
@@ -92,7 +92,7 @@ export class App extends Base {
         if (obj.contact) {
           await this.contact.addContact(obj.contact)
         } else {
-          this.pref.inboxDomain = obj.inboxDomain || this.pref.inboxDomain
+          this.pref.domain = obj.domain || this.pref.domain
           this.pref.name = obj.name || this.pref.name
           this.pref.keys = obj.keys || this.pref.keys
           obj.contacts.forEach(c => this.contact.addContact(c))
@@ -101,7 +101,7 @@ export class App extends Base {
         this.pref.store()
         this.initClient()
       } catch (e) {
-        console.log("import failed", e)
+        console.log("Import failed", e)
       }
 		}
 	}
@@ -115,11 +115,7 @@ export class App extends Base {
 
   async handleSendMessage(event) {
     event.preventDefault()
-    const c = this.contact.selected
-    if (!c.keys) {
-      return
-    }
-    await this.message.handleSendMessage(c.inboxDomain, c.keys.sig.publicHash, this.messageInput.value)
+    await this.message.handleSendMessage(this.messageInput.value)
     this.messageInput.value = ""
     this.messageInput.scrollIntoView({block: "end", inline: "nearest"})
   }
@@ -128,8 +124,8 @@ export class App extends Base {
     this.pref.changeName(event.target.value, enforceNotBlank)
   }
 
-  async handleChangeInboxDomain(event) {
-    await this.pref.changeInboxDomain(event.target.value)
+  async handleChangeDomain(event) {
+    await this.pref.changeDomain(event.target.value)
     await this.initClient()
   }
 
@@ -179,7 +175,7 @@ export class App extends Base {
     const publicKeyHashTemplate = html`
       <div class="box background">
         <p class="meta">Your publicKeyHash</p>
-        <p class="wrap monospace select-all">${this.pref.keys.sig && this.pref.keys.sig.publicHash}</p>
+        <p class="wrap monospace select-all">${this.pref.keys.auth && this.pref.keys.auth.publicHash}</p>
       </div>
     `;
     return html`
@@ -234,14 +230,14 @@ export class App extends Base {
           <label>
             <span>Domain</span>
             <input type="text" id="preferences-domain"
-                .value=${this.pref.inboxDomain}
-                @change=${e => this.handleChangeInboxDomain(e)}/>
+                .value=${this.pref.domain}
+                @change=${e => this.handleChangeDomain(e)}/>
           </label>
           ${this.statusTemplate()}
         </div>
         <div class="preferences-group">
           <h3>💾 Import / Export</h3>
-          <p>Either scan the QR code or open the link using another device. This will sync your name, keys & inbox domain.</p>
+          <p>Either scan the QR code or open the link using another device. This will sync your name, keys & domain.</p>
           <a href="https://qrcodescannerpro.com/scan-qr-code" target="_blank" rel="noreferrer noopener">Online QR code scanner</a>
           <p class="warn">⚠️ This feature is unsafe if anyone can see your screen.</p>
           <div class="export">
@@ -262,7 +258,7 @@ export class App extends Base {
 
   statusTemplate() {
     return html`
-      <span class="error" ?hidden=${this.isConnected}>💥 WebSocket connection failed</span>
+      <span class="error" ?hidden=${this.isConnected}>💥 No WebSocket connection</span>
       <span ?hidden=${!this.isConnected}>👍 Connected</span>
     `;
   }
@@ -290,8 +286,8 @@ export class App extends Base {
 
   contactTemplate(c, selectedPubHash) {
     return html`
-      <li class="contact wrap ${selectedPubHash === c.keys.sig.publicHash ? "selected" : ""}">
-        <span @click=${() => this.contact.select(c)}>${c.name} [${c.keys.sig.publicHash}]</span>
+      <li class="contact wrap ${selectedPubHash === c.keys.auth.publicHash ? "selected" : ""}">
+        <span @click=${() => this.contact.select(c)}>${c.name} [${c.keys.auth.publicHash}]</span>
         <span @click=${() => this.contact.remove(c)}>🗑️</span>
       </li>
     `;
@@ -320,8 +316,7 @@ export class App extends Base {
   }
 
   messageTemplate(message, prevMessageTime) {
-    const sent = message.f === this.pref.keys.sig.publicHash
-    const v = message.v === true
+    const sent = message.f === this.pref.keys.auth.publicHash
     const msToDayMultiplier = 0.00000001157407
     let time = new Date(message.t).toISOString()
     time = time.split(".")[0]
@@ -342,10 +337,10 @@ export class App extends Base {
 
     return html`
       ${timeElapsedString ? html`<li class="meta milestone background">${timeElapsedString}</span>` : undefined}
-      <li class="message wrap ${!v ? "warn" : ""} ${sent ? "sent" : "received"}">
+      <li class="message wrap ${sent ? "sent" : "received"}">
         <div class="message-body">
-          <span class="message-text">${message.m}</span>
-          <span class="meta smaller">${time} ${v ? "" : "⚠️"}</span>
+          <span class="message-text">${message.mP}</span>
+          <span class="meta smaller">${time}</span>
         </div>
       </li>`
   }
@@ -354,7 +349,7 @@ export class App extends Base {
     let messages = this.message.list || []
     let selectedPubHash
     if (this.contact.selected && this.contact.selected.keys) {
-      selectedPubHash = this.contact.selected.keys.sig.publicHash
+      selectedPubHash = this.contact.selected.keys.auth.publicHash
       messages = this.message.list.filter(m => m.f === selectedPubHash || m.to === selectedPubHash)
     }
     messages = messages

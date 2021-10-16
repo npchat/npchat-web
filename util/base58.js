@@ -10,6 +10,10 @@ export function base58() {
 		i++
 	}
 
+	/**
+	 * @param {Uint8Array} buffer
+	 * @returns {String}
+	 */
 	result.encode = buffer => {
 		let carry, digits, j
 		if (buffer.length === 0) {
@@ -50,6 +54,10 @@ export function base58() {
 		}).join("")
 	};
 
+	/**
+	 * @param {String} string 
+	 * @returns {Uint8Array}
+	 */
 	result.decode = string => {
 		let bytes, c, carry, j
 		if (string.length === 0) {

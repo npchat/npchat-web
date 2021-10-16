@@ -5,16 +5,16 @@ This is simply a transport protocol, encryption & verification of data is the re
 This protocol does, however, specify standards that clients should follow for interoperability.
 
 A client generates or imports an ECDSA P-384 key pair.
-The hash of the public key is the address & id, called `sigPubJwkHash`.
+The hash of the public key is the address & id, called `authPubKeyHash`.
 
-A client can send messages for any `sigPubJwkHash` at any host that implements this protocol.
+A client can send messages for any `authPubKeyHash` at any host that implements this protocol.
 
-A client can authenticate with any host to fetch messages by signing the host's current challenge for the given `sigPubJwkHash`.
+A client can authenticate with any host to fetch messages by signing the host's current challenge for the given `authPubKeyHash`.
 
 ## Channel
 As implemented here, a Channel is a [Durable Object](https://developers.cloudflare.com/workers/learning/using-durable-objects).
 
-It can in fact be a simple JSON object that holds state for a given `sigPubJwkHash` (the users public id).
+It can in fact be a simple JSON object that holds state for a given `authPubKeyHash` (the users public id).
 
 The state must contain:
 - challenge, a JSON object
@@ -29,17 +29,17 @@ The private key is used to authenticate by signing a random challenge.
 
 The public key is used to verify the signed challenge.
 
-The hash of the public key `sigPubJwkHash` is used as a public address and Channel Id.
+The hash of the public key `authPubKeyHash` is used as a public address and Channel Id.
 
 ### Algorithm
 The signing keys are an ECDSA P-385 key pair. The signing algorithm is ECDSA SHA-384. These are shown in the following example.
 ```JS
-const sigKeyParams = {
+const authKeyParams = {
 				name: "ECDSA",
 				namedCurve: "P-256"
 			}
 			
-const sigAlgorithm = {
+const authAlgorithm = {
 	name: "ECDSA",
 	hash: "SHA-256"
 }
@@ -81,11 +81,11 @@ They are imported as a CryptoKey.
 #### Import
 A JWK is imported as a CryptoKey.
 ```JS
-const sigKeyParams = {
+const authKeyParams = {
 	name: "ECDSA",
 	namedCurve: "P-384"
 }
-const cryptoKey = await crypto.subtle.importKey("jwk", jwk, sigKeyImportParams)
+const cryptoKey = await crypto.subtle.importKey("jwk", jwk, authKeyParams)
 ```
 
 #### Export
@@ -96,10 +96,10 @@ const jwk = await crypto.subtle.exportKey("jwk", cryptoKey)
 
 
 ### Types
-#### sigPub & sigPriv
-The CryptoKeyPair containing `sigPub` & `sigPriv` CryptoKeys.
+#### authPub & authPriv
+The CryptoKeyPair containing `authPub` & `authPriv` CryptoKeys.
 
-#### sigPubJwk & sigPrivJwk
+#### authPubJwk & authPrivJwk
 The public & private signing KeyPair represented as JWK. The algorithm used is:
 ```JSON
 {
@@ -108,19 +108,19 @@ The public & private signing KeyPair represented as JWK. The algorithm used is:
 }
 ```
 
-#### sigPubJwkHash
-A public address, used as the root ID for each Channel. It is derived by hashing the `sigPubJwk` (public signing key) using `SHA-256`.
+#### authPubKeyHash
+A public address, used as the root ID for each Channel. It is derived by hashing the `authPubJwk` (public signing key) using `SHA-256`.
 ```JS
 const jwkHash = await crypto.subtle.digest("SHA-256", jwkBytes)
 ```
 
 ## Authentication
-Fetching messages for the given `sigPubJwkHash` requires authentication.
+Fetching messages for the given `authPubKeyHash` requires authentication.
 
 ### 1. Request challenge
 First, you need the current challenge. Make a request such as:
 ```JS
-const challengeJson = await fetch(`${contact.host}/${contact.sigPubJwkHash}/challenge`)
+const challengeJson = await fetch(`${contact.host}/${contact.authPubKeyHash}/challenge`)
 ```
 It will return something like
 ```JSON
@@ -133,10 +133,10 @@ It will return something like
 You should store it locally & check it's expiry date before requesting again.
 
 ### 2. Sign Challenge
-Use `sigPriv` to sign the challenge text.
+Use `authPriv` to sign the challenge text.
 ```JS
 const challengeBytes = new TextEncoder().encode(challenge.txt)
-const signedChallenge = await crypto.subtle.sign(sigAlgorithm, sigPriv, challengeBytes)
+const signedChallenge = await crypto.subtle.sign(sigAlgorithm, authPriv, challengeBytes)
 const signedChallengeBase58 = base58().encode(new Uint8Array(signedChallenge))
 
 ```
@@ -146,7 +146,7 @@ const signedChallengeBase58 = base58().encode(new Uint8Array(signedChallenge))
 ### Authentication
 - check for stored challenge
 	- if found & not expired, return it
-	- if not found or expired, request a new one using `GET {host}/{sigPubJwkHash}/challenge`
+	- if not found or expired, request a new one using `GET {host}/{authPubKeyHash}/challenge`
 - sign challenge using privateKey
 - perform authenticated request by setting in header: oc-pk (publicKey) & oc-sig (signedChallenge)
 
@@ -160,17 +160,11 @@ Import as base58 text or QR code. The data should decode to a JSON object:
 ```JSON
 {
 	"host": "https://any.host",
-	"sigPubJwkHash": "{sigPubJwkHash}",
-	"sigPubJwk": "{sigPubJwk}",
+	"authPubKeyHash": "{authPubKeyHash}",
+	"authPubJwk": "{authPubJwk}",
 	"encPubJwk": "{encPubJwk}"
 }
 ```
-
-`host` & `sigPubJwkHash` are required. `sigPubJwkHash` is the SHA-256 hash of `sigPubJwk`.
-
-`sigPubJwk` and `encPubJwk` are optional.
-If `sigPubJwk` is omitted, a message signature cannot be verified
-If `encPubJwk` is omitted, a shared secret cannot be derived, and so a message cannot be encrypted without another key echange mechanism.
 
 ## Next in pipeline
 ### Webclient

@@ -4,9 +4,8 @@
 	https://developers.cloudflare.com/workers/learning/using-durable-objects
 */
 
-import { verify } from '../../util/sign'
 import { importKey } from '../../util/key'
-import { hasChallengeExpired } from '../../util/auth'
+import { hasChallengeExpired, verify } from '../../util/auth'
 import { base58 } from '../../util/base58'
 import { messagesKey } from '../../util/message'
 import { hash } from '../../util/hash'
@@ -27,9 +26,9 @@ const defaultResponseOpts = () => { return {
 
 /**
 	@param {Request} request
-	@returns {String} sigPubJwkHashBase58
+	@returns {String} authPubJwkHashBase58
 */
-const getPublicHashFromRequest = request => {
+const getAuthPubKeyHashFromRequest = request => {
 	const url = new URL(request.url)
 	return url.pathname.split("/")[1]
 }
@@ -45,10 +44,10 @@ async function handleRequest(request, env) {
 		return new Response("Allowed methods: GET, POST, OPTIONS", defaultResponseOpts())
 	}
 	const opts = defaultResponseOpts()
-	const publicHash = getPublicHashFromRequest(request)
+	const publicHash = getAuthPubKeyHashFromRequest(request)
 	if (!publicHash) {
 		opts.status = 400
-		return new Response(JSON.stringify({error: "Missing publicHash"}), opts)
+		return new Response(JSON.stringify({error: "Missing publicKeyHash"}), opts)
 	}
   const id = env.CHANNEL.idFromName(publicHash)
   const obj = env.CHANNEL.get(id)
@@ -129,12 +128,12 @@ export class Channel {
 			return
 		}
 		if (data.get === "challenge") {
-			this.challenge = this.makeChallenge()
+			this.challenge = await this.makeChallenge()
 			ws.send(JSON.stringify({challenge: this.challenge.txt}))
 			return
 		}
-		if (data.jwk && data.sig) {
-			const isAuthenticated = await this.authenticate(data.jwk, getPublicHashFromRequest(request), data.sig)
+		if (data.jwk && data.auth) {
+			const isAuthenticated = await this.authenticate(data.jwk, getAuthPubKeyHashFromRequest(request), data.auth)
 			if (isAuthenticated) {
 				this.authedSockets.push(ws)
 				ws.send(JSON.stringify({message: "Handshake done"}))
@@ -159,27 +158,6 @@ export class Channel {
 			messages.push(data)
 			await this.storeMessages(messages)
 		}
-	}
-
-	/**
-		@returns {Object} challenge
-	*/
-	makeChallenge() {
-		return {exp: Date.now()+this.challengeTtl, txt: crypto.randomUUID()}
-	}
-
-	async authenticate(jwk, publicKeyHash, sig) {
-		const jwkBytes = new TextEncoder().encode(JSON.stringify(jwk))
-		const jwkHash = await hash(jwkBytes)
-		const b58 = base58()
-		const jwkHashBase58 = b58.encode(new Uint8Array(jwkHash))
-		// IMPORTANT verify publicKeyHash is equal to hash of public key
-		if (jwkHashBase58 !== publicKeyHash) {
-			return false
-		}
-		const sigPubKey = await importKey(jwk, ["verify"])
-		const signedChallengeBytes = b58.decode(sig)
-		return await this.verifyChallenge(sigPubKey, signedChallengeBytes)
 	}
 
 	/**
@@ -211,6 +189,41 @@ export class Channel {
 		return response
 	}
 
+	async makeChallenge() {
+		const challengeHash = await hash(new TextEncoder().encode(crypto.randomUUID()))
+		return {
+			exp: Date.now()+this.challengeTtl,
+			txt: base58().encode(new Uint8Array(challengeHash))
+		}
+	}
+
+	async authenticate(jwk, publicKeyHash, auth) {
+		const jwkBytes = new TextEncoder().encode(JSON.stringify(jwk))
+		const jwkHash = await hash(jwkBytes)
+		const b58 = base58()
+		const jwkHashBase58 = b58.encode(new Uint8Array(jwkHash))
+		// IMPORTANT verify publicKeyHash is equal to hash of public key
+		if (jwkHashBase58 !== publicKeyHash) {
+			return false
+		}
+		const authPubKey = await importKey(jwk, ["verify"])
+		const authChallengeBytes = b58.decode(auth)
+		return await this.verifyChallenge(authPubKey, authChallengeBytes)
+	}
+
+		/**
+		@param {CryptoKey} authPubKey Public auth key
+		@param {Uint8Array} authChallengeBytes Signed challenge ByteArray
+		@returns {Promise<boolean>} isVerified
+	*/
+	async verifyChallenge(authPubKey, authChallengeBytes) {
+		if (hasChallengeExpired(this.challenge)) {
+			return false
+		}
+		const challengeBytes = new TextEncoder().encode(this.challenge.txt)
+		return await verify(authPubKey, authChallengeBytes, challengeBytes)
+	}
+
 	/**
 		@returns {Promise<Object>} Promise for stored messages
 	*/
@@ -228,18 +241,5 @@ export class Channel {
 	*/
 	async storeMessages(messages) {
 		return await this.state.storage.put(messagesKey, JSON.stringify(messages))
-	}
-
-	/**
-		@param {CryptoKey} sigPub Public signing key
-		@param {Uint8Array} signedChallengeBytes Signed challenge ByteArray
-		@returns {Promise<boolean>} isVerified
-	*/
-	async verifyChallenge(sigPub, signedChallengeBytes) {
-		if (hasChallengeExpired(this.challenge)) {
-			return false
-		}
-		const challengeBytes = new TextEncoder().encode(this.challenge.txt)
-		return await verify(sigPub, signedChallengeBytes, challengeBytes)
 	}
 }

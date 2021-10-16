@@ -31,8 +31,8 @@ export class ContactController {
 
 	async addContact(contact) {
 		if (this.isValid(contact)) {
-			const publicHashBytes = new Uint8Array(await hash(getJwkBytes(contact.keys.sig.jwk)))
-    	contact.keys.sig.publicHash = base58().encode(publicHashBytes)
+			const publicHashBytes = new Uint8Array(await hash(getJwkBytes(contact.keys.auth.jwk)))
+    	contact.keys.auth.publicHash = base58().encode(publicHashBytes)
 			const existing = this.list.find(c => this.matches(c, contact))
 			if (existing) {
 				Object.assign(existing, contact)
@@ -47,7 +47,7 @@ export class ContactController {
 
 	async addContactFromShareable(shareable) {
     if (!shareable || shareable.length < 1) {
-      console.log("invalid")
+      console.log("Invalid shareable")
       return false
     }
     const bytes = base58().decode(shareable)
@@ -56,11 +56,11 @@ export class ContactController {
     try {
       contact = JSON.parse(jsonString).contact;
     } catch (e) {
-      console.log("failed to parse json", jsonString)
+      console.log("Failed to parse json", jsonString)
       return
     }
     if (!this.isValid(contact)) {
-      console.log("failed, missing keys, inboxDomain or name", contact)
+      console.log("Failed, missing keys, domain or name", contact)
       return
     }
     await this.addContact(contact)
@@ -74,27 +74,27 @@ export class ContactController {
 			this.list.splice(index, 1)
 			this.selected = undefined
 			this.store()
-			this.host.message.list = this.host.message.list.filter(m => m.f !== contact.keys.sig.publicHash)
+			this.host.message.list = this.host.message.list.filter(m => m.f !== contact.keys.auth.publicHash)
 			this.host.message.store()
-			console.log("removed")
+			console.log("Contact removed")
 			this.host.requestUpdate()
 		} else {
-			console.log("not found")
+			console.log("Contact not found")
 		}
 	}
 
 	select(contact) {
 		this.selected = contact
-    console.log("selected", this.selected)
+    console.log("Contact selected", this.selected)
 		this.host.requestUpdate()
 	}
 
 	isValid(contact) {
-		return contact && contact.keys && contact.keys.sig && contact.keys.sig.jwk
-			&& contact.name && contact.inboxDomain
+		return contact && contact.keys && contact.keys.auth && contact.keys.auth.jwk
+			&& contact.name && contact.domain
 	}
 
 	matches(contact1, contact2) {
-		return contact1.keys.sig.publicHash === contact2.keys.sig.publicHash
+		return contact1.keys.auth.publicHash === contact2.keys.auth.publicHash
 	}
 }

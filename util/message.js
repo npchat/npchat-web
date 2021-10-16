@@ -1,55 +1,56 @@
+import { sign, verify } from "./auth"
 import { base58 } from "./base58"
 import { hash } from "./hash"
-import { sign, verify } from "./sign"
+import { deriveKey, importDHKey } from "./key"
+import { encrypt, getIV } from "./privacy"
 
 export const messagesKey = "messages"
 
-export async function buildMessage(sigPriv, messageText, from) {
-	const hashable = buildMessageBody(messageText, from)
-	const bytes = new TextEncoder().encode(JSON.stringify(hashable))
-	const hashBytes = new Uint8Array(await hash(bytes))
+export async function buildMessage(authPriv, dhPrivateKey, messageText, from, toDHPublicJwk) {
+	const t = Date.now()
+	const iv = await getIV(from+t)
+	const ivBytes = new Uint8Array(iv)
+	const dhPublicKey = await importDHKey(toDHPublicJwk, [])
+	const derivedKey = await deriveKey(dhPublicKey, dhPrivateKey)
+	const encrypted = await encrypt(iv, derivedKey, new TextEncoder().encode(messageText))
+	const encryptedBytes = new Uint8Array(encrypted)
+	const associatedBytes = new TextEncoder().encode(JSON.stringify({t: t, f: from}))
+	const bytesToHash = new Uint8Array([...ivBytes, ...encryptedBytes, ...associatedBytes])
+	const messageHash = new Uint8Array(await hash(bytesToHash))
 	const b58 = base58()
-	hashable.h = b58.encode(hashBytes)
-	if (sigPriv) {
-		const hashSig = new Uint8Array(await sign(sigPriv, hashBytes))
-		hashable.s = b58.encode(hashSig)
+	const message = {
+		t: t,
+		iv: b58.encode(ivBytes),
+		m: b58.encode(encryptedBytes),
+		f: from,
+		h: b58.encode(messageHash)
 	}
-	return hashable
+	const hashSig = new Uint8Array(await sign(authPriv, messageHash))
+	message.s = b58.encode(hashSig)
+	return message
 }
 
-function buildMessageBody(messageText, from, time) {
-	return {
-		t: time || Date.now(),
-		m: messageText,
-		f: from
-	}
-}
-
-export async function sendMessage(domain, sigPriv, message, from, to) {
-	const resp = await fetch(`https://${domain}/${to}`, {
+export async function sendMessage(domain, authPriv, dhPrivateKey, messageText, from, toPublicKeyHash, toDHPublicJwk) {
+	const resp = await fetch(`https://${domain}/${toPublicKeyHash}`, {
 		method: "POST",
-		body: JSON.stringify(await buildMessage(sigPriv, message, from))
+		body: JSON.stringify(await buildMessage(authPriv, dhPrivateKey, messageText, from, toDHPublicJwk))
 	})
 	return resp.json()
 }
 
-export async function verifyMessage(sigPub, message) {
-	if (!message.h || !message.s) {
+export async function verifyMessage(authPub, message) {
+	if (!message.t || !message.iv || !message.m || !message.f || !message.h) {
 		return false
 	}
-	const hashable = buildMessageBody(message.m, message.f, message.t)
-	const bytes = new TextEncoder().encode(JSON.stringify(hashable))
-	const hashBytes = new Uint8Array(await hash(bytes))
 	const b58 = base58()
-	const hashedMessage = b58.encode(hashBytes)
-	if (hashedMessage !== message.h) {
+	const iv = b58.decode(message.iv)
+	const	m = b58.decode(message.m)
+	const associatedBytes = new TextEncoder().encode(JSON.stringify({t: message.t, f: message.f}))
+	const bytesToHash = new Uint8Array([...iv, ...m, ...associatedBytes])
+	const hashed = new Uint8Array(await hash(bytesToHash))
+	if (!b58.encode(hashed) === message.h) {
 		return false
 	}
-	const sigBytes = b58.decode(message.s)
-	const isVerified = await verify(sigPub, sigBytes, hashBytes)
-	if (!isVerified) {
-		return false
-	}
-	return true
+	return await verify(authPub, b58.decode(message.s), hashed)
 }
 

@@ -1,13 +1,16 @@
-export function buildShareable(name, sigJwk, inboxDomain) {
+export function buildShareable(name, authJwk, dhJwk, domain) {
 	return {
 		contact: {
 			name: name,
 			keys: {
-				sig: {
-					jwk: sigJwk,
+				auth: {
+					jwk: authJwk,
+				},
+				dh: {
+					jwk: dhJwk
 				}
 			},
-			inboxDomain: inboxDomain
+			domain: domain
 		}
 	}
 }
