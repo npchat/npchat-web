@@ -6,7 +6,7 @@ export const buildOptions = {
 	bundle: true,
 	minify: !isDev(),
 	watch: watch(),
-	entryPoints: ["src/index.js"],
+	entryPoints: ["src/index.js", "src/service-worker.js"],
 	outdir: "www/dist"
 }
 

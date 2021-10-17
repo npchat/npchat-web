@@ -4,10 +4,11 @@
 	https://developers.cloudflare.com/workers/learning/using-durable-objects
 */
 
-import { genAuthKeyPair, importAuthKey } from '../../util/key'
+import { genAuthKeyPair, importAuthKey, importAuthKeyV2 } from '../../util/key'
 import { sign, verify } from '../../util/auth'
 import { base58 } from '../../util/base58'
 import { hash } from '../../util/hash'
+import { uint8ArrayToBase64Url } from "../../util/base64"
 
 /**
 	@returns {Object} default response options
@@ -73,16 +74,39 @@ async function handleRequest(request, env) {
 	- messages
 
 	Environment sets:
-	- challengeTtl
+	- VAPID keys
 */
 export class Channel {
 	constructor(state, env) {
 		this.state = state
 		this.state.blockConcurrencyWhile(async () => {
 			this.messages = await this.getStoredMessages()
-			this.keyPair = await genAuthKeyPair()
+			this.subscriptions = await this.getStoredSubscriptions()
+			this.authKeyPair = await genAuthKeyPair()
+			await this.initVapid()
 		})
 		this.authedSockets = []
+	}
+
+	async initVapid() {
+		this.vapidAuthKeys = await this.getStoredVapidAuthKeys()
+		console.log("npchatlog vapidAuthKeys", this.vapidAuthKeys)
+		let pubRaw
+		if (!this.vapidAuthKeys) {
+			try {
+				this.vapidAuthKeys = await genAuthKeyPair()
+				pubRaw = await crypto.subtle.exportKey("raw", this.vapidAuthKeys.publicKey)
+				const privRaw = await crypto.subtle.exportKey("raw", this.vapidAuthKeys.privateKey)
+				const b58 = base58()
+				await this.state.storage.put("vapidAuthPublicKey", b58.encode(new Uint8Array(pubRaw)))
+				await this.state.storage.put("vapidAuthPrivateKey", b58.encode(new Uint8Array(privRaw)))
+			} catch (e) {
+				console.log("Failed to store vapid keys", e)
+			}
+		} else {
+			pubRaw = await crypto.subtle.exportKey("raw", this.vapidAuthKeys.publicKey)
+		}
+		this.vapidAppPublicKey = uint8ArrayToBase64Url(new Uint8Array(pubRaw))
 	}
 
 	async fetch(request) {
@@ -132,20 +156,28 @@ export class Channel {
 			ws.send(JSON.stringify({challenge: await this.makeChallenge()}))
 			return
 		}
+		if (data.get === "vapidAppPublicKey") {
+			ws.send(JSON.stringify({vapidAppPublicKey: this.vapidAppPublicKey}))
+			return
+		}
+		
 		if (data.jwk && data.challenge && data.solution) {
 			const isAuthenticated = await this.authenticate(data, getAuthPubKeyHashFromRequest(request))
 			if (isAuthenticated) {
 				this.authedSockets.push(ws)
 				ws.send(JSON.stringify({message: "Handshake done"}))
-				this.messages.forEach(m => {
-					 ws.send(JSON.stringify(m))
-				})
-				await this.storeMessages([])
-				this.messages = []
+				if (this.messages.length > 0) {
+					this.messages.forEach(m => {
+						ws.send(JSON.stringify(m))
+				 })
+				 await this.storeMessages([])
+				 this.messages = []
+				}
 			} else {
 				ws.send(JSON.stringify({message: "Nope. Try again...", error: "Authentication failed"}))
 				ws.close()
 			}
+			return
 		}
 		if (!this.authedSockets.find(w => Object.is(w, ws))) {
 			ws.send(JSON.stringify({message: "Unauthorized", error: "Unauthorized"}))
@@ -153,10 +185,52 @@ export class Channel {
 		}
 		// WS is authed...
 
+		// handle message
 		if (data.t && data.m && data.h) {
 			this.messages.push(data)
 			await this.storeMessages(this.messages)
+			return
 		}
+
+		// handle subscription
+		if (data.subscription) {	
+			this.subscriptions = []
+			this.subscriptions.push(data.subscription)
+			this.state.storage.put("subscriptions", JSON.stringify(this.subscriptions))
+
+			// send test notification
+			const pushResponse = await this.pushNotification(data.subscription, "test")
+			ws.send(JSON.stringify({message: "Sent notification", data: pushResponse}))
+		}
+	}
+
+	async pushNotification(subscription, message) {
+		const url = new URL(subscription.endpoint)
+		const info = {
+			typ: "JWT",
+			alg: "ES256"
+		}
+		const data = {
+			aud: url.origin,
+			exp: Math.floor(Date.now() / 1000) + (12 * 60 * 60), // 12 hours
+			sub: "mailto:info@npchat.org" // make env variable
+		}
+		const encoder = new TextEncoder("utf-8")
+		const infoBase64 = uint8ArrayToBase64Url(encoder.encode(JSON.stringify(info)))
+		const dataBase64 = uint8ArrayToBase64Url(encoder.encode(JSON.stringify(data)))
+		const unsignedToken = `${infoBase64}.${dataBase64}`
+		const signature = await sign(this.vapidAuthKeys.privateKey, encoder.encode(unsignedToken))
+		const signatureBase64 = uint8ArrayToBase64Url(new Uint8Array(signature))
+		const authHeader = `WebPush ${unsignedToken}.${signatureBase64}`
+		const cryptoKeyHeader = `p256ecdsa=${this.vapidAppPublicKey}`
+		return fetch(subscription.endpoint, {
+			method: "POST",
+			headers: {
+				"Authorization": authHeader,
+				"Crypto-Key": cryptoKeyHeader
+			},
+			body: message
+		})
 	}
 
 	/**
@@ -190,7 +264,7 @@ export class Channel {
 		// timecode is only used to salt the UUID
 		const randomBytes = new TextEncoder().encode(crypto.randomUUID()+Date.now())
 		const challengeBytes = new Uint8Array(await hash(randomBytes))
-		const challengeSignature = new Uint8Array(await sign(this.keyPair.privateKey, challengeBytes))
+		const challengeSignature = new Uint8Array(await sign(this.authKeyPair.privateKey, challengeBytes))
 		const b58 = base58()
 		return {
 			txt: b58.encode(challengeBytes),
@@ -209,14 +283,14 @@ export class Channel {
 		}
 		const solutionBytes = b58.decode(data.solution)
 		const authPublicKey = await importAuthKey(data.jwk, ["verify"])
-		return await this.verifyChallenge(data.challenge, solutionBytes, authPublicKey)
+		return this.verifyChallenge(data.challenge, solutionBytes, authPublicKey)
 	}
 
 	async verifyChallenge(challenge, solutionBytes, authPublicKey) {
 		const b58 = base58()
 		const challengeSignature = b58.decode(challenge.sig)
 		const challengeBytes = b58.decode(challenge.txt)
-		const isChallengeAuthentic = await verify(this.keyPair.publicKey, challengeSignature, challengeBytes)
+		const isChallengeAuthentic = await verify(this.authKeyPair.publicKey, challengeSignature, challengeBytes)
 		if (!isChallengeAuthentic) return false
 		const isChallengeSolutionValid = await verify(authPublicKey, solutionBytes, challengeBytes)
 		if (!isChallengeSolutionValid) return false
@@ -231,7 +305,28 @@ export class Channel {
 		return JSON.parse(stored)
 	}
 
+	async getStoredSubscriptions() {
+		const stored = await this.state.storage.get("subscriptions")
+		if (!stored) {
+			return []
+		}
+		return JSON.parse(stored)
+	}
+
 	async storeMessages(messages) {
-		return await this.state.storage.put("messages", JSON.stringify(messages))
+		return this.state.storage.put("messages", JSON.stringify(messages))
+	}
+
+	async getStoredVapidAuthKeys() {
+		const publicKeyBase58 = await this.state.storage.get("vapidAuthPublicKey")
+		const privateKeyBase58 = await this.state.storage.get("vapidAuthPrivateKey")
+		if (!publicKeyBase58 || !privateKeyBase58) {
+			return
+		}
+		const b58 = base58()
+		return {
+			publicKey: await importAuthKeyV2("raw", b58.decode(publicKeyBase58), ["verify"]),
+			privateKey: await importAuthKeyV2("raw", b58.decode(privateKeyBase58), ["sign"])
+		}
 	}
 }

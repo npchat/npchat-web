@@ -1,23 +1,20 @@
 import { html } from "lit";
-import { signChallenge } from "../../../util/auth";
+import { Base } from "./base";
 import { base58 } from "../../../util/base58";
-import { getWebSocket } from "../util/websocket";
 import { ContactController } from "../controller/contact";
 import { MessageController } from "../controller/message";
 import { PreferenceController } from "../controller/preference";
-import { Base } from "./base";
+import { WebSocketController } from "../controller/websocket";
+import { PushController } from "../controller/push";
 
 export class App extends Base {
   pref = new PreferenceController(this)
   contact = new ContactController(this)
   message = new MessageController(this)
+  websocket = new WebSocketController(this)
+  push = new PushController(this)
 
   static properties = {
-    pref: {},
-    contact: {},
-    message: {},
-    webSocket: {},
-    isConnected: {},
     selectedMenu: {},
     exportLinkHidden: {},
     exportQRHidden: {}
@@ -37,53 +34,13 @@ export class App extends Base {
     this.importFromUrlHash()
     await this.message.init()
     try {
-      await this.connectWebSocket()
-      this.isConnected = true
+      await this.websocket.connect()
+      await this.push.init()
     } catch (e) {
       console.log("WebSocket connection failed", e)
-      this.isConnected = false
+      return
     }
     return true
-  }
-
-  async connectWebSocket() {
-    this.webSocket = undefined
-    this.isConnected = false
-    return new Promise((resolve, reject) => {
-      this.webSocket = getWebSocket(this.pref.domain, this.pref.keys.auth.publicHash)
-      this.webSocket.addEventListener("open", () => {
-        this.webSocket.send(JSON.stringify({get: "challenge"}))
-      })
-      this.webSocket.addEventListener("message", async event => {
-        let data
-        try {
-          data = JSON.parse(event.data)
-        } catch (e) {
-          console.log("Failed to parse JSON", e)
-          return
-        }
-        if (!data.error) {
-          if (data.challenge) {
-            const challengeResponse = {
-              jwk: this.pref.keys.auth.jwk.public,
-              challenge: data.challenge,
-              solution: await signChallenge(this.pref.keys.auth.keyPair.privateKey, data.challenge.txt)
-            }
-            this.webSocket.send(JSON.stringify(challengeResponse))
-            return
-          }
-          await this.message.handleReceivedMessage(data, true)
-          resolve(data)
-        } else {
-          reject(data)
-        }
-      })
-      this.addEventListener("close", () => {
-        console.log("Connection closed")
-        this.isConnected = false
-        this.webSocket = undefined
-      })
-    });
   }
 
   async importFromUrlHash() {
@@ -162,7 +119,7 @@ export class App extends Base {
         </nav>
         <h1>npchat webclient</h1>
         <span class="welcome">Hello, ${this.pref.name} ☺️</span>
-        <div class="status ${this.isConnected ? "connected" : ""}"></div>
+        <div class="status ${this.websocket.isConnected ? "connected" : ""}"></div>
       </header>
     `;
   }
@@ -274,8 +231,8 @@ export class App extends Base {
 
   statusTemplate() {
     return html`
-      <span class="error" ?hidden=${this.isConnected}>💥 No WebSocket connection</span>
-      <span ?hidden=${!this.isConnected}>👍 Connected</span>
+      <span class="error" ?hidden=${this.websocket.isConnected}>💥 No WebSocket connection</span>
+      <span ?hidden=${!this.websocket.isConnected}>👍 Connected</span>
     `;
   }
   
