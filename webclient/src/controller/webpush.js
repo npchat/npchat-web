@@ -1,6 +1,4 @@
-import { uint8ArrayToBase64Url } from "../../../util/base64";
-
-export class PushController {
+export class WebPushController {
 	host;
 
 	constructor(host) {
@@ -29,11 +27,11 @@ export class PushController {
 				applicationServerKey: await this.getAppPublicKey()
 			})
 			currentSub = sub
+			this.host.websocket.socket.send(JSON.stringify({subscription: currentSub.toJSON()}))
 			console.log("new subscription", currentSub)
 		} else {
 			console.log("already subscribed", currentSub)
 		}
-		this.host.websocket.socket.send(JSON.stringify({subscription: currentSub.toJSON()}))
 	}
 
 	async registerServiceWorker() {

@@ -5,14 +5,14 @@ import { ContactController } from "../controller/contact";
 import { MessageController } from "../controller/message";
 import { PreferenceController } from "../controller/preference";
 import { WebSocketController } from "../controller/websocket";
-import { PushController } from "../controller/push";
+import { WebPushController } from "../controller/webpush";
 
 export class App extends Base {
   pref = new PreferenceController(this)
   contact = new ContactController(this)
   message = new MessageController(this)
   websocket = new WebSocketController(this)
-  push = new PushController(this)
+  webpush = new WebPushController(this)
 
   static properties = {
     selectedMenu: {},
@@ -35,7 +35,7 @@ export class App extends Base {
     await this.message.init()
     try {
       await this.websocket.connect()
-      await this.push.init()
+      await this.webpush.init()
     } catch (e) {
       console.log("WebSocket connection failed", e)
       return

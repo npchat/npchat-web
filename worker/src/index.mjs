@@ -4,7 +4,7 @@
 	https://developers.cloudflare.com/workers/learning/using-durable-objects
 */
 
-import { genAuthKeyPair, importAuthKey, importAuthKeyV2 } from '../../util/key'
+import { genAuthKeyPair, genDHKeyPair, importAuthKey, importAuthKeyV2 } from '../../util/key'
 import { sign, verify } from '../../util/auth'
 import { base58 } from '../../util/base58'
 import { hash } from '../../util/hash'
@@ -90,7 +90,6 @@ export class Channel {
 
 	async initVapid() {
 		this.vapidAuthKeys = await this.getStoredVapidAuthKeys()
-		console.log("npchatlog vapidAuthKeys", this.vapidAuthKeys)
 		let pubRaw
 		if (!this.vapidAuthKeys) {
 			try {
@@ -194,17 +193,17 @@ export class Channel {
 
 		// handle subscription
 		if (data.subscription) {	
-			this.subscriptions = []
+			this.subscriptions = [] // TODO: implement subscription management
 			this.subscriptions.push(data.subscription)
 			this.state.storage.put("subscriptions", JSON.stringify(this.subscriptions))
 
 			// send test notification
-			const pushResponse = await this.pushNotification(data.subscription, "test")
+			const pushResponse = await this.pushNotification(data.subscription)
 			ws.send(JSON.stringify({message: "Sent notification", data: pushResponse}))
 		}
 	}
 
-	async pushNotification(subscription, message) {
+	async pushNotification(subscription) {
 		const url = new URL(subscription.endpoint)
 		const info = {
 			typ: "JWT",
@@ -227,9 +226,9 @@ export class Channel {
 			method: "POST",
 			headers: {
 				"Authorization": authHeader,
-				"Crypto-Key": cryptoKeyHeader
-			},
-			body: message
+				"Crypto-Key": cryptoKeyHeader,
+				"TTL": 60
+			}
 		})
 	}
 
@@ -240,22 +239,12 @@ export class Channel {
 	async handlePostMessage(request) {
 		const response = new Response(JSON.stringify({message: "Sent"}), defaultResponseOpts());
 		const messageData = await request.json()
-		if (Array.isArray(messageData)) {
-			if (this.authedSockets.length > 0) {
-				messageData.forEach(m => {
-					this.authedSockets.forEach(ws => ws.send(JSON.stringify(m)))
-				})
-			} else {
-				this.messages.push(...messageData)
-				await this.storeMessages(this.messages)
-			}
+		if (this.authedSockets.length > 0) {
+			this.authedSockets.forEach(ws => ws.send(JSON.stringify(messageData)))
 		} else {
-			if (this.authedSockets.length > 0) {
-				this.authedSockets.forEach(ws => ws.send(JSON.stringify(messageData)))
-			} else {
-				this.messages.push(messageData)
-				await this.storeMessages(this.messages)
-			}
+			this.messages.push(messageData)
+			await this.storeMessages(this.messages)
+			this.subscriptions.forEach(async sub => await this.pushNotification(sub))
 		}
 		return response
 	}
