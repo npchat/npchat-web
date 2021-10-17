@@ -37,23 +37,28 @@ export class WebSocketController {
 			console.log("Failed to parse JSON", e)
 			return
 		}
-		if (!data.error) {
-			if (data.challenge) {
-				const challengeResponse = {
-					jwk: pref.keys.auth.jwk.public,
-					challenge: data.challenge,
-					solution: await signChallenge(pref.keys.auth.keyPair.privateKey, data.challenge.txt)
-				}
-				this.socket.send(JSON.stringify(challengeResponse))
-				return
-			}
-			this.isConnected = true
-			this.host.requestUpdate()
-			resolve()
-			await this.host.message.handleReceivedMessage(data, true)
-		} else {
+		if (data.error) {
 			this.isConnected = false
+			console.log("WS error", data.error)
+			this.host.requestUpdate()
+			return
 		}
+		if (data.challenge) {
+			const challengeResponse = {
+				jwk: pref.keys.auth.jwk.public,
+				challenge: data.challenge,
+				solution: await signChallenge(pref.keys.auth.keyPair.privateKey, data.challenge.txt)
+			}
+			this.socket.send(JSON.stringify(challengeResponse))
+			return
+		}
+		if (data.vapidAppPublicKey) {
+			await this.host.webpush.subscribeToPushNotifications(data.vapidAppPublicKey)
+		}
+		this.isConnected = true
+		resolve()
+		await this.host.message.handleReceivedMessage(data, true)
+		this.host.requestUpdate()
 	}
 
 	handleClose(reject) {

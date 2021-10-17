@@ -1,3 +1,5 @@
+import { base64UrlToUint8Array, uint8ArrayToBase64Url } from "../../../util/base64";
+
 export class WebPushController {
 	host;
 
@@ -7,11 +9,7 @@ export class WebPushController {
 		host.addController(this)
 	}
 
-	async init() {
-		return this.subscribeToPushNotifications()
-	}
-
-	async subscribeToPushNotifications() {
+	async subscribeToPushNotifications(vapidAppPublicKey) {
 		if (!navigator.serviceWorker || !window.PushManager) {
 			console.log("ServiceWorker or PushManager not supported")
 			return
@@ -21,10 +19,22 @@ export class WebPushController {
 		const gotPermission = await this.askPermission()
 		if (!gotPermission) return
 		let currentSub = await registration.pushManager.getSubscription()
+		if (currentSub) {
+			// check if vapidAppPublicKey changed
+			const currentKey = new Uint8Array(currentSub.options.applicationServerKey)
+			const currentKeyBase64 = uint8ArrayToBase64Url(currentKey)
+			if (currentKeyBase64 === vapidAppPublicKey) {
+				console.log("VAPID keys did not change")
+				return
+			} else {
+				await currentSub.unsubscribe()
+				currentSub = undefined
+			}
+		}
 		if (!currentSub) {
 			const sub = await registration.pushManager.subscribe({
 				userVisibleOnly: true,
-				applicationServerKey: await this.getAppPublicKey()
+				applicationServerKey: vapidAppPublicKey
 			})
 			currentSub = sub
 			this.host.websocket.socket.send(JSON.stringify({subscription: currentSub.toJSON()}))
@@ -46,27 +56,5 @@ export class WebPushController {
 		const permission = await Notification.requestPermission()
 		console.log("permission", permission)
 		return permission === "granted"
-	}
-
-	async getAppPublicKey() {
-		return new Promise((resolve, reject) => {
-			this.host.websocket.socket.addEventListener("message", e => this.handleGotAppPublicKey(e, resolve, reject), {once: true})
-			this.host.websocket.socket.send(JSON.stringify({get: "vapidAppPublicKey"}))
-		})
-	}
-
-	handleGotAppPublicKey(event, resolve, reject) {
-		let data
-		try {
-			data = JSON.parse(event.data)
-		} catch (e) {
-			console.log("Failed to parse message data, expected appPublicKey.")
-			return
-		}
-		if (data.vapidAppPublicKey) {
-			resolve(data.vapidAppPublicKey)
-		} else {
-			reject("No vapidAppPublicKey in message data")
-		}
 	}
 }

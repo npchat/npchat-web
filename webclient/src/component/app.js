@@ -35,7 +35,6 @@ export class App extends Base {
     await this.message.init()
     try {
       await this.websocket.connect()
-      await this.webpush.init()
     } catch (e) {
       console.log("WebSocket connection failed", e)
       return

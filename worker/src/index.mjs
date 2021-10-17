@@ -10,6 +10,9 @@ import { base58 } from '../../util/base58'
 import { hash } from '../../util/hash'
 import { uint8ArrayToBase64Url } from "../../util/base64"
 
+const vapidAuthPubStorageKey = "vapidAuthPublicKey"
+const vapidAuthPrivStorageKey = "vapidAuthPrivateKey"
+
 /**
 	@returns {Object} default response options
 */
@@ -97,8 +100,8 @@ export class Channel {
 				pubRaw = await crypto.subtle.exportKey("raw", this.vapidAuthKeys.publicKey)
 				const privRaw = await crypto.subtle.exportKey("raw", this.vapidAuthKeys.privateKey)
 				const b58 = base58()
-				await this.state.storage.put("vapidAuthPublicKey", b58.encode(new Uint8Array(pubRaw)))
-				await this.state.storage.put("vapidAuthPrivateKey", b58.encode(new Uint8Array(privRaw)))
+				await this.state.storage.put(vapidAuthPubStorageKey, b58.encode(new Uint8Array(pubRaw)))
+				await this.state.storage.put(vapidAuthPrivStorageKey, b58.encode(new Uint8Array(privRaw)))
 			} catch (e) {
 				console.log("Failed to store vapid keys", e)
 			}
@@ -155,16 +158,13 @@ export class Channel {
 			ws.send(JSON.stringify({challenge: await this.makeChallenge()}))
 			return
 		}
-		if (data.get === "vapidAppPublicKey") {
-			ws.send(JSON.stringify({vapidAppPublicKey: this.vapidAppPublicKey}))
-			return
-		}
-		
+
+		// handle auth
 		if (data.jwk && data.challenge && data.solution) {
 			const isAuthenticated = await this.authenticate(data, getAuthPubKeyHashFromRequest(request))
 			if (isAuthenticated) {
 				this.authedSockets.push(ws)
-				ws.send(JSON.stringify({message: "Handshake done"}))
+				ws.send(JSON.stringify({message: "Handshake done", vapidAppPublicKey: this.vapidAppPublicKey}))
 				if (this.messages.length > 0) {
 					this.messages.forEach(m => {
 						ws.send(JSON.stringify(m))
@@ -196,10 +196,9 @@ export class Channel {
 			this.subscriptions = [] // TODO: implement subscription management
 			this.subscriptions.push(data.subscription)
 			this.state.storage.put("subscriptions", JSON.stringify(this.subscriptions))
-
 			// send test notification
 			const pushResponse = await this.pushNotification(data.subscription)
-			ws.send(JSON.stringify({message: "Sent notification", data: pushResponse}))
+			ws.send(JSON.stringify({message: "Sent notification", data: {status: pushResponse.status, statusText: pushResponse.statusText}}))
 		}
 	}
 
@@ -307,8 +306,8 @@ export class Channel {
 	}
 
 	async getStoredVapidAuthKeys() {
-		const publicKeyBase58 = await this.state.storage.get("vapidAuthPublicKey")
-		const privateKeyBase58 = await this.state.storage.get("vapidAuthPrivateKey")
+		const publicKeyBase58 = await this.state.storage.get(vapidAuthPubStorageKey)
+		const privateKeyBase58 = await this.state.storage.get(vapidAuthPrivStorageKey)
 		if (!publicKeyBase58 || !privateKeyBase58) {
 			return
 		}
