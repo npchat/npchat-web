@@ -177,11 +177,9 @@ const aesKeyParams = {
 
 ## Next in pipeline
 ### Webclient
-- PWA push notification using service worker & a new Cloudflare worker
 - end-to-end encrypted voice & video calls using WebRTC
 
 ### Server
-Make challenge stateless by signing with a server private key, and verifying it when returned with the client's solution. This fixes a current flaw, where an attacker can continuously request a new challenge, preventing a user from authenticating. For this implementation, the key pair will be regenerated each time the Durable Object is instantiated. This is the simplest way to ensure that the keys are changed periodically.
 
 ### Not sure
 Not sure whether to do this in protocol or client only...

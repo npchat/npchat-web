@@ -1,6 +1,5 @@
 self.addEventListener("push", event => {
     self.registration.showNotification("Received message", {
-      body: "Got a message",
       tag: "got-message"
   });
 })
@@ -12,7 +11,7 @@ self.addEventListener("notificationclick", event => {
   event.waitUntil(clients.matchAll({
     type: "window"
   }).then(clientList => {
-    for (var i = 0; i < clientList.length; i++) {
+    for (let i = 0; i < clientList.length; i++) {
       const client = clientList[i]
       if (client.url == '/' && 'focus' in client) {
         return client.focus()
