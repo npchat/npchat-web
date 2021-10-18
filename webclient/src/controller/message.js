@@ -1,5 +1,5 @@
 import { base58 } from "../../../util/base58";
-import { deriveKey, importAuthKey, importDHKey } from "../../../util/key";
+import { deriveDHSecretKey, importAuthKey, importDHKey } from "../../../util/key";
 import { sendMessage, buildMessage, verifyMessage } from "../util/message"
 import { decrypt } from "../../../util/privacy";
 
@@ -52,8 +52,8 @@ export class MessageController {
     const ivBytes = b58.decode(data.iv)
     const mBytes = b58.decode(data.m)
 
-    const contactDHPub = await importDHKey(contactMatch.keys.dh.jwk, [])
-    const derivedKey = await deriveKey(contactDHPub, this.host.pref.keys.dh.keyPair.privateKey)
+    const contactDHPub = await importDHKey("jwk", contactMatch.keys.dh.jwk, [])
+    const derivedKey = await deriveDHSecretKey(contactDHPub, this.host.pref.keys.dh.keyPair.privateKey)
 
     const messagePlainBytes = new Uint8Array(await decrypt(ivBytes, derivedKey, mBytes))
 

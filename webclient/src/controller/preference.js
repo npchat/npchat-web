@@ -1,6 +1,6 @@
 import { base58 } from "../../../util/base58";
 import { hash } from "../../../util/hash";
-import { deriveKey, exportKey, genAuthKeyPair, genDHKeyPair, getJwkBytes, importAuthKey, importDHKey } from "../../../util/key";
+import { exportKey, genAuthKeyPair, genDHKeyPair, getJwkBytes, importAuthKey, importDHKey } from "../../../util/key";
 import { buildShareable } from "../util/shareable";
 import { generateQR } from "../util/qrcode";
 
@@ -67,8 +67,8 @@ export class PreferenceController {
 			publicKey: await importAuthKey(this.keys.auth.jwk.public, ["verify"])
 		}
 		this.keys.dh.keyPair = {
-			privateKey: await importDHKey(this.keys.dh.jwk.private, ["deriveKey"]),
-			publicKey: await importDHKey(this.keys.dh.jwk.public, [])
+			privateKey: await importDHKey("jwk", this.keys.dh.jwk.private, ["deriveKey"]),
+			publicKey: await importDHKey("jwk", this.keys.dh.jwk.public, [])
 		}
 		return this.keys
   }

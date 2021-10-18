@@ -1,15 +1,15 @@
 import { sign, verify } from "../../../util/auth"
 import { base58 } from "../../../util/base58"
 import { hash } from "../../../util/hash"
-import { deriveKey, importDHKey } from "../../../util/key"
+import { deriveDHSecretKey, importDHKey } from "../../../util/key"
 import { encrypt, getIV } from "../../../util/privacy"
 
 export async function buildMessage(authPriv, dhPrivateKey, messageText, from, toDHPublicJwk) {
 	const t = Date.now()
 	const iv = await getIV(from+t)
 	const ivBytes = new Uint8Array(iv)
-	const dhPublicKey = await importDHKey(toDHPublicJwk, [])
-	const derivedKey = await deriveKey(dhPublicKey, dhPrivateKey)
+	const dhPublicKey = await importDHKey("jwk", toDHPublicJwk, [])
+	const derivedKey = await deriveDHSecretKey(dhPublicKey, dhPrivateKey)
 	const encrypted = await encrypt(iv, derivedKey, new TextEncoder().encode(messageText))
 	const encryptedBytes = new Uint8Array(encrypted)
 	const associatedBytes = new TextEncoder().encode(JSON.stringify({t: t, f: from}))

@@ -1,3 +1,4 @@
+import { authAlgorithm } from "./auth"
 import { aesKeyParams } from "./privacy"
 
 export const authKeyParams = {
@@ -20,21 +21,25 @@ export async function importAuthKey(jwk, keyUsages) {
 	return crypto.subtle.importKey("jwk", jwk, authKeyParams, true, keyUsages)
 }
 
+export async function importAuthKeyV2(format, keyData, keyUsages) {
+	return crypto.subtle.importKey(format, keyData, authAlgorithm, true, keyUsages)
+}
+
 export async function genDHKeyPair() {
 	return crypto.subtle.generateKey(dhKeyParams, true, ["deriveKey", "deriveBits"])
 }
 
-export async function importDHKey(jwk, keyUsages) {
-	return crypto.subtle.importKey("jwk", jwk, dhKeyParams, true, keyUsages)
+export async function importDHKey(format, keyData, keyUsages) {
+	return crypto.subtle.importKey(format, keyData, dhKeyParams, true, keyUsages)
 }
 
-export async function deriveKey(publicKey, privateKey) {
+export async function deriveDHSecretKey(publicKey, privateKey) {
 	const params = dhDeriveKeyParams(publicKey)
 	return crypto.subtle.deriveKey(params, privateKey, aesKeyParams, true, ["encrypt", "decrypt"])
 }
 
-export async function exportKey(cryptoKey) {
-	return crypto.subtle.exportKey("jwk", cryptoKey)
+export async function exportKey(cryptoKey, format = "jwk") {
+	return crypto.subtle.exportKey(format, cryptoKey)
 }
 
 export function getJwkBytes(jwk) {

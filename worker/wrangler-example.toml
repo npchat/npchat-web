@@ -14,5 +14,3 @@ main = "./index.mjs"
 [durable_objects]
 bindings = [{name = "CHANNEL", class_name = "Channel"}]
 
-[vars]
-CHALLENGE_TTL = "60000" #ms
