@@ -1,159 +1,124 @@
 # npchat
-## A simple & secure messaging protocol
+## 1. A simple & secure host agnostic messaging protocol
 This is an application-layer protocol for secure messaging across hosts.
+
+It uses Elliptic Curve cryptography for signing, verifying, encrypting & decrypting messages end-to-end.
 
 A message is sent to any contact on any host using their `authPublicKeyHash` as an ID.
 
 A client connects to their host by requesting a WebSocket upgrade.
 After a successful handshake, the client will receive all messages sent to them immediately.
-If a reciepient is offline, their messages are stored on the host until collected after the next successful handshake.
+If a reciepient is offline:
+- their messages are stored on the host until collected after the next successful handshake
+- they will recieve a Web-Push notification if subscribed
 
-## Channel
+## 2. Channel
 A `Channel` is an inbox on a host for a single `authPublicKeyHash`.
-It facilitates one-way communication from any sender to the owner of the keys corresponding to the given `authPublicKeyHash`
+It facilitates one-way communication from any sender to the owner of the private keys corresponding to the given `authPublicKeyHash`
 
 As implemented here, a Channel is a [Durable Object](https://developers.cloudflare.com/workers/learning/using-durable-objects).
 
-The host's state for any given `authPublicKeyHash` must contain:
+The Channel's state for any given `authPublicKeyHash` must contain:
 - all messages not yet collected
 - authenticated WebSocket connections
+- Web-Push subscriptions
 
-Notice that no keys are ever stored on the host.
+No keys are ever stored on the host.
 
-### 1. Request WebSocket upgrade
+### 2.1 Request WebSocket upgrade
 ```JS
-const webSocket = new WebSocket(`wss://${domain}/${publicKeyHash}`)
+const webSocket = new WebSocket(`wss://${domain}/${authPublicKeyHash}`)
 ```
 
-### 2. Handshake
+### 2.2 Handshake
 The purpose of this handshake is to authenticate a request for a websocket session.
 
-#### 2.1 Authentication
-1. Client requests a challenge
+#### 2.2.1 Client requests a challenge
 ```JS
 // webclient/src/component/app.js  async connectWebSocket()
 webSocket.addEventListener("open", () => {
 	webSocket.send(JSON.stringify({get: "challenge"}))
 })
 ```
-2. Server responds with
+#### 2.1.2 Server responds with a random signed challenge
 ```JSON
 {
-	"exp" : 1634413304391,
-	"challenge" : "4uhc5DdN3xethCiZsyvU6aRbYj1asgP8YFPYcoLBum8F"
+	"challenge" : {
+		"txt": "SgkXcdCgLeqZhc13EhApGmsUKC1qrLd3OBYx6GznVAU",
+		"sig":"t8ALom4wqABOl2x5wun8k3ShWm3qS8HNPfzPXi_A6ejTy9f7-QifJ6FxgE9lA4bssvWkdBC9OG_sQKuA0rOfww"
 	}
+}
 ```
-This implementation hashes with SHA-256 a randomUUID salted with the current timecode. Challenges should expire within minutes. A new one is generated for each handshake.
+This implementation hashes with `SHA-256` a randomUUID salted with the current timecode.
 ```JS
+// worker/src/index.mjs
 async makeChallenge() {
-	// Date.now() is only used to salt the UUID
-	const randomString = crypto.randomUUID()+Date.now()
-	const challengeHash = await hash(new TextEncoder().encode(randomString))
+	// timecode is only used to salt the UUID
+	const randomBytes = new TextEncoder().encode(crypto.randomUUID()+Date.now())
+	const challenge = new Uint8Array(await hash(randomBytes))
+	const signature = new Uint8Array(await sign(this.authKeyPair.privateKey, challenge))
 	return {
-		exp: Date.now()+this.challengeTtl,
-		txt: base58().encode(new Uint8Array(challengeHash))
+		txt: bytesToBase64(challenge),
+		sig: bytesToBase64(signature)
 	}
 }
 ```
 
-3. Client signs challenge with their ECDSA P-256 private key
+#### 2.1.3 Client signs challenge with ECDSA P-256 private key
 ```JS
-const authAlgorithm = {
-	name: "ECDSA",
-	hash: "SHA-256"
-}
-export async function sign(privCryptoKey, bytes) {
-	return crypto.subtle.sign(authAlgorithm, privCryptoKey, bytes)
+// webclient/src/controller/websocket  async handleMessage(event, resolve)
+if (data.challenge) {
+	const solution = await sign(pref.keys.auth.keyPair.privateKey, base64ToBytes(data.challenge.txt))
+	const challengeResponse = {
+		publicKey: pref.keys.auth.base64.publicKey,
+		challenge: data.challenge,
+		solution: bytesToBase64(new Uint8Array(solution))
+	}
+	this.socket.send(JSON.stringify(challengeResponse))
+	return
 }
 ```
+
+#### 2.1.4 If the signed challenge is accepted & verified by the Server
 
 #### 2.2 Post-authentication
 - the host pushes all stored messages to the client, and removes them from storage
 - any incomming messages are pushed immediately to the client
 
+## 3. Encoding & decoding
+Bytes of keys, signatures & hashes are encoded as [base64url](https://www.rfc-editor.org/rfc/rfc4648#page-7) strings.
 
+All messages are sent as JSON strings.
 
+Keys are normally exported as raw bytes & base64 encoded.
+There is one exception: exporting a ECDSA as raw is not possible, so JWK is used for this case.
 
-### Message format
+## 4. Object types
 
-### Contact format
-
-## Keys
-A client must generate a ECDSA P-384 key pair.
-
-The private key is used to authenticate by signing a random challenge.
-
-The public key is used to verify the signed challenge.
-
-The hash of the public key `authPubKeyHash` is used as a public address and Channel Id.
-
-### Algorithm
-The signing keys are an ECDSA P-385 key pair. The signing algorithm is ECDSA SHA-384. These are shown in the following example.
-```JS
-const authKeyParams = {
-				name: "ECDSA",
-				namedCurve: "P-256"
+### 4.1 Contact
+A contact object contains the following data. The domain is where message POST requests will be sent.
+The ECDSA P-256 auth key is used to verify signatures of messages received.
+The ECDH P-256 dh key is used to derive a shared secret key that is used to encrypt & decrypt the messages.
+```JSON
+{
+	"name": "HisDudeness",
+	"domain": "chat.dudely.io",
+		"keys": { // as base64url
+			"auth": { // ECDSA P-256 public key
+				"base64": "BLwvAqlP4EZv-gWhCgJt2ug48oxn09fG3A_MXv-aWoA2cDOCKE0SHS76xy2IIGEKVLdFrGm3wORFyZNRniGjpcg"
+			},
+			"dh": { // ECDH P-256 public key
+				"base64": "BEujTt5niNJ0PIzNDb5fc0J4wDkutWVeOpLDF9_ROQ8FShjKc8X-pU0oZSW2fvsjx6xTP9ueHP6mqTyjYGcVhhs"
 			}
-			
-const authAlgorithm = {
-	name: "ECDSA",
-	hash: "SHA-256"
+		}
 }
 ```
 
-### Format
-A CryptoKey is exported & imported as a JWK (JSON Web Key).
-For easy transmission, they are encoded as base58 strings.
-
-### Encoding & decoding
-Encode between base58 string & JWK JSON object.
-
-#### Encoding
-```JS
-// return a base58 string from JWK JSON object
-encodeJwk = jwk => {
-	// make sure you stringify the JWK, or you will encode "[object Object]"
-	const jwkBytes = new TextEncoder().encode(JSON.stringify(jwk))
-	// use a base58 encoding/decoding helper
-	return base58().encode(jwkBytes)
-}
-```
-
-#### Decoding
-```JS
-// return a JWK JSON object from base58 string
-decodeJwk = base58Str => {
-	// decode base58 string to bytes
-	const jwkBytes = base58().decode(base58Str)
-	// decode bytes to string & return parsed JSON
-	return JSON.parse(new TextDecoder().decode(jwkBytes))
-}
-```
-
-### Importing & exporting
-Keys are exported as JWK because it's easy to stringify & encode them, and it's easy to do the reverse.
-They are imported as a CryptoKey.
-
-#### Import
-A JWK is imported as a CryptoKey.
-```JS
-const authKeyParams = {
-	name: "ECDSA",
-	namedCurve: "P-384"
-}
-const cryptoKey = await crypto.subtle.importKey("jwk", jwk, authKeyParams)
-```
-
-#### Export
-A CryptoKey is exported as a JWK.
-```JS
-const jwk = await crypto.subtle.exportKey("jwk", cryptoKey)
-```
-
-
-### Types
-#### ECDSA P-256 for Auth
-The CryptoKeyPair used to sign & verify messages & authenticate with a server.
+## 5. Keys
+### 5.1 Auth
+### 5.1.1 ES256 key pair
+A Client & Server must generate & store an `ES256` key pair. This is [SHA-256 with ECDSA P-256](https://datatracker.ietf.org/doc/html/rfc7518#page-9).
+This is used to sign & verify data between Clients & also to authenticate with a Server.
 ```JSON
 {
 	"name": "ECDSA",
@@ -161,8 +126,13 @@ The CryptoKeyPair used to sign & verify messages & authenticate with a server.
 }
 ```
 
-#### ECDH P-256 Diffie-Hellman for encryption
-A shared secret is derived after exchanging public keys. This shared secret is used to encrypt each message with a unique random IV.
+### 5.1.2 SHA-256 Public key hash
+A Client generates this by hashing the public key with SHA-256.
+This value is referred to as `authPublicKeyHash`.
+The `authPublicKeyHash` is used as a public ID.
+
+### 5.2 ECDH P-256 key pair
+A Client generates a SHA-256 with ECDH P-256 key pair. This is used to derive a shared secret with another Client.
 ```JS
 const dhKeyParams = {
 	name: "ECDH",
