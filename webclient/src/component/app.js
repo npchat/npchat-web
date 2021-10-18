@@ -17,22 +17,27 @@ export class App extends Base {
   static properties = {
     selectedMenu: {},
     exportLinkHidden: {},
-    exportQRHidden: {}
+    exportQRHidden: {},
+    addContactError: {}
   }
 
   constructor() {
     super()
+    // unfortunately this is required to fix the message input position
+    window.addEventListener("resize", () => {
+      this.requestUpdate()
+    })
     this.selectedMenu = "contacts"
     this.exportLinkHidden = true
     this.exportQRHidden = true
-    this.initClient()
+    this.initApp()
   }
 
-  async initClient() {
+  async initApp() {
+    this.message.init()
     this.contact.init()
     await this.pref.init()
     this.importFromUrlHash()
-    await this.message.init()
     try {
       await this.websocket.connect()
     } catch (e) {
@@ -60,7 +65,7 @@ export class App extends Base {
           this.contact.store()
         }
         this.pref.store()
-        this.initClient()
+        this.initApp()
       } catch (e) {
         console.log("Import failed", e)
       }
@@ -68,9 +73,15 @@ export class App extends Base {
 	}
 
   async handleAddContact(event) {
-    const added = this.contact.addContactFromShareable(event.target.value)
+    const added = await this.contact.addContactFromShareable(event.target.value)
     if (added) {
       event.target.value = ""
+    } else {
+      this.addContactError = true
+      this.requestUpdate()
+      setTimeout(() => {
+        this.addContactError = false
+      }, 1000)
     }
   }
 
@@ -87,7 +98,7 @@ export class App extends Base {
 
   async handleChangeDomain(event) {
     await this.pref.changeDomain(event.target.value)
-    await this.initClient()
+    await this.initApp()
   }
 
   handleDismissWelcome() {
@@ -110,11 +121,18 @@ export class App extends Base {
   }
 
   headerTemplate() {
+    const isSelectedClass = menu => this.selectedMenu === menu ? "selected" : undefined
     return html `
       <header>
         <nav>
-          <a href="#" @click=${e => this.selectMenu(e, "preferences")}>⚙️ Preferences</a>
-          <a href="#" @click=${e => this.selectMenu(e, "contacts")}>💬 Contacts</a>
+          <a href="#" @click=${e => this.selectMenu(e, "preferences")} class="${isSelectedClass("preferences")}">
+            <span class="icon">⚙️</span>
+            <span class="label">Preferences</span>
+          </a>
+          <a href="#" @click=${e => this.selectMenu(e, "contacts")} class="${isSelectedClass("contacts")}">
+            <span class="icon">💬</span>
+            <span class="label">Chats</span>
+          </a>
         </nav>
         <h1>npchat webclient</h1>
         <span class="welcome">Hello, ${this.pref.name} ☺️</span>
@@ -140,14 +158,14 @@ export class App extends Base {
 
   shareableTemplate(showPublicKeyHash) {
     const publicKeyHashTemplate = html`
-      <div class="box background">
+      <div class="box">
         <p class="meta">Your publicKeyHash</p>
         <p class="wrap monospace select-all">${this.pref.keys.auth && this.pref.keys.auth.publicKeyHash}</p>
       </div>
     `;
     return html`
       <div class="shareable">
-        <div class="box background">
+        <div class="box">
           <p class="meta">Your shareable</p>
           <p class="wrap monospace select-all">${this.pref.shareable}</p>
           <div class="qr">${this.qrCodeTemplate(this.pref.qrCodeShareable)}</div>
@@ -198,7 +216,8 @@ export class App extends Base {
             <span>Domain</span>
             <input type="text" id="preferences-domain"
                 .value=${this.pref.domain}
-                @change=${e => this.handleChangeDomain(e)}/>
+                @change=${e => this.handleChangeDomain(e)}
+                class="${this.websocket.isConnected ? undefined : "warn"}"/>
           </label>
           ${this.statusTemplate()}
         </div>
@@ -211,12 +230,12 @@ export class App extends Base {
             <button @click=${() => this.toggleExportLink()}>${this.exportLinkHidden ? "Show" : "Hide"} link</button>
             <button @click=${() => this.toggleExportQR()}>${this.exportQRHidden ? "Show" : "Hide"} QR code</button>
             <div ?hidden=${this.exportLinkHidden}>
-              <div class="box background">
+              <div class="box">
                 <div class="wrap monospace select-all">${this.pref.exportLink}</div>
               </div>
             </div>
             <div ?hidden=${this.exportQRHidden}>
-              <div class="box background">
+              <div class="box">
                 <div class="qr">${this.qrCodeTemplate(this.pref.exportQRCode)}</div>
               </div>
             </div>
@@ -230,8 +249,9 @@ export class App extends Base {
 
   statusTemplate() {
     return html`
-      <span class="warn" ?hidden=${this.websocket.isConnected}>💥 No WebSocket connection</span>
-      <span ?hidden=${!this.websocket.isConnected}>👍 Connected</span>
+      <span class="meta" ${this.websocket.isConnected ? undefined : "warn"}>
+        ${this.websocket.isConnected ? "👍 Connected" : "💥 No connection"}
+      </span>
     `;
   }
   
@@ -251,7 +271,7 @@ export class App extends Base {
         <ul class="no-list">
           ${this.contact.list.map(c => this.contactTemplate(c, selectedPubHash))}
         </ul>
-        <input id="contact-addtext" placeholder="Enter a shareable" @change=${e => this.handleAddContact(e)}>
+        <input id="contact-addtext" placeholder="Enter a shareable" @change=${e => this.handleAddContact(e)} class="${this.addContactError ? "warn" : undefined}">
       </div>
     `;
   }
@@ -268,7 +288,7 @@ export class App extends Base {
   messagesTemplate(messages) {
     let prevMessageTime
     return html`
-      <div id="messages" class="messages">
+      <div id="messages" class="messages" ?hidden=${this.selectedMenu !== "contacts" && this.isMobileView()}>
         <ul class="no-list">
           ${messages.map(m => {
             const template = this.messageTemplate(m, prevMessageTime)
@@ -277,8 +297,8 @@ export class App extends Base {
           })}
         </ul>
         ${this.contact.selected && this.contact.selected.keys
-          ? html`<form class="compose" @submit=${this.handleSendMessage}>
-              <input id="message-compose" type="text"
+          ? html`<form class="compose" @submit=${this.handleSendMessage} ?hidden=${this.selectedMenu !== "contacts" && this.isMobileView()}>
+              <input id="message-input" type="text"
                 placeholder="Write a message to ${this.contact.selected ? this.contact.selected.name : ""}"/>
             </form>`
         : undefined
@@ -308,8 +328,8 @@ export class App extends Base {
     }
 
     return html`
-      ${timeElapsedString ? html`<li class="meta milestone background">${timeElapsedString}</span>` : undefined}
-      <li class="message wrap ${sent ? "sent" : "received"}">
+      ${timeElapsedString ? html`<li class="meta milestone">${timeElapsedString}</span>` : undefined}
+      <li class="message ${sent ? "sent" : "received"}">
         <div class="message-body">
           <span class="message-text">${message.mP}</span>
           <span class="meta smaller">${time}</span>
@@ -341,11 +361,15 @@ export class App extends Base {
     `;
   }
 
+  isMobileView() {
+    return window.innerWidth <= 750
+  }
+
   get contactInput() {
     return this.renderRoot?.querySelector("#contact-addtext") ?? null;
   }
 
   get messageInput() {
-    return this.renderRoot?.querySelector("#message-compose") ?? null;
+    return this.renderRoot?.querySelector("#message-input") ?? null;
   }
 }

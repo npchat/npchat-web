@@ -2,12 +2,16 @@ import { LitElement, css } from "lit";
 
 export class Base extends LitElement {
 
-  blue = "#35A7FF"
-  green = "#6BF178"
-  yellow = "#FFE74C"
-  red = "#FF5964"
-  backgroundDark = "#e5e5e5"
-  backgroundLight = "#f5f5f5"
+  static c = {
+    primary: css`#1098F7`,
+    secondary: css`#2FBF71`,
+    highlight: css`#FF3E41`,
+    bgDark: css`#010409`,
+    bgLight: css`#161D27`,
+    bgLighter: css`#253141`,
+    text: css`#FBF5F3`,
+    textDark: css`#D6D6D6`
+  }
 
 	static styles = css`,,,,
     header, .main {
@@ -18,6 +22,7 @@ export class Base extends LitElement {
       align-items: center;
       justify-content: space-between;
       padding: 0 .5rem;
+      background-color: ${this.c.bgLight}
     }
     header h1 {
       font-size: .8rem;
@@ -28,33 +33,51 @@ export class Base extends LitElement {
     }
     header .status {
       display: block;
-      width: 10px;
-      height:10px;
+      width: 12px;
+      height:12px;
       border-radius: 10px;
-      background-color: #FFE74C;
+      background-color: ${this.c.highlight};
     }
     header .status.connected {
-      background-color: #6BF178;
+      background-color: ${this.c.secondary};
     }
     nav {
       display: flex;
     }
-    nav > * {
-      padding: .5rem;
-      display: block;
+    nav > a {
+      padding: .5rem .8rem;
+      display: flex;
+      align-items: center;
+    }
+    nav .icon {
+      font-size: 1.5rem;
+    }
+    nav .label {
+      display: none;
+      margin-left: .5rem
+    }
+    nav > .selected {
+      background-color: ${this.c.bgLighter}
+    }
+    p {
+      font-size: .95rem;
     }
     a {
       text-decoration: none;
-      color: #000;
-      transition: background-color 0.2s
-    }
-    a.link {
-      background-color: #f5f5f5;
-      display: inline-block;
-      padding: 0.25rem;
+      color: ${this.c.textDark};
+      transition: color 0.2s;
     }
     a:hover {
-      background-color: #e5e5e5
+      color: ${this.c.text};
+    }
+    a.link {
+      background-color: ${this.c.bgLight};
+      display: inline-block;
+      padding: 0.25rem;
+      border-radius: 2px;
+    }
+    a.link:hover {
+      color: ${this.c.primary}
     }
     .main {
 			display: flex;
@@ -65,17 +88,42 @@ export class Base extends LitElement {
       width: 100%;
     }
     button, input {
-      padding: 0.5rem;
       font-size: 1rem;
     }
-    .background {
-      background-color: #f5f5f5;
+    button {
+      padding: 0.3rem 0.5rem;
+      background-color: ${this.c.bgLight};
+      color: ${this.c.textDark};
+      border: 1px solid ${this.c.textDark};
+      border-radius: 5px;
+    }
+    button:hover {
+      border-color: ${this.c.text};
+      background-color: ${this.c.bgLighter};
+      color: ${this.c.text}
+    }
+    input {
+      padding: 0.8rem;
+      background-color: ${this.c.bgDark};
+      color: ${this.c.text};
+      outline: none;
+      border: 1px solid ${this.c.bgLighter};
+      border-radius: 5px;
+      transition: all 0.2s
+    }
+    input:focus {
+      background-color: ${this.c.bgLight};
+      border-color: ${this.c.primary};
+    }
+    input.warn {
+      border-color: ${this.c.highlight}
     }
     .box {
       display: block;
       padding: 0.5rem;
       margin: 1rem 0;
       border-radius: 2px;
+      background-color: ${this.c.bgLight};
     }
     .wrap {
       overflow-wrap: anywhere;
@@ -88,9 +136,13 @@ export class Base extends LitElement {
     .contact {
       padding: 0.5rem;
       display: flex;
+      cursor: pointer
     }
-    .contact:hover, .contact.selected {
-      background-color: #e5e5e5;
+    .contact:hover {
+      background-color: ${this.c.bgLight};
+    }
+    .contact.selected {
+      background-color: ${this.c.bgLighter}
     }
     .contact .label {
       flex-grow: 1
@@ -98,6 +150,7 @@ export class Base extends LitElement {
     .messages ul {
       display: flex;
       flex-direction: column;
+      padding-bottom: 25px;
     }
     .message {
       display: flex;
@@ -106,48 +159,47 @@ export class Base extends LitElement {
     .message.sent {
       justify-content: right;
     }
+    .message.sent .message-body {
+      justify-content: flex-end;
+    }
     .message-body {
       padding: .5rem;
       border-radius: 5px;
       display: flex;
       flex-wrap: wrap;
+      max-width: 80%;
     }
     .message-text {
       width: 100%;
-
     }
     .message.received .message-body {
-      background-color: #e5e5e5;
+      background-color: ${this.c.bgLight};
     }
     .compose {
-      display: flex;
+      position: fixed;
+      bottom: 0;
+      width: calc(100% - 1rem);
     }
-    #message-compose {
-      flex-grow: 1;
+    #message-input {
+      width: calc(100% - 2rem);
     }
     .meta {
-      color: #555;
-      font-size: .8rem;
+      color: ${this.c.textDark};
+      font-size: .7rem;
       user-select: none;
-    }
-    .small {
-      font-size: .6rem;
-    }
-    .smaller {
-      font-size: .5rem;
     }
     .select-all {
       user-select: all;
     }
     .monospace {
       font-family: ui-monospace, Menlo, Monaco, "Cascadia Mono", "Segoe UI Mono", "Roboto Mono", "Oxygen Mono", "Ubuntu Monospace", "Source Code Pro", "Fira Mono", "Droid Sans Mono", "Courier New", monospace;
-      font-size: .8rem
+      font-size: .7rem
     }
     img {
       max-width: 100%
     }
     .warn {
-      color: #FF5964
+      color: ${this.c.highlight}
     }
 		@media(min-width: 750px) {
 			.main > * {
@@ -159,9 +211,15 @@ export class Base extends LitElement {
       header .welcome {
         display: block
       }
+      nav .label {
+        display: inline-block;
+      }
       .messages {
         padding: .5rem;
-        border-left: 2px solid #e5e5e5;
+        border-left: 2px solid ${this.c.bgLight};
+      }
+      .message-body {
+        max-width: 60%;
       }
 		}
   `;

@@ -23,7 +23,7 @@ The Channel's state for any given `authPublicKeyHash` must contain:
 - authenticated WebSocket connections
 - Web-Push subscriptions
 
-No keys are ever stored on the host.
+No Client keys are ever stored on the host.
 
 ### 2.1 Request WebSocket upgrade
 ```JS
@@ -65,6 +65,8 @@ async makeChallenge() {
 ```
 
 #### 2.1.3 Client signs challenge with ECDSA P-256 private key
+Client signs the challenge text using their private auth key.
+Then they return the solution along with the challenge & public key.
 ```JS
 // webclient/src/controller/websocket  async handleMessage(event, resolve)
 if (data.challenge) {
@@ -82,8 +84,8 @@ if (data.challenge) {
 #### 2.1.4 If the signed challenge is accepted & verified by the Server
 
 #### 2.2 Post-authentication
-- the host pushes all stored messages to the client, and removes them from storage
-- any incomming messages are pushed immediately to the client
+- Server pushes all stored messages to Client, and removes them from storage
+- any incomming messages are pushed immediately to Client
 
 ## 3. Encoding & decoding
 Bytes of keys, signatures & hashes are encoded as [base64url](https://www.rfc-editor.org/rfc/rfc4648#page-7) strings.
@@ -95,8 +97,51 @@ There is one exception: exporting a ECDSA as raw is not possible, so JWK is used
 
 ## 4. Object types
 
-### 4.1 Contact
-A contact object contains the following data. The domain is where message POST requests will be sent.
+### 4.1 Message
+A message contains the following data.
+```JSON
+{
+	"t":1634569493250, // time of message
+	"iv":"nfIKqyhooM_XQLX9pVmLW_pzCfq9VclsxkRBsJ8Vwy4", // random (never reused) IV
+	"m":"ZIGy0qpnQ-6baacSbHf_pEyQ1rw", // message encrypted with ECDH P-256 derived secret
+	"f":"5qMMiqcHEvfTSuxH7HyQj1WprvMjzO95zZsbyRxW1dk", // from authPublicKeyHash
+	"h":"Nx6wRwmEXxeugQLPSN6UnvOmmDitGYIeMjYJiEx6qyE", // message hash
+	"s":"OYbL0kPZr-zwQQtf4IcrpVuSw0EXKcwlagk0br8JTyNZjwILDye7BMHqdvAuZy69xPrBZ2tQM4lTjyrpzToAKA" // signature
+}
+```
+#### 4.1.1 Build message
+```JS
+// webclient/src/controller/message.js  async handleSendMessage(messageText)
+const message = await buildMessage(myKeys.auth.keyPair.privateKey, myKeys.dh.keyPair.privateKey, messageText, myKeys.auth.publicKeyHash, contact.keys.dh.base64)
+
+// webclient/src/util/message.js
+export async function buildMessage(authPriv, dhPrivateKey, messageText, from, toDHBase64) {
+	const t = Date.now()
+	const iv = await getIV(from+t)
+	const ivBytes = new Uint8Array(iv)
+	const toDHRaw = base64ToBytes(toDHBase64)
+	const dhPublicKey = await importDHKey("raw", toDHRaw, [])
+	const derivedKey = await deriveDHSecret(dhPublicKey, dhPrivateKey)
+	const encrypted = await encrypt(iv, derivedKey, new TextEncoder().encode(messageText))
+	const encryptedBytes = new Uint8Array(encrypted)
+	const associatedBytes = new TextEncoder().encode(JSON.stringify({t: t, f: from}))
+	const bytesToHash = new Uint8Array([...ivBytes, ...encryptedBytes, ...associatedBytes])
+	const messageHash = new Uint8Array(await hash(bytesToHash))
+	const message = {
+		t: t,
+		iv: bytesToBase64(ivBytes),
+		m: bytesToBase64(encryptedBytes),
+		f: from,
+		h: bytesToBase64(messageHash)
+	}
+	const hashSig = new Uint8Array(await sign(authPriv, messageHash))
+	message.s = bytesToBase64(hashSig)
+	return message
+}
+```
+
+### 4.2 Contact
+A contact contains the following data. The domain is where message POST requests will be sent.
 The ECDSA P-256 auth key is used to verify signatures of messages received.
 The ECDH P-256 dh key is used to derive a shared secret key that is used to encrypt & decrypt the messages.
 ```JSON

@@ -49,7 +49,7 @@ export class ContactController {
 	async addContactFromShareable(shareable) {
     if (!shareable || shareable.length < 1) {
       console.log("Invalid shareable")
-      return false
+      return
     }
     const jsonString = new TextDecoder().decode(base64ToBytes(shareable))
     let contact = {}

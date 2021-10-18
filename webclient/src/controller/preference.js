@@ -28,14 +28,14 @@ export class PreferenceController {
 	}
 
 	async init() {
-		await this.getKeys()
+		await this.getKeys(true)
 		await this.initShareables()
 		await this.initExport()
 		this.store()
 		this.host.requestUpdate()
 	}
 
-	async getKeys() {
+	async getKeys(tryAgain) {
 		try {
 			const stored = localStorage.getItem(keysStorageKey)
 			if (!stored) {
@@ -47,17 +47,14 @@ export class PreferenceController {
 						keyPair: await genDHKeyPair()
 					}
 				}
-				console.log("genKeys done", this.keys)
 				this.keys.auth.raw = {
 					publicKey: new Uint8Array(await crypto.subtle.exportKey("raw", this.keys.auth.keyPair.publicKey)),
 					privateKey: await getBytesFromPrivateCryptoKey(this.keys.auth.keyPair.privateKey)
 				}
-				console.log("auth raw export", this.keys.auth.raw)
 				this.keys.auth.base64 = {
 					publicKey: bytesToBase64(this.keys.auth.raw.publicKey),
 					privateKey: bytesToBase64(this.keys.auth.raw.privateKey)
 				}
-				console.log("auth base64", this.keys.auth.base64)
 				this.keys.auth.publicKeyHash = bytesToBase64(new Uint8Array(await hash(this.keys.auth.raw.publicKey)))
 				this.keys.dh.raw = {
 					publicKey: new Uint8Array(await crypto.subtle.exportKey("raw", this.keys.dh.keyPair.publicKey)),
@@ -68,7 +65,8 @@ export class PreferenceController {
 					privateKey: bytesToBase64(this.keys.dh.raw.privateKey)
 				}
 				this.store()
-				return
+				console.log("Generated fresh ECDSA P-256 & ECDH P-256 key pairs")
+				return this.keys
 			}
 			this.keys = JSON.parse(stored)
 			this.keys.auth.raw = {
@@ -91,6 +89,8 @@ export class PreferenceController {
 			return this.keys
 		} catch (e) {
 			console.log("getKeys failed", e)
+			localStorage.removeItem(keysStorageKey)
+			if (tryAgain) await this.getKeys(false)
 		}
 	}
 
@@ -162,7 +162,8 @@ export class PreferenceController {
 	}
 
 	async changeDomain(domain) {
-		if (domain.trim().length > 0 && domainRegex.test(domain)) {
+		domain = domain.trim()
+		if (domain.length > 0 && domainRegex.test(domain)) {
 			this.domain = domain
 		} else {
 			this.domain = defaultDomain

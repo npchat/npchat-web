@@ -54,11 +54,13 @@ export class WebSocketController {
 			this.socket.send(JSON.stringify(challengeResponse))
 			return
 		}
-		if (data.vapidAppPublicKey) {
+		if (data.vapidAppPublicKey) { // handshake was successful
 			await this.host.webpush.subscribeToPushNotifications(data.vapidAppPublicKey)
+			this.isConnected = true
+			this.host.requestUpdate()
+			resolve()
+			return
 		}
-		this.isConnected = true
-		resolve()
 		await this.host.message.handleReceivedMessage(data, true)
 		this.host.requestUpdate()
 	}
@@ -68,6 +70,7 @@ export class WebSocketController {
 		this.isConnected = false
 		this.socket = undefined
 		reject()
+		this.host.requestUpdate()
 	}
 
 	getWebSocket(domain, publicKeyHash) {

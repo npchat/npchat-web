@@ -18,7 +18,7 @@ export class MessageController {
 		localStorage.setItem(messagesKey, JSON.stringify(this.list))
 	}
 
-	async init() {
+	init() {
 		const stored = localStorage.getItem(messagesKey)
     try {
       const parsed = JSON.parse(stored)
