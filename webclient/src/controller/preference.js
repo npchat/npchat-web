@@ -1,8 +1,8 @@
-import { base58 } from "../../../util/base58";
 import { hash } from "../../../util/hash";
-import { exportKey, genAuthKeyPair, genDHKeyPair, getJwkBytes, importAuthKey, importDHKey } from "../../../util/key";
+import { authKeyParams, dhKeyParams, genAuthKeyPair, genDHKeyPair, getBytesFromPrivateCryptoKey, getPrivateCryptoKeyFromBytes, importAuthKey, importDHKey } from "../../../util/key";
 import { buildShareable } from "../util/shareable";
 import { generateQR } from "../util/qrcode";
+import { base64ToBytes, bytesToBase64 } from "../../../util/base64";
 
 const nameStorageKey = "name"
 const domainStorageKey = "domain"
@@ -36,42 +36,63 @@ export class PreferenceController {
 	}
 
 	async getKeys() {
-    const stored = localStorage.getItem(keysStorageKey)
-    if (!stored) {
-			// generate keys
-      this.keys = {
-				auth: {
-					keyPair: await genAuthKeyPair()
-				},
-				dh: {
-					keyPair: await genDHKeyPair()
+		try {
+			const stored = localStorage.getItem(keysStorageKey)
+			if (!stored) {
+				this.keys = {
+					auth: {
+						keyPair: await genAuthKeyPair()
+					},
+					dh: {
+						keyPair: await genDHKeyPair()
+					}
 				}
+				console.log("genKeys done", this.keys)
+				this.keys.auth.raw = {
+					publicKey: new Uint8Array(await crypto.subtle.exportKey("raw", this.keys.auth.keyPair.publicKey)),
+					privateKey: await getBytesFromPrivateCryptoKey(this.keys.auth.keyPair.privateKey)
+				}
+				console.log("auth raw export", this.keys.auth.raw)
+				this.keys.auth.base64 = {
+					publicKey: bytesToBase64(this.keys.auth.raw.publicKey),
+					privateKey: bytesToBase64(this.keys.auth.raw.privateKey)
+				}
+				console.log("auth base64", this.keys.auth.base64)
+				this.keys.auth.publicKeyHash = bytesToBase64(new Uint8Array(await hash(this.keys.auth.raw.publicKey)))
+				this.keys.dh.raw = {
+					publicKey: new Uint8Array(await crypto.subtle.exportKey("raw", this.keys.dh.keyPair.publicKey)),
+					privateKey: await getBytesFromPrivateCryptoKey(this.keys.dh.keyPair.privateKey)
+				}
+				this.keys.dh.base64 = {
+					publicKey: bytesToBase64(this.keys.dh.raw.publicKey),
+					privateKey: bytesToBase64(this.keys.dh.raw.privateKey)
+				}
+				this.store()
+				return
 			}
-      this.keys.auth.jwk = {
-				public: await exportKey(this.keys.auth.keyPair.publicKey),
-				private: await exportKey(this.keys.auth.keyPair.privateKey)
+			this.keys = JSON.parse(stored)
+			this.keys.auth.raw = {
+				publicKey: base64ToBytes(this.keys.auth.base64.publicKey),
+				privateKey: base64ToBytes(this.keys.auth.base64.privateKey)
 			}
-			this.keys.dh.jwk = {
-				public: await exportKey(this.keys.dh.keyPair.publicKey),
-				private: await exportKey(this.keys.dh.keyPair.privateKey)
+			this.keys.auth.keyPair = {
+				publicKey: await importAuthKey("raw", this.keys.auth.raw.publicKey, ["verify"]),
+				privateKey: await getPrivateCryptoKeyFromBytes(this.keys.auth.raw.privateKey, authKeyParams, ["sign"])
 			}
-      const hashBytes = new Uint8Array(await hash(getJwkBytes(this.keys.auth.jwk.public)))
-      this.keys.auth.publicHash = base58().encode(hashBytes)
-			localStorage.setItem(keysStorageKey, JSON.stringify(this.keys))
-			return
-    } 
-		const storedKeys = JSON.parse(stored)
-		this.keys = storedKeys
-		this.keys.auth.keyPair = {
-			privateKey: await importAuthKey(this.keys.auth.jwk.private, ["sign"]),
-			publicKey: await importAuthKey(this.keys.auth.jwk.public, ["verify"])
+			this.keys.auth.publicKeyHash = bytesToBase64(new Uint8Array(await hash(this.keys.auth.raw.publicKey)))
+			this.keys.dh.raw = {
+				publicKey: base64ToBytes(this.keys.dh.base64.publicKey),
+				privateKey: base64ToBytes(this.keys.dh.base64.privateKey)
+			}
+			this.keys.dh.keyPair = {
+				publicKey: await importDHKey("raw", this.keys.dh.raw.publicKey, []),
+				privateKey: await getPrivateCryptoKeyFromBytes(this.keys.dh.raw.privateKey, dhKeyParams, ["deriveKey", "deriveBits"])
+			}
+			return this.keys
+		} catch (e) {
+			console.log("getKeys failed", e)
 		}
-		this.keys.dh.keyPair = {
-			privateKey: await importDHKey("jwk", this.keys.dh.jwk.private, ["deriveKey"]),
-			publicKey: await importDHKey("jwk", this.keys.dh.jwk.public, [])
-		}
-		return this.keys
-  }
+	}
 
 	async initShareables() {
 		this.shareable = this.getShareable()
@@ -80,23 +101,18 @@ export class PreferenceController {
 	}
 
 	async initExport() {
-		this.exportLink = `https://${window.location.host}#${this.getExportBase58()}`
+		this.exportLink = `https://${window.location.host}#${this.getExportString()}`
 		this.exportQRCode = await this.getQRCodeAsDataUrl(this.exportLink)
 	}
 
-	getExportBase58() {
+	getExportString() {
 		const data = {
 			keys: {
 				auth: {
-					jwk: {
-						public: this.keys.auth.jwk.public,
-						private: this.keys.auth.jwk.private
-					},
-					publicHash: this.keys.auth.publicHash
+					base64: this.keys.auth.base64
 				},
 				dh: {
-					public: this.keys.dh.jwk.public,
-					private: this.keys.dh.jwk.private
+					base64: this.keys.dh.base64
 				}
 			},
 			name: this.name,
@@ -104,17 +120,17 @@ export class PreferenceController {
 			contacts: this.host.contact.list
 		}
 		const bytes = new TextEncoder().encode(JSON.stringify(data))
-		return base58().encode(bytes)
+		return bytesToBase64(bytes)
 	}
 
 	getShareable() {
-		const shareable = buildShareable(this.name, this.keys.auth.jwk.public, this.keys.dh.jwk.public, this.domain)
+		const shareable = buildShareable(this.name, this.domain, this.keys.auth.base64.publicKey, this.keys.dh.base64.publicKey)
 		const bytes = new TextEncoder().encode(JSON.stringify(shareable))
-    return base58().encode(bytes)
-  }
+		return bytesToBase64(bytes)
+	}
 
 	async getQRCodeAsDataUrl(link) {
-		return await generateQR(link, {errorCorrectionLevel: "L"})
+		return await generateQR(link, { errorCorrectionLevel: "L" })
 	}
 
 	getShareableLink(shareable) {
@@ -124,8 +140,11 @@ export class PreferenceController {
 	store() {
 		localStorage.setItem(nameStorageKey, this.name)
 		localStorage.setItem(domainStorageKey, this.domain)
-		localStorage.setItem(keysStorageKey, JSON.stringify(this.keys))
-		localStorage.setItem(keysStorageKey, JSON.stringify(this.keys))
+		const keysToStore = {
+			auth: { base64: this.keys.auth.base64 },
+			dh: { base64: this.keys.dh.base64 }
+		}
+		localStorage.setItem(keysStorageKey, JSON.stringify(keysToStore))
 	}
 
 	async changeName(name, enforceNotBlank) {

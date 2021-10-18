@@ -1,4 +1,3 @@
-import { authAlgorithm } from "./auth"
 import { aesKeyParams } from "./privacy"
 
 export const authKeyParams = {
@@ -17,12 +16,8 @@ export async function genAuthKeyPair() {
 	return crypto.subtle.generateKey(authKeyParams, true, ["sign", "verify"])
 }
 
-export async function importAuthKey(jwk, keyUsages) {
-	return crypto.subtle.importKey("jwk", jwk, authKeyParams, true, keyUsages)
-}
-
-export async function importAuthKeyV2(format, keyData, keyUsages) {
-	return crypto.subtle.importKey(format, keyData, authAlgorithm, true, keyUsages)
+export async function importAuthKey(format, keyData, keyUsages) {
+	return crypto.subtle.importKey(format, keyData, authKeyParams, true, keyUsages)
 }
 
 export async function genDHKeyPair() {
@@ -33,16 +28,17 @@ export async function importDHKey(format, keyData, keyUsages) {
 	return crypto.subtle.importKey(format, keyData, dhKeyParams, true, keyUsages)
 }
 
-export async function deriveDHSecretKey(publicKey, privateKey) {
+export async function deriveDHSecret(publicKey, privateKey) {
 	const params = dhDeriveKeyParams(publicKey)
 	return crypto.subtle.deriveKey(params, privateKey, aesKeyParams, true, ["encrypt", "decrypt"])
 }
 
-export async function exportKey(cryptoKey, format = "jwk") {
-	return crypto.subtle.exportKey(format, cryptoKey)
+export async function getBytesFromPrivateCryptoKey(key) {
+	const jwk = await crypto.subtle.exportKey("jwk", key)
+	return new TextEncoder().encode(JSON.stringify(jwk))
 }
 
-export function getJwkBytes(jwk) {
-	const str = JSON.stringify(jwk)
-	return new TextEncoder().encode(str)
+export async function getPrivateCryptoKeyFromBytes(bytes, algorithmIdentifier, keyUsages) {
+	const jwk = JSON.parse(new TextDecoder().decode(bytes))
+	return crypto.subtle.importKey("jwk", jwk, algorithmIdentifier, true, keyUsages)
 }

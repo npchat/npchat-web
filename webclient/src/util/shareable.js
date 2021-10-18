@@ -1,16 +1,16 @@
-export function buildShareable(name, authJwk, dhJwk, domain) {
+export function buildShareable(name, domain, authBase64, dhBase64) {
 	return {
 		contact: {
 			name: name,
+			domain: domain,
 			keys: {
 				auth: {
-					jwk: authJwk,
+					base64: authBase64,
 				},
 				dh: {
-					jwk: dhJwk
+					base64: dhBase64
 				}
-			},
-			domain: domain
+			}
 		}
 	}
 }

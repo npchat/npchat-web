@@ -1,6 +1,6 @@
-import { base58 } from "../../../util/base58";
+
+import { base64ToBytes, bytesToBase64 } from "../../../util/base64";
 import { hash } from "../../../util/hash";
-import { getJwkBytes } from "../../../util/key";
 
 const contactsStorageKey = "contacts"
 
@@ -31,8 +31,9 @@ export class ContactController {
 
 	async addContact(contact) {
 		if (this.isValid(contact)) {
-			const publicHashBytes = new Uint8Array(await hash(getJwkBytes(contact.keys.auth.jwk)))
-    	contact.keys.auth.publicHash = base58().encode(publicHashBytes)
+			const publicKeyRaw = base64ToBytes(contact.keys.auth.base64)
+			const publicKeyHash = new Uint8Array(await hash(publicKeyRaw))
+    	contact.keys.auth.publicKeyHash = bytesToBase64(publicKeyHash)
 			const existing = this.list.find(c => this.matches(c, contact))
 			if (existing) {
 				Object.assign(existing, contact)
@@ -50,8 +51,7 @@ export class ContactController {
       console.log("Invalid shareable")
       return false
     }
-    const bytes = base58().decode(shareable)
-    const jsonString = new TextDecoder().decode(bytes)
+    const jsonString = new TextDecoder().decode(base64ToBytes(shareable))
     let contact = {}
     try {
       contact = JSON.parse(jsonString).contact;
@@ -74,7 +74,7 @@ export class ContactController {
 			this.list.splice(index, 1)
 			this.selected = undefined
 			this.store()
-			this.host.message.list = this.host.message.list.filter(m => m.f !== contact.keys.auth.publicHash)
+			this.host.message.list = this.host.message.list.filter(m => m.f !== contact.keys.auth.publicKeyHash)
 			this.host.message.store()
 			console.log("Contact removed")
 			this.host.requestUpdate()
@@ -90,11 +90,11 @@ export class ContactController {
 	}
 
 	isValid(contact) {
-		return contact && contact.keys && contact.keys.auth && contact.keys.auth.jwk
-			&& contact.name && contact.domain
+		return contact && contact.name && contact.domain
+				&& contact.keys && contact.keys.auth && contact.keys.dh
 	}
 
 	matches(contact1, contact2) {
-		return contact1.keys.auth.publicHash === contact2.keys.auth.publicHash
+		return contact1.keys.auth.publicKeyHash === contact2.keys.auth.publicKeyHash
 	}
 }

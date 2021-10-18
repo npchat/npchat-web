@@ -1,4 +1,5 @@
-import { signChallenge } from "../../../util/auth";
+import { sign } from "../../../util/auth";
+import { base64ToBytes, bytesToBase64 } from "../../../util/base64";
 
 export class WebSocketController {
 	host;
@@ -17,7 +18,7 @@ export class WebSocketController {
 		return new Promise((resolve, reject) => {
 			this.isConnected = false
 			const pref = this.host.pref
-			this.socket = this.getWebSocket(pref.domain, pref.keys.auth.publicHash)
+			this.socket = this.getWebSocket(pref.domain, pref.keys.auth.publicKeyHash)
 			this.socket.addEventListener("open", () => this.handleOpen())
 			this.socket.addEventListener("close", () => this.handleClose(reject))
 			this.socket.addEventListener("message", async event => this.handleMessage(event, resolve))
@@ -44,10 +45,11 @@ export class WebSocketController {
 			return
 		}
 		if (data.challenge) {
+			const solution = await sign(pref.keys.auth.keyPair.privateKey, base64ToBytes(data.challenge.txt))
 			const challengeResponse = {
-				jwk: pref.keys.auth.jwk.public,
+				publicKey: pref.keys.auth.base64.publicKey,
 				challenge: data.challenge,
-				solution: await signChallenge(pref.keys.auth.keyPair.privateKey, data.challenge.txt)
+				solution: bytesToBase64(new Uint8Array(solution))
 			}
 			this.socket.send(JSON.stringify(challengeResponse))
 			return

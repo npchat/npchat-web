@@ -2,6 +2,13 @@ import { LitElement, css } from "lit";
 
 export class Base extends LitElement {
 
+  blue = "#35A7FF"
+  green = "#6BF178"
+  yellow = "#FFE74C"
+  red = "#FF5964"
+  backgroundDark = "#e5e5e5"
+  backgroundLight = "#f5f5f5"
+
 	static styles = css`,,,,
     header, .main {
       width: 100%;
@@ -24,10 +31,10 @@ export class Base extends LitElement {
       width: 10px;
       height:10px;
       border-radius: 10px;
-      background-color: orange;
+      background-color: #FFE74C;
     }
     header .status.connected {
-      background-color: green;
+      background-color: #6BF178;
     }
     nav {
       display: flex;
@@ -139,11 +146,8 @@ export class Base extends LitElement {
     img {
       max-width: 100%
     }
-    .error {
-      color: #cc0000
-    }
     .warn {
-      color: #ff6700
+      color: #FF5964
     }
 		@media(min-width: 750px) {
 			.main > * {

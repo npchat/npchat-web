@@ -1,7 +1,7 @@
-import { base58 } from "../../../util/base58";
-import { deriveDHSecretKey, importAuthKey, importDHKey } from "../../../util/key";
+import { deriveDHSecret, importAuthKey, importDHKey } from "../../../util/key";
 import { sendMessage, buildMessage, verifyMessage } from "../util/message"
 import { decrypt } from "../../../util/privacy";
+import { base64ToBytes } from "../../../util/base64";
 
 const messagesKey = "messages"
 
@@ -37,23 +37,24 @@ export class MessageController {
     if (exists) {
       return
     }
-    const contactMatch = this.host.contact.list.find(c => c.keys.auth.publicHash === data.f)
+    const contactMatch = this.host.contact.list.find(c => c.keys.auth.publicKeyHash === data.f)
     // we need a contactMatch to get the public key, & the message must contain a hash & sig
     if (!contactMatch || !contactMatch.keys) {
       return
     }
-    const contactAuthPub = await importAuthKey(contactMatch.keys.auth.jwk, ["verify"])
-    const isVerified = await verifyMessage(contactAuthPub, data)
+    const authPubRaw = base64ToBytes(contactMatch.keys.auth.base64)
+    const authPub = await importAuthKey("raw", authPubRaw, ["verify"])
+    const isVerified = await verifyMessage(authPub, data)
     if (!isVerified) {
       console.log("Rejected unverified message", data)
       return
     }
-    const b58 = base58()
-    const ivBytes = b58.decode(data.iv)
-    const mBytes = b58.decode(data.m)
+    const ivBytes = base64ToBytes(data.iv)
+    const mBytes = base64ToBytes(data.m)
 
-    const contactDHPub = await importDHKey("jwk", contactMatch.keys.dh.jwk, [])
-    const derivedKey = await deriveDHSecretKey(contactDHPub, this.host.pref.keys.dh.keyPair.privateKey)
+    const dhPubRaw = base64ToBytes(contactMatch.keys.dh.base64)
+    const dhPub = await importDHKey("raw", dhPubRaw, [])
+    const derivedKey = await deriveDHSecret(dhPub, this.host.pref.keys.dh.keyPair.privateKey)
 
     const messagePlainBytes = new Uint8Array(await decrypt(ivBytes, derivedKey, mBytes))
 
@@ -77,14 +78,14 @@ export class MessageController {
       return
     }
     const myKeys = this.host.pref.keys
-    const message = await buildMessage(myKeys.auth.keyPair.privateKey, myKeys.dh.keyPair.privateKey, messageText, myKeys.auth.publicHash, contact.keys.dh.jwk)
-    const res = await sendMessage(contact.domain, contact.keys.auth.publicHash, message)
+    const message = await buildMessage(myKeys.auth.keyPair.privateKey, myKeys.dh.keyPair.privateKey, messageText, myKeys.auth.publicKeyHash, contact.keys.dh.base64)
+    const res = await sendMessage(contact.domain, contact.keys.auth.publicKeyHash, message)
     if (res.error) {
       console.log("Failed to send message", res)
       return
     }
     message.mP = messageText
-    message.to = contact.keys.auth.publicHash
+    message.to = contact.keys.auth.publicKeyHash
     this.list.push(message)
     this.store()
     this.host.requestUpdate()

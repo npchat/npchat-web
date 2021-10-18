@@ -1,4 +1,4 @@
-import { base64UrlToUint8Array, uint8ArrayToBase64Url } from "../../../util/base64";
+import { bytesToBase64 } from "../../../util/base64";
 
 export class WebPushController {
 	host;
@@ -22,11 +22,8 @@ export class WebPushController {
 		if (currentSub) {
 			// check if vapidAppPublicKey changed
 			const currentKey = new Uint8Array(currentSub.options.applicationServerKey)
-			const currentKeyBase64 = uint8ArrayToBase64Url(currentKey)
-			if (currentKeyBase64 === vapidAppPublicKey) {
-				console.log("VAPID keys did not change")
-				return
-			} else {
+			const currentKeyBase64 = bytesToBase64(currentKey)
+			if (currentKeyBase64 !== vapidAppPublicKey) {
 				await currentSub.unsubscribe()
 				currentSub = undefined
 			}
@@ -39,8 +36,6 @@ export class WebPushController {
 			currentSub = sub
 			this.host.websocket.socket.send(JSON.stringify({subscription: currentSub.toJSON()}))
 			console.log("new subscription", currentSub)
-		} else {
-			console.log("already subscribed", currentSub)
 		}
 	}
 
@@ -54,7 +49,6 @@ export class WebPushController {
 
 	async askPermission() {
 		const permission = await Notification.requestPermission()
-		console.log("permission", permission)
 		return permission === "granted"
 	}
 }

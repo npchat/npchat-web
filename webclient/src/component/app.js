@@ -1,11 +1,11 @@
 import { html } from "lit";
 import { Base } from "./base";
-import { base58 } from "../../../util/base58";
 import { ContactController } from "../controller/contact";
 import { MessageController } from "../controller/message";
 import { PreferenceController } from "../controller/preference";
 import { WebSocketController } from "../controller/websocket";
 import { WebPushController } from "../controller/webpush";
+import { base64ToBytes } from "../../../util/base64";
 
 export class App extends Base {
   pref = new PreferenceController(this)
@@ -46,7 +46,7 @@ export class App extends Base {
 		const h = window.location.hash.replace("#","")
     window.location.hash = ""
 		if (h.length > 0) {
-      const bytes = base58().decode(h)
+      const bytes = base64ToBytes(h)
       const text = new TextDecoder().decode(bytes)
       try {
         const obj = JSON.parse(text)
@@ -142,7 +142,7 @@ export class App extends Base {
     const publicKeyHashTemplate = html`
       <div class="box background">
         <p class="meta">Your publicKeyHash</p>
-        <p class="wrap monospace select-all">${this.pref.keys.auth && this.pref.keys.auth.publicHash}</p>
+        <p class="wrap monospace select-all">${this.pref.keys.auth && this.pref.keys.auth.publicKeyHash}</p>
       </div>
     `;
     return html`
@@ -230,7 +230,7 @@ export class App extends Base {
 
   statusTemplate() {
     return html`
-      <span class="error" ?hidden=${this.websocket.isConnected}>💥 No WebSocket connection</span>
+      <span class="warn" ?hidden=${this.websocket.isConnected}>💥 No WebSocket connection</span>
       <span ?hidden=${!this.websocket.isConnected}>👍 Connected</span>
     `;
   }
@@ -258,8 +258,8 @@ export class App extends Base {
 
   contactTemplate(c, selectedPubHash) {
     return html`
-      <li class="contact wrap ${selectedPubHash === c.keys.auth.publicHash ? "selected" : ""}">
-        <span @click=${() => this.contact.select(c)} class="label">${c.name} [${c.keys.auth.publicHash}]</span>
+      <li class="contact wrap ${selectedPubHash === c.keys.auth.publicKeyHash ? "selected" : ""}">
+        <span @click=${() => this.contact.select(c)} class="label">${c.name} [${c.keys.auth.publicKeyHash}]</span>
         <span @click=${() => this.contact.remove(c)}>🗑️</span>
       </li>
     `;
@@ -288,7 +288,7 @@ export class App extends Base {
   }
 
   messageTemplate(message, prevMessageTime) {
-    const sent = message.f === this.pref.keys.auth.publicHash
+    const sent = message.f === this.pref.keys.auth.publicKeyHash
     const msToDayMultiplier = 0.00000001157407
     let time = new Date(message.t).toISOString()
     time = time.split(".")[0]
@@ -321,7 +321,7 @@ export class App extends Base {
     let messages = this.message.list || []
     let selectedPubHash
     if (this.contact.selected && this.contact.selected.keys) {
-      selectedPubHash = this.contact.selected.keys.auth.publicHash
+      selectedPubHash = this.contact.selected.keys.auth.publicKeyHash
       messages = this.message.list.filter(m => (m.f === selectedPubHash && !m.to) || m.to === selectedPubHash)
     }
     messages = messages
