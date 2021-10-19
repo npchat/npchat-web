@@ -18,7 +18,7 @@ export class App extends Base {
     selectedMenu: {},
     exportLinkHidden: {},
     exportQRHidden: {},
-    addContactError: {}
+    addContactSuccess: {}
   }
 
   constructor() {
@@ -75,12 +75,14 @@ export class App extends Base {
   async handleAddContact(event) {
     const added = await this.contact.addContactFromShareable(event.target.value)
     if (added) {
-      event.target.value = ""
-    } else {
-      this.addContactError = true
-      this.requestUpdate()
+      this.addContactSuccess = true
       setTimeout(() => {
-        this.addContactError = false
+        this.addContactSuccess = undefined
+      }, 1000)
+    } else {
+      this.addContactSuccess = false
+      setTimeout(() => {
+        this.addContactError = undefined
       }, 1000)
     }
   }
@@ -89,7 +91,6 @@ export class App extends Base {
     event.preventDefault()
     await this.message.handleSendMessage(this.messageInput.value)
     this.messageInput.value = ""
-    this.messageInput.scrollIntoView({block: "end", inline: "nearest"})
   }
 
   handleChangeName(event, enforceNotBlank) {
@@ -266,12 +267,20 @@ export class App extends Base {
   }
 
   contactsTemplate(selectedPubHash) {
+    let inputClass = ""
+    if (this.addContactSuccess === true) {
+      inputClass = "success"
+    } else if (this.addContactSuccess === false) {
+      inputClass = "warn"
+    }
     return html`
       <div id="contacts" class="contacts">
         <ul class="no-list">
           ${this.contact.list.map(c => this.contactTemplate(c, selectedPubHash))}
         </ul>
-        <input id="contact-addtext" placeholder="Enter a shareable" @change=${e => this.handleAddContact(e)} class="${this.addContactError ? "warn" : undefined}">
+        <input id="contact-addtext" placeholder="Enter a shareable"
+            @change=${e => this.handleAddContact(e)}
+            class="${inputClass}">
       </div>
     `;
   }

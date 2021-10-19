@@ -49,19 +49,19 @@ export class ContactController {
 	async addContactFromShareable(shareable) {
     if (!shareable || shareable.length < 1) {
       console.log("Invalid shareable")
-      return
+      return false
     }
-    const jsonString = new TextDecoder().decode(base64ToBytes(shareable))
-    let contact = {}
-    try {
+		let contact = {}
+		try {
+    	const jsonString = new TextDecoder().decode(base64ToBytes(shareable))
       contact = JSON.parse(jsonString).contact;
     } catch (e) {
-      console.log("Failed to parse json", jsonString)
-      return
+      console.log("Failed to parse json")
+      return false
     }
     if (!this.isValid(contact)) {
       console.log("Failed, missing keys, domain or name", contact)
-      return
+      return false
     }
     await this.addContact(contact)
     this.host.requestUpdate();

@@ -1,7 +1,8 @@
-import { html } from "lit";
+import { html, css } from "lit";
 import { Base } from "./base";
 
 export class Menu extends Base {
+	
   static properties = {
     content: {},
 		button: {},

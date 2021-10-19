@@ -82,11 +82,13 @@ export class Base extends LitElement {
     .main {
 			display: flex;
 			flex-wrap: wrap;
-      padding: .5rem;
 		}
     .main > * {
       width: 100%;
     }
+    .menu-content {
+			padding: 0.5rem;
+		}
     button, input {
       font-size: 1rem;
     }
@@ -117,6 +119,9 @@ export class Base extends LitElement {
     }
     input.warn {
       border-color: ${this.c.highlight}
+    }
+    input.success {
+      border-color: ${this.c.secondary}
     }
     .box {
       display: block;
@@ -178,10 +183,11 @@ export class Base extends LitElement {
     .compose {
       position: fixed;
       bottom: 0;
+      left: 0.25rem;
       width: calc(100% - 1rem);
     }
     #message-input {
-      width: calc(100% - 2rem);
+      width: calc(100% - 1.25rem);
     }
     .meta {
       color: ${this.c.textDark};
@@ -220,6 +226,10 @@ export class Base extends LitElement {
       }
       .message-body {
         max-width: 60%;
+      }
+      .compose {
+        width: calc(50% - 1rem);
+        left: 50%
       }
 		}
   `;

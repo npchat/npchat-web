@@ -185,8 +185,8 @@ export class Channel {
 			this.subscriptions.push(data.subscription)
 			this.state.storage.put("subscriptions", JSON.stringify(this.subscriptions))
 			// send test notification
-			const pushResponse = await this.pushNotification(data.subscription)
-			ws.send(JSON.stringify({message: "Sent notification", data: {status: pushResponse.status, statusText: pushResponse.statusText}}))
+			//const pushResponse = await this.pushNotification(data.subscription)
+			//ws.send(JSON.stringify({message: "Sent notification", data: {status: pushResponse.status, statusText: pushResponse.statusText}}))
 		}
 	}
 
