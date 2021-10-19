@@ -82,7 +82,7 @@ export class App extends Base {
     } else {
       this.addContactSuccess = false
       setTimeout(() => {
-        this.addContactError = undefined
+        this.addContactSuccess = undefined
       }, 1000)
     }
   }
