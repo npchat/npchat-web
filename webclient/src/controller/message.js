@@ -93,7 +93,7 @@ export class MessageController {
 
   pushAll() {
     this.list.forEach(m => {
-      let mCleaned = m;
+      let mCleaned = {...m};
       Object.assign(mCleaned, {mP: undefined})
       try {
         this.host.websocket.socket.send(JSON.stringify(mCleaned))
