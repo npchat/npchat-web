@@ -29,7 +29,7 @@ const defaultResponseOpts = () => {
 
 /**
 	@param {Request} request
-	@returns {String} authPubJwkHashBase64
+	@returns {String} authPublicKeyHash base64url
 */
 const getAuthPubKeyHashFromRequest = request => {
 	const url = new URL(request.url)
@@ -54,10 +54,7 @@ async function handleRequest(request, env) {
 	}
   const id = env.CHANNEL.idFromName(publicHash)
   const obj = env.CHANNEL.get(id)
-	if (request.method === "GET"){
-		return await obj.fetch(request.url, {headers: request.headers})
-	}
-	if (request.method === "POST") {
+	if (["GET","POST"].includes(request.method)){
 		return await obj.fetch(request.url, {
 			method: request.method,
 			headers: request.headers,
@@ -69,7 +66,7 @@ async function handleRequest(request, env) {
 }
 
 export class Channel {
-	constructor(state, env) {
+	constructor(state) {
 		this.state = state
 		this.state.blockConcurrencyWhile(async () => {
 			this.messages = await this.getStoredMessages()
@@ -100,12 +97,12 @@ export class Channel {
 	}
 
 	async fetch(request) {
+		if (request.method === "POST") {
+			return this.handlePostMessage(request)
+		}
 		const upgradeHeader = request.headers.get("Upgrade")
 		if (upgradeHeader) {
 			return await this.handleUpgrade(request, upgradeHeader)
-		}
-		if (request.method === "POST") {
-			return this.handlePostMessage(request)
 		}
 		const opts = defaultResponseOpts()
 		opts.status = 400

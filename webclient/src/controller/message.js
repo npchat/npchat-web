@@ -92,11 +92,14 @@ export class MessageController {
 	}
 
   pushAll() {
-    const ws = this.host.webSocket
     this.list.forEach(m => {
       let mCleaned = m;
       Object.assign(mCleaned, {mP: undefined})
-      ws.send(JSON.stringify(mCleaned))
+      try {
+        this.host.websocket.socket.send(JSON.stringify(mCleaned))
+      } catch (e) {
+        console.log("Failed to push messages")
+      }
     })
   }
 }
