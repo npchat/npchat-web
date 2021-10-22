@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/rand"
 	"encoding/base64"
 	"fmt"
 	"net/http"
@@ -8,11 +9,6 @@ import (
 
 	"github.com/gorilla/websocket"
 )
-
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-}
 
 func main() {
 	http.HandleFunc("/", handleRequest)
@@ -33,13 +29,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if data["get"] == "challenge" {
-			err = conn.WriteMessage(websocket.TextMessage, []byte("challenge accepted!"))
-			if err != nil {
-				fmt.Println(err)
-			}
-			return
-		} else {
-			fmt.Printf("data:  %s\n", data)
+			handleChallengeRequest(conn)
 		}
 
 		id, err := base64.RawURLEncoding.DecodeString(idEncoded)
@@ -58,5 +48,33 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 			fmt.Println(err)
 			return
 		}
+	}
+}
+
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+}
+
+func genRandomBytes(size int) (blk []byte, err error) {
+	blk = make([]byte, size)
+	_, err = rand.Read(blk)
+	return
+}
+
+func handleChallengeRequest(conn *websocket.Conn) {
+	r, err := genRandomBytes(32)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	str := base64.RawURLEncoding.EncodeToString(r)
+
+	// sign
+
+	err = conn.WriteMessage(websocket.TextMessage, []byte(str))
+	if err != nil {
+		fmt.Println(err)
+		return
 	}
 }
