@@ -20,6 +20,9 @@ type Challenge struct {
 	Txt string `json:"txt"`
 	Sig string `json:"sig"`
 }
+type ChallengeResponse struct {
+	Challenge Challenge `json:"challenge"`
+}
 
 func main() {
 
@@ -31,8 +34,11 @@ func main() {
 	go KeepFreshKeys(challenges, privChan, 10)
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		conn, _ := upgrader.Upgrade(w, r, nil)
-
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
 		for {
 			var data map[string]interface{}
 			err := conn.ReadJSON(&data)
@@ -77,8 +83,9 @@ func HandleChallengeRequest(conn *websocket.Conn, priv *ecdsa.PrivateKey) {
 	}
 	sigStr := base64.RawURLEncoding.EncodeToString(sig)
 	chall := Challenge{txt, sigStr}
+	challResp := ChallengeResponse{chall}
 	buf := new(bytes.Buffer)
-	json.NewEncoder(buf).Encode(chall)
+	json.NewEncoder(buf).Encode(challResp)
 	err = conn.WriteMessage(websocket.TextMessage, buf.Bytes())
 	if err != nil {
 		fmt.Println(err)
@@ -123,6 +130,11 @@ func GetFreshKeys() (*ecdsa.PrivateKey, error) {
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
+	CheckOrigin:     CheckOrigin,
+}
+
+func CheckOrigin(r *http.Request) bool {
+	return true
 }
 
 func GenRandomBytes(size int) (blk []byte, err error) {
