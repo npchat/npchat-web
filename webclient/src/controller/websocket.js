@@ -74,6 +74,7 @@ export class WebSocketController {
 	}
 
 	getWebSocket(domain, publicKeyHash) {
-		return new WebSocket(`wss://${domain}/${publicKeyHash}`)
+		const protocol = location.protocol === "https:" ? "wss:" : "ws:"
+		return new WebSocket(`${protocol}//${domain}/${publicKeyHash}`)
 	}
 }
