@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -38,7 +37,7 @@ func main() {
 	privChan := make(chan ecdsa.PrivateKey)
 	defer close(privChan)
 
-	go KeepFreshKeys(msgCountChan, privChan, 10)
+	go KeepFreshKeys(msgCountChan, privChan, 5)
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
@@ -90,13 +89,13 @@ func HandleMessage(conn *websocket.Conn, msg *ClientMessage,
 	msgCountChan chan int, priv chan ecdsa.PrivateKey,
 	id []byte) error {
 
-	msgCountChan <- 1
-	privKey := <-priv
-
 	if msg.Get == "challenge" {
+		msgCountChan <- 1
+		privKey := <-priv
 		HandleChallengeRequest(conn, &privKey)
 	} else if msg.Solution != "" {
-		fmt.Println("verify")
+		msgCountChan <- 0 // don't increment counter
+		privKey := <-priv
 		if VerifySolution(msg, id, &privKey.PublicKey) {
 			fmt.Println("AUTHED")
 			r := ServerMessage{Message: "handshake done"}
@@ -114,26 +113,25 @@ func HandleMessage(conn *websocket.Conn, msg *ClientMessage,
 	return nil
 }
 
+// Refresh keys after given limit for challenge count
 func KeepFreshKeys(msgCountChan chan int, privChan chan ecdsa.PrivateKey, limit int) {
 	count := 0
-	currentKey, err := GetFreshKeys()
+	curKey, err := GetFreshKey()
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 	for {
 		count += <-msgCountChan
-		fmt.Println("c", count)
 		if count >= limit {
-			time.Sleep(time.Millisecond * 2000)
-			currentKey, err = GetFreshKeys()
+			curKey, err = GetFreshKey()
 			if err != nil {
 				fmt.Println(err)
 				return
 			}
 			count = 0
 		}
-		privChan <- *currentKey
+		privChan <- *curKey
 	}
 }
 
