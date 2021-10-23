@@ -86,10 +86,6 @@ export class PreferenceController {
 				publicKey: await importDHKey("raw", this.keys.dh.raw.publicKey, []),
 				privateKey: await getPrivateCryptoKeyFromBytes(this.keys.dh.raw.privateKey, dhKeyParams, ["deriveKey", "deriveBits"])
 			}
-			// DEBUG ONLY TODO: REMOVE
-			/*const jwk = await crypto.subtle.exportKey("jwk", this.keys.auth.keyPair.publicKey)
-			console.log(base64ToBytes(jwk.x))
-			console.log(base64ToBytes(jwk.y))*/
 			return this.keys
 		} catch (e) {
 			console.log("getKeys failed", e)
