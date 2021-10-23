@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/ecdsa"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -32,13 +33,12 @@ type ClientMessage struct {
 }
 
 func main() {
-
-	challenges := make(chan int)
-	defer close(challenges)
+	msgCountChan := make(chan int)
+	defer close(msgCountChan)
 	privChan := make(chan ecdsa.PrivateKey)
 	defer close(privChan)
 
-	go KeepFreshKeys(challenges, privChan, 10)
+	go KeepFreshKeys(msgCountChan, privChan, 10)
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
@@ -64,36 +64,19 @@ func main() {
 				break
 			}
 
-			if msg.Get == "challenge" {
-				challenges <- 1
-				priv := <-privChan
-				HandleChallengeRequest(conn, &priv)
-			} else if msg.Solution != "" {
-				fmt.Println("verify")
-				if VerifySolution(&msg) {
-					fmt.Println("AUTHED")
-					r := ServerMessage{Message: "handshake done"}
-					rj, err := json.Marshal(r)
-					if err != nil {
-						fmt.Println(err)
-						break
-					}
-					conn.WriteMessage(websocket.TextMessage, rj)
-				} else {
-					fmt.Println("unauthorized")
-				}
-			} else {
-				fmt.Println("invalid message")
-			}
-
 			idEncoded := strings.TrimLeft(r.URL.Path, "/")
-			/*id, err := base64.RawURLEncoding.DecodeString(idEncoded)
+			id, err := base64.RawURLEncoding.DecodeString(idEncoded)
 			if err != nil {
 				fmt.Println(err)
 				return
-			}*/
+			}
 
-			fmt.Println(conn.RemoteAddr(), idEncoded)
+			err = HandleMessage(conn, &msg, msgCountChan, privChan, id)
+			if err != nil {
+				fmt.Println(err)
+				break
+			}
+
 		}
 		err = conn.Close()
 		if err != nil {
@@ -103,7 +86,35 @@ func main() {
 	http.ListenAndServe(":3000", nil)
 }
 
-func KeepFreshKeys(challenges chan int, priv chan ecdsa.PrivateKey, limit int) {
+func HandleMessage(conn *websocket.Conn, msg *ClientMessage,
+	msgCountChan chan int, priv chan ecdsa.PrivateKey,
+	id []byte) error {
+
+	msgCountChan <- 1
+	privKey := <-priv
+
+	if msg.Get == "challenge" {
+		HandleChallengeRequest(conn, &privKey)
+	} else if msg.Solution != "" {
+		fmt.Println("verify")
+		if VerifySolution(msg, id, &privKey.PublicKey) {
+			fmt.Println("AUTHED")
+			r := ServerMessage{Message: "handshake done"}
+			rj, err := json.Marshal(r)
+			if err != nil {
+				return err
+			}
+			conn.WriteMessage(websocket.TextMessage, rj)
+		} else {
+			fmt.Println("unauthorized")
+		}
+	} else {
+		fmt.Println("invalid message")
+	}
+	return nil
+}
+
+func KeepFreshKeys(msgCountChan chan int, privChan chan ecdsa.PrivateKey, limit int) {
 	count := 0
 	currentKey, err := GetFreshKeys()
 	if err != nil {
@@ -111,7 +122,7 @@ func KeepFreshKeys(challenges chan int, priv chan ecdsa.PrivateKey, limit int) {
 		return
 	}
 	for {
-		count += <-challenges
+		count += <-msgCountChan
 		fmt.Println("c", count)
 		if count >= limit {
 			time.Sleep(time.Millisecond * 2000)
@@ -122,7 +133,7 @@ func KeepFreshKeys(challenges chan int, priv chan ecdsa.PrivateKey, limit int) {
 			}
 			count = 0
 		}
-		priv <- *currentKey
+		privChan <- *currentKey
 	}
 }
 
