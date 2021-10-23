@@ -1,12 +1,7 @@
 package main
 
 import (
-	"bytes"
-	"crypto"
 	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -20,8 +15,20 @@ type Challenge struct {
 	Txt string `json:"txt"`
 	Sig string `json:"sig"`
 }
-type ChallengeResponse struct {
+
+type ServerMessage struct {
+	Message string `json:"message"`
+}
+
+type ServerChallenge struct {
 	Challenge Challenge `json:"challenge"`
+}
+
+type ClientMessage struct {
+	Get       string    `json:"get"`
+	Challenge Challenge `json:"challenge"`
+	PublicKey string    `json:"publicKey"`
+	Solution  string    `json:"solution"`
 }
 
 func main() {
@@ -40,17 +47,43 @@ func main() {
 			return
 		}
 		for {
-			var data map[string]interface{}
-			err := conn.ReadJSON(&data)
+			msgType, msgTxt, err := conn.ReadMessage()
 			if err != nil {
 				fmt.Println(err)
-				return
+				break
+			}
+			if msgType != websocket.TextMessage {
+				fmt.Println("send only json")
+				break
 			}
 
-			if data["get"] == "challenge" {
+			var msg ClientMessage
+			err = json.Unmarshal(msgTxt, &msg)
+			if err != nil {
+				fmt.Println(err)
+				break
+			}
+
+			if msg.Get == "challenge" {
 				challenges <- 1
 				priv := <-privChan
 				HandleChallengeRequest(conn, &priv)
+			} else if msg.Solution != "" {
+				fmt.Println("verify")
+				if VerifySolution(&msg) {
+					fmt.Println("AUTHED")
+					r := ServerMessage{Message: "handshake done"}
+					rj, err := json.Marshal(r)
+					if err != nil {
+						fmt.Println(err)
+						break
+					}
+					conn.WriteMessage(websocket.TextMessage, rj)
+				} else {
+					fmt.Println("unauthorized")
+				}
+			} else {
+				fmt.Println("invalid message")
 			}
 
 			idEncoded := strings.TrimLeft(r.URL.Path, "/")
@@ -62,35 +95,12 @@ func main() {
 
 			fmt.Println(conn.RemoteAddr(), idEncoded)
 		}
+		err = conn.Close()
+		if err != nil {
+			fmt.Println(err)
+		}
 	})
 	http.ListenAndServe(":3000", nil)
-}
-
-func HandleChallengeRequest(conn *websocket.Conn, priv *ecdsa.PrivateKey) {
-	randBytes, err := GenRandomBytes(32)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	txt := base64.RawURLEncoding.EncodeToString(randBytes)
-
-	// sign
-	r := rand.Reader
-	sig, err := priv.Sign(r, randBytes, crypto.BLAKE2b_256)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	sigStr := base64.RawURLEncoding.EncodeToString(sig)
-	chall := Challenge{txt, sigStr}
-	challResp := ChallengeResponse{chall}
-	buf := new(bytes.Buffer)
-	json.NewEncoder(buf).Encode(challResp)
-	err = conn.WriteMessage(websocket.TextMessage, buf.Bytes())
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
 }
 
 func KeepFreshKeys(challenges chan int, priv chan ecdsa.PrivateKey, limit int) {
@@ -116,32 +126,12 @@ func KeepFreshKeys(challenges chan int, priv chan ecdsa.PrivateKey, limit int) {
 	}
 }
 
-func GetFreshKeys() (*ecdsa.PrivateKey, error) {
-	// generate ECDSA P-256 keys
-	c := elliptic.P256()
-	r := rand.Reader
-	priv, err := ecdsa.GenerateKey(c, r)
-	if err != nil {
-		fmt.Println(err)
-	}
-	return priv, err
+func CheckOrigin(r *http.Request) bool {
+	return true
 }
 
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 	CheckOrigin:     CheckOrigin,
-}
-
-func CheckOrigin(r *http.Request) bool {
-	return true
-}
-
-func GenRandomBytes(size int) (blk []byte, err error) {
-	blk = make([]byte, size)
-	_, err = rand.Read(blk)
-	if err != nil {
-		fmt.Println(err)
-	}
-	return
 }
