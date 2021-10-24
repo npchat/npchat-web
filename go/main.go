@@ -14,12 +14,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-const PORT = 3000
-
-type Challenge struct {
-	Txt string `json:"txt"`
-	Sig string `json:"sig"`
-}
+const PORT = 8000
 
 type ServerMessage struct {
 	Message string `json:"message"`
@@ -42,8 +37,8 @@ type ChatMessage struct {
 }
 
 func main() {
-	msgCountChan := make(chan int)
-	defer close(msgCountChan)
+	challCountChan := make(chan int)
+	defer close(challCountChan)
 
 	privChan := make(chan ecdsa.PrivateKey)
 	defer close(privChan)
@@ -51,7 +46,7 @@ func main() {
 	// buffered channel for each ID
 	msgStore := make(map[string]chan []byte)
 
-	go KeepFreshKey(msgCountChan, privChan, 5)
+	go KeepFreshKey(challCountChan, privChan, 5)
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Access-Control-Allow-Origin", "*")
@@ -110,7 +105,7 @@ func main() {
 				break
 			}
 
-			err = HandleSocketMessage(conn, &msg, msgCountChan, privChan, id, msgStore[idEncoded])
+			err = HandleSocketMessage(conn, &msg, challCountChan, privChan, id, msgStore[idEncoded])
 			if err != nil {
 				fmt.Println("failed handling ws msg", err)
 				break
@@ -122,20 +117,27 @@ func main() {
 		}
 	})
 	fmt.Printf("Listening on :%v\n", PORT)
-	http.ListenAndServe(fmt.Sprintf(":%v", PORT), nil)
+
+	opt, err := GetOptionsFromArgs()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println(opt)
+
+	http.ListenAndServe(fmt.Sprintf(":%v", opt.Port), nil)
 }
 
 func HandleSocketMessage(conn *websocket.Conn, msg *ClientMessage,
-	msgCountChan chan int, priv chan ecdsa.PrivateKey,
+	challCountChan chan int, priv chan ecdsa.PrivateKey,
 	id []byte, msgChan chan []byte) error {
-
 	if msg.Get == "challenge" {
-		msgCountChan <- 1
+		challCountChan <- 1
 		privKey := <-priv
 		HandleChallengeRequest(conn, &privKey)
 	} else if msg.Solution != "" {
-		msgCountChan <- 0 // don't increment counter
-		privKey := <-priv
+		challCountChan <- 0 // don't increment counter
+		privKey := <-priv   // just get key
 		if !VerifySolution(msg, id, &privKey.PublicKey) {
 			fmt.Println("unauthorized")
 			return nil
@@ -162,14 +164,14 @@ func HandleSocketMessage(conn *websocket.Conn, msg *ClientMessage,
 }
 
 // Refresh key after given limit for challenge count
-func KeepFreshKey(msgCountChan chan int, privChan chan ecdsa.PrivateKey, limit int) {
+func KeepFreshKey(challCountChan chan int, privChan chan ecdsa.PrivateKey, limit int) {
 	count := 0
 	curKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	for msgCount := range msgCountChan {
+	for msgCount := range challCountChan {
 		count += msgCount
 		if count >= limit {
 			curKey, err = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
