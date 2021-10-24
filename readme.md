@@ -16,11 +16,8 @@ If a reciepient is offline:
 A `Channel` is an inbox on a host for a single `authPublicKeyHash`.
 It facilitates one-way communication from any sender to the owner of the private keys corresponding to the given `authPublicKeyHash`
 
-As implemented here, a Channel is a [Durable Object](https://developers.cloudflare.com/workers/learning/using-durable-objects).
-
 The Channel's state for any given `authPublicKeyHash` must contain:
 - all messages not yet collected
-- authenticated WebSocket connections
 - Web-Push subscriptions
 
 No Client keys are ever stored on the host.
