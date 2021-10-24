@@ -191,15 +191,10 @@ const aesKeyParams = {
 ```
 
 ## Next in pipeline
-### Webclient
-- end-to-end encrypted voice & video calls using WebRTC
+### webclient
+- End-to-end encrypted voice & video calls using WebRTC
+- Better data import/export
 
-### Server
-
-### Not sure
-Not sure whether to do this in protocol or client only...
-#### send images & videos
-There are two options:
-- Client uploads to a serverless media-store (KV), and sends a link.
-		This approach allows the protocol to remain as simple as possible, without adding complexity to the client either
-- Implement this in the protocol
+### go-npchat
+- Implement Web-Push
+- Write messages to disk when buffer full
