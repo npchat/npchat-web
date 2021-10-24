@@ -2,6 +2,8 @@ package main
 
 import (
 	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -10,6 +12,8 @@ import (
 
 	"github.com/gorilla/websocket"
 )
+
+const PORT = 3000
 
 type Challenge struct {
 	Txt string `json:"txt"`
@@ -37,7 +41,7 @@ func main() {
 	privChan := make(chan ecdsa.PrivateKey)
 	defer close(privChan)
 
-	go KeepFreshKeys(msgCountChan, privChan, 5)
+	go KeepFreshKey(msgCountChan, privChan, 5)
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
@@ -82,7 +86,8 @@ func main() {
 			fmt.Println(err)
 		}
 	})
-	http.ListenAndServe(":3000", nil)
+	fmt.Printf("Listening on :%v\n", PORT)
+	http.ListenAndServe(fmt.Sprintf(":%v", PORT), nil)
 }
 
 func HandleMessage(conn *websocket.Conn, msg *ClientMessage,
@@ -113,10 +118,10 @@ func HandleMessage(conn *websocket.Conn, msg *ClientMessage,
 	return nil
 }
 
-// Refresh keys after given limit for challenge count
-func KeepFreshKeys(msgCountChan chan int, privChan chan ecdsa.PrivateKey, limit int) {
+// Refresh key after given limit for challenge count
+func KeepFreshKey(msgCountChan chan int, privChan chan ecdsa.PrivateKey, limit int) {
 	count := 0
-	curKey, err := GetFreshKey()
+	curKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -124,9 +129,10 @@ func KeepFreshKeys(msgCountChan chan int, privChan chan ecdsa.PrivateKey, limit 
 	for {
 		count += <-msgCountChan
 		if count >= limit {
-			curKey, err = GetFreshKey()
+			curKey, err = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 			if err != nil {
 				fmt.Println(err)
+				// handler will simply block as it doesn't get a key
 				return
 			}
 			count = 0
