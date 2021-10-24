@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"strings"
 
@@ -35,15 +36,57 @@ type ClientMessage struct {
 	Solution  string    `json:"solution"`
 }
 
+type ChatMessage struct {
+	Id   string
+	Body []byte
+}
+
 func main() {
 	msgCountChan := make(chan int)
 	defer close(msgCountChan)
+
 	privChan := make(chan ecdsa.PrivateKey)
 	defer close(privChan)
+
+	// buffered channel for each ID
+	msgStore := make(map[string]chan []byte)
 
 	go KeepFreshKey(msgCountChan, privChan, 5)
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("Access-Control-Allow-Origin", "*")
+
+		idEncoded := strings.TrimLeft(r.URL.Path, "/")
+		id, err := base64.RawURLEncoding.DecodeString(idEncoded)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		if msgStore[idEncoded] == nil {
+			msgStore[idEncoded] = make(chan []byte, 10)
+		}
+
+		// handle POST message
+		if r.Method == "POST" {
+			body, err := ioutil.ReadAll(r.Body)
+			if err != nil {
+				fmt.Println("Error reading body ", err)
+				http.Error(w, "Error reading body", http.StatusBadRequest)
+				return
+			}
+			fmt.Println(len(msgStore[idEncoded]), "<- msg ")
+			msgStore[idEncoded] <- body
+			fmt.Println(len(msgStore[idEncoded]), "<- msg ")
+			r := ServerMessage{Message: "sent"}
+			rj, err := json.Marshal(r)
+			if err != nil {
+				fmt.Println("failed to marshal response")
+			}
+			w.Write(rj)
+			return
+		}
+
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
 			fmt.Println(err)
@@ -67,19 +110,11 @@ func main() {
 				break
 			}
 
-			idEncoded := strings.TrimLeft(r.URL.Path, "/")
-			id, err := base64.RawURLEncoding.DecodeString(idEncoded)
+			err = HandleSocketMessage(conn, &msg, msgCountChan, privChan, id, msgStore[idEncoded])
 			if err != nil {
-				fmt.Println(err)
-				return
-			}
-
-			err = HandleMessage(conn, &msg, msgCountChan, privChan, id)
-			if err != nil {
-				fmt.Println(err)
+				fmt.Println("failed handling ws msg", err)
 				break
 			}
-
 		}
 		err = conn.Close()
 		if err != nil {
@@ -90,9 +125,9 @@ func main() {
 	http.ListenAndServe(fmt.Sprintf(":%v", PORT), nil)
 }
 
-func HandleMessage(conn *websocket.Conn, msg *ClientMessage,
+func HandleSocketMessage(conn *websocket.Conn, msg *ClientMessage,
 	msgCountChan chan int, priv chan ecdsa.PrivateKey,
-	id []byte) error {
+	id []byte, msgChan chan []byte) error {
 
 	if msg.Get == "challenge" {
 		msgCountChan <- 1
@@ -101,16 +136,24 @@ func HandleMessage(conn *websocket.Conn, msg *ClientMessage,
 	} else if msg.Solution != "" {
 		msgCountChan <- 0 // don't increment counter
 		privKey := <-priv
-		if VerifySolution(msg, id, &privKey.PublicKey) {
-			fmt.Println("AUTHED")
-			r := ServerMessage{Message: "handshake done"}
-			rj, err := json.Marshal(r)
+		if !VerifySolution(msg, id, &privKey.PublicKey) {
+			fmt.Println("unauthorized")
+			return nil
+		}
+		fmt.Println("AUTHED")
+		r := ServerMessage{Message: "handshake done"}
+		rj, err := json.Marshal(r)
+		if err != nil {
+			return err
+		}
+		conn.WriteMessage(websocket.TextMessage, rj)
+		for m := range msgChan {
+			err = conn.WriteMessage(websocket.TextMessage, m)
 			if err != nil {
+				fmt.Println("handle this!!")
+				msgChan <- m // ??!!
 				return err
 			}
-			conn.WriteMessage(websocket.TextMessage, rj)
-		} else {
-			fmt.Println("unauthorized")
 		}
 	} else {
 		fmt.Println("invalid message")
@@ -126,13 +169,12 @@ func KeepFreshKey(msgCountChan chan int, privChan chan ecdsa.PrivateKey, limit i
 		fmt.Println(err)
 		return
 	}
-	for {
-		count += <-msgCountChan
+	for msgCount := range msgCountChan {
+		count += msgCount
 		if count >= limit {
 			curKey, err = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 			if err != nil {
 				fmt.Println(err)
-				// handler will simply block as it doesn't get a key
 				return
 			}
 			count = 0
