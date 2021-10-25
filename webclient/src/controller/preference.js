@@ -5,12 +5,10 @@ import { generateQR } from "../util/qrcode";
 import { base64ToBytes, bytesToBase64 } from "../../../util/base64";
 
 const nameStorageKey = "name"
-const domainStorageKey = "domain"
+const originStorageKey = "origin"
 const keysStorageKey = "keys"
 const welcomeDismissedStorageKey = "welcomeDismissed"
-const defaultDomain = "npchat.dr-useless.workers.dev"
-
-const domainRegex = /^(?=.{1,255}$)[0-9A-Za-z](?:(?:[0-9A-Za-z]|-){0,61}[0-9A-Za-z])?(?:\.[0-9A-Za-z](?:(?:[0-9A-Za-z]|-){0,61}[0-9A-Za-z])?)*\.?$/
+const defaultOrigin = "https://npchat.dr-useless.workers.dev"
 
 export class PreferenceController {
 	host;
@@ -22,7 +20,7 @@ export class PreferenceController {
 	constructor(host) {
 		this.host = host
 		host.addController(this)
-		this.domain = localStorage.getItem(domainStorageKey) || defaultDomain
+		this.origin = localStorage.getItem(originStorageKey) || defaultOrigin
 		this.name = localStorage.getItem(nameStorageKey) || "Anonymous"
 		this.welcomeDismissed = localStorage.getItem(welcomeDismissedStorageKey) || false
 	}
@@ -101,7 +99,7 @@ export class PreferenceController {
 	}
 
 	async initExport() {
-		this.exportLink = `https://${window.location.host}#${this.getExportString()}`
+		this.exportLink = `${window.location.origin}#${this.getExportString()}`
 		this.exportQRCode = await this.getQRCodeAsDataUrl(this.exportLink)
 	}
 
@@ -116,7 +114,7 @@ export class PreferenceController {
 				}
 			},
 			name: this.name,
-			domain: this.domain,
+			origin: this.origin,
 			contacts: this.host.contact.list
 		}
 		const bytes = new TextEncoder().encode(JSON.stringify(data))
@@ -124,7 +122,7 @@ export class PreferenceController {
 	}
 
 	getShareable() {
-		const shareable = buildShareable(this.name, this.domain, this.keys.auth.base64.publicKey, this.keys.dh.base64.publicKey)
+		const shareable = buildShareable(this.name, this.origin, this.keys.auth.base64.publicKey, this.keys.dh.base64.publicKey)
 		const bytes = new TextEncoder().encode(JSON.stringify(shareable))
 		return bytesToBase64(bytes)
 	}
@@ -134,12 +132,12 @@ export class PreferenceController {
 	}
 
 	getShareableLink(shareable) {
-		return `https://${window.location.host}#${shareable}`
+		return `${window.location.origin}#${shareable}`
 	}
 
 	store() {
 		localStorage.setItem(nameStorageKey, this.name)
-		localStorage.setItem(domainStorageKey, this.domain)
+		localStorage.setItem(originStorageKey, this.origin)
 		const keysToStore = {
 			auth: { base64: this.keys.auth.base64 },
 			dh: { base64: this.keys.dh.base64 }
@@ -161,12 +159,12 @@ export class PreferenceController {
 		this.host.requestUpdate()
 	}
 
-	async changeDomain(domain) {
-		domain = domain.trim()
-		if (domain.length > 0) {
-			this.domain = domain
+	async changeOrigin(origin) {
+		origin = origin.trim()
+		if (origin.length > 0) {
+			this.origin = origin
 		} else {
-			this.domain = defaultDomain
+			this.origin = defaultOrigin
 		}
 		await this.init()
 	}

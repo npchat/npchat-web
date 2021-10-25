@@ -58,7 +58,7 @@ export class App extends Base {
         if (obj.contact) {
           await this.contact.addContact(obj.contact)
         } else {
-          this.pref.domain = obj.domain || this.pref.domain
+          this.pref.origin = obj.origin || this.pref.origin
           this.pref.name = obj.name || this.pref.name
           this.pref.keys = obj.keys || this.pref.keys
           obj.contacts.forEach(c => this.contact.addContact(c))
@@ -97,8 +97,8 @@ export class App extends Base {
     this.pref.changeName(event.target.value, enforceNotBlank)
   }
 
-  async handleChangeDomain(event) {
-    await this.pref.changeDomain(event.target.value)
+  async handleChangeOrigin(event) {
+    await this.pref.changeOrigin(event.target.value)
     await this.initApp()
   }
 
@@ -211,13 +211,15 @@ export class App extends Base {
           ${this.nameInputTemplate()}
         </div>
         <div class="preferences-group">
-          <h3>🌐 Domain</h3>
-          <p>This must point to a service that implements the <a href="https://github.com/dr-useless/npchat">npchat protocol</a>.</p>
+          <h3>🌐 Origin</h3>
+          <p>This must point to a service that implements the <a href="https://github.com/dr-useless/npchat">npchat protocol</a>.
+              Include protocol, domain & optional port.</p>
           <label>
-            <span>Domain</span>
-            <input type="url" id="preferences-domain"
-                .value=${this.pref.domain}
-                @change=${e => this.handleChangeDomain(e)}
+            <span>Origin</span>
+            <input type="url" id="preferences-origin"
+                placeholder="https://go.npchat.org:8000"
+                .value=${this.pref.origin}
+                @change=${e => this.handleChangeOrigin(e)}
                 class="${this.websocket.isConnected ? undefined : "warn"}"/>
           </label>
           ${this.statusTemplate()}

@@ -79,7 +79,7 @@ export class MessageController {
     }
     const myKeys = this.host.pref.keys
     const message = await buildMessage(myKeys.auth.keyPair.privateKey, myKeys.dh.keyPair.privateKey, messageText, myKeys.auth.publicKeyHash, contact.keys.dh.base64)
-    const res = await sendMessage(contact.domain, contact.keys.auth.publicKeyHash, message)
+    const res = await sendMessage(contact.origin, contact.keys.auth.publicKeyHash, message)
     if (res.error) {
       console.log("Failed to send message", res)
       return

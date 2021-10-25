@@ -90,7 +90,7 @@ export class ContactController {
 	}
 
 	isValid(contact) {
-		return contact && contact.name && contact.domain
+		return contact && contact.name && contact.origin
 				&& contact.keys && contact.keys.auth && contact.keys.dh
 	}
 

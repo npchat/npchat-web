@@ -18,7 +18,7 @@ export class WebSocketController {
 		return new Promise((resolve, reject) => {
 			this.isConnected = false
 			const pref = this.host.pref
-			this.socket = this.getWebSocket(pref.domain, pref.keys.auth.publicKeyHash)
+			this.socket = this.getWebSocket(pref.origin, pref.keys.auth.publicKeyHash)
 			this.socket.addEventListener("open", () => this.handleOpen())
 			this.socket.addEventListener("close", () => this.handleClose(reject))
 			this.socket.addEventListener("message", async event => this.handleMessage(event, resolve))
@@ -75,8 +75,9 @@ export class WebSocketController {
 		this.host.requestUpdate()
 	}
 
-	getWebSocket(domain, publicKeyHash) {
-		const protocol = location.protocol === "https:" ? "wss:" : "ws:"
-		return new WebSocket(`${protocol}//${domain}/${publicKeyHash}`)
+	getWebSocket(origin, publicKeyHash) {
+		// go either to ws or wss
+		origin = origin.replace("http", "ws")
+		return new WebSocket(`${origin}/${publicKeyHash}`)
 	}
 }

@@ -28,8 +28,8 @@ export async function buildMessage(authPriv, dhPrivateKey, messageText, from, to
 	return message
 }
 
-export async function sendMessage(domain, toPublicKeyHash, builtMessage) {
-	const resp = await fetch(`${location.protocol}//${domain}/${toPublicKeyHash}`, {
+export async function sendMessage(origin, toPublicKeyHash, builtMessage) {
+	const resp = await fetch(`${origin}/${toPublicKeyHash}`, {
 		method: "POST",
 		body: JSON.stringify(builtMessage)
 	})

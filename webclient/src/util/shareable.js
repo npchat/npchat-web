@@ -1,8 +1,8 @@
-export function buildShareable(name, domain, authBase64, dhBase64) {
+export function buildShareable(name, origin, authBase64, dhBase64) {
 	return {
 		contact: {
 			name: name,
-			domain: domain,
+			origin: origin,
 			keys: {
 				auth: {
 					base64: authBase64,
