@@ -1,4 +1,5 @@
 *.DS_STORE
+.vscode/
 wrangler.toml
 node_modules
 webclient/www/dist

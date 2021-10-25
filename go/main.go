@@ -37,6 +37,9 @@ type ChatMessage struct {
 }
 
 func main() {
+	opt := GetOptionsFromFlags()
+	fmt.Println(opt)
+
 	challCountChan := make(chan int)
 	defer close(challCountChan)
 
@@ -116,16 +119,15 @@ func main() {
 			fmt.Println(err)
 		}
 	})
-	fmt.Printf("Listening on :%v\n", PORT)
 
-	opt, err := GetOptionsFromArgs()
-	if err != nil {
-		fmt.Println(err)
-		return
+	addr := fmt.Sprintf(":%v", opt.Port)
+	if opt.CertFile != "" && opt.KeyFile != "" {
+		fmt.Printf("Listening on :%v, serving with TLS\n", opt.Port)
+		http.ListenAndServeTLS(addr, opt.CertFile, opt.KeyFile, nil)
+	} else {
+		fmt.Printf("Listening on :%v\n", opt.Port)
+		http.ListenAndServe(addr, nil)
 	}
-	fmt.Println(opt)
-
-	http.ListenAndServe(fmt.Sprintf(":%v", opt.Port), nil)
 }
 
 func HandleSocketMessage(conn *websocket.Conn, msg *ClientMessage,
