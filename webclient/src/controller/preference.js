@@ -163,8 +163,7 @@ export class PreferenceController {
 
 	async changeDomain(domain) {
 		domain = domain.trim()
-		if (domain.length > 0 &&
-			(domainRegex.test(domain) || domain.indexOf("localhost") > -1)) {
+		if (domain.length > 0) {
 			this.domain = domain
 		} else {
 			this.domain = defaultDomain
