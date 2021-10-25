@@ -144,7 +144,7 @@ func HandleSocketMessage(conn *websocket.Conn, msg *ClientMessage,
 			fmt.Println("unauthorized")
 			return nil
 		}
-		fmt.Println("AUTHED")
+		fmt.Printf("%v authed\n", conn.RemoteAddr())
 		r := ServerMessage{Message: "handshake done"}
 		rj, err := json.Marshal(r)
 		if err != nil {

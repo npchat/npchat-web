@@ -215,7 +215,7 @@ export class App extends Base {
           <p>This must point to a service that implements the <a href="https://github.com/dr-useless/npchat">npchat protocol</a>.</p>
           <label>
             <span>Domain</span>
-            <input type="text" id="preferences-domain"
+            <input type="url" id="preferences-domain"
                 .value=${this.pref.domain}
                 @change=${e => this.handleChangeDomain(e)}
                 class="${this.websocket.isConnected ? undefined : "warn"}"/>
