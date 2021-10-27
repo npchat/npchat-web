@@ -220,7 +220,7 @@ export class App extends Base {
           <label>
             <span>Origin</span>
             <input type="url" id="preferences-origin"
-                placeholder="https://go.npchat.org:8000"
+                placeholder="https://go.npchat.org"
                 .value=${this.pref.origin}
                 @change=${e => this.handleChangeOrigin(e)}
                 class="${this.websocket.isConnected ? undefined : "warn"}"/>
