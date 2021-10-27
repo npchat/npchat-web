@@ -74,7 +74,9 @@ export class App extends Base {
 	}
 
   async handleAddContact(event) {
-    const added = await this.contact.addContactFromShareable(event.target.value)
+    const shareable = event.target.value
+    event.target.value = ""
+    const added = await this.contact.addContactFromShareable(shareable)
     if (added) {
       this.addContactSuccess = true
       setTimeout(() => {
