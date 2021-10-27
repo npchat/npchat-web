@@ -12,13 +12,16 @@ export class WebSocketController {
 		this.host = host
 		host.addController(this)
 		this.isConnected = false
+		window.addEventListener("beforeunload", () => {
+			this.socket.close()
+		})
 	}
 
 	connect() {
 		return new Promise((resolve, reject) => {
 			this.isConnected = false
-			const pref = this.host.pref
-			this.socket = this.getWebSocket(pref.origin, pref.keys.auth.publicKeyHash)
+			this.host.requestUpdate()
+			this.socket = this.getWebSocket(this.host.pref.origin, this.host.pref.keys.auth.publicKeyHash)
 			this.socket.addEventListener("open", () => this.handleOpen())
 			this.socket.addEventListener("close", () => this.handleClose(reject))
 			this.socket.addEventListener("message", async event => this.handleMessage(event, resolve))
@@ -30,7 +33,6 @@ export class WebSocketController {
 	}
 
 	async handleMessage(event, resolve) {
-		const pref = this.host.pref
 		let data
 		try {
 			data = JSON.parse(event.data)
@@ -45,9 +47,9 @@ export class WebSocketController {
 			return
 		}
 		if (data.challenge) {
-			const solution = await sign(pref.keys.auth.keyPair.privateKey, base64ToBytes(data.challenge.txt))
+			const solution = await sign(this.host.pref.keys.auth.keyPair.privateKey, base64ToBytes(data.challenge.txt))
 			const challengeResponse = {
-				publicKey: pref.keys.auth.base64.publicKey,
+				publicKey: this.host.pref.keys.auth.base64.publicKey,
 				challenge: data.challenge,
 				solution: bytesToBase64(new Uint8Array(solution))
 			}

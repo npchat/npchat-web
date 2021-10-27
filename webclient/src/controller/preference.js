@@ -166,7 +166,7 @@ export class PreferenceController {
 		} else {
 			this.origin = defaultOrigin
 		}
-		await this.init()
+		return this.init()
 	}
 
 	dismissWelcome() {

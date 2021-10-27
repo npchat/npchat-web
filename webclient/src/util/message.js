@@ -4,7 +4,7 @@ import { hash } from "../../../util/hash"
 import { deriveDHSecret, importDHKey } from "../../../util/key"
 import { encrypt, getIV } from "../../../util/privacy"
 
-export async function buildMessage(authPriv, dhPrivateKey, messageText, from, toDHBase64) {
+export async function buildMessage(authPriv, dhPrivateKey, messageText, from, toDHBase64, prevHash) {
 	const t = Date.now()
 	const iv = await getIV(from+t)
 	const ivBytes = new Uint8Array(iv)
@@ -13,7 +13,7 @@ export async function buildMessage(authPriv, dhPrivateKey, messageText, from, to
 	const derivedKey = await deriveDHSecret(dhPublicKey, dhPrivateKey)
 	const encrypted = await encrypt(iv, derivedKey, new TextEncoder().encode(messageText))
 	const encryptedBytes = new Uint8Array(encrypted)
-	const associatedBytes = new TextEncoder().encode(JSON.stringify({t: t, f: from}))
+	const associatedBytes = new TextEncoder().encode(JSON.stringify({t: t, f: from, p: prevHash}))
 	const bytesToHash = new Uint8Array([...ivBytes, ...encryptedBytes, ...associatedBytes])
 	const messageHash = new Uint8Array(await hash(bytesToHash))
 	const message = {
@@ -21,7 +21,8 @@ export async function buildMessage(authPriv, dhPrivateKey, messageText, from, to
 		iv: bytesToBase64(ivBytes),
 		m: bytesToBase64(encryptedBytes),
 		f: from,
-		h: bytesToBase64(messageHash)
+		h: bytesToBase64(messageHash),
+		p: prevHash
 	}
 	const hashSig = new Uint8Array(await sign(authPriv, messageHash))
 	message.s = bytesToBase64(hashSig)
@@ -42,7 +43,7 @@ export async function verifyMessage(authPub, message) {
 	}
 	const iv = base64ToBytes(message.iv)
 	const	m = base64ToBytes(message.m)
-	const associatedBytes = new TextEncoder().encode(JSON.stringify({t: message.t, f: message.f}))
+	const associatedBytes = new TextEncoder().encode(JSON.stringify({t: message.t, f: message.f, p: message.p}))
 	const bytesToHash = new Uint8Array([...iv, ...m, ...associatedBytes])
 	const hashed = new Uint8Array(await hash(bytesToHash))
 	if (!bytesToBase64(hashed) === message.h) {

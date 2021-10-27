@@ -44,6 +44,7 @@ export class App extends Base {
       console.log("WebSocket connection failed", e)
       return
     }
+    this.requestUpdate()
     return true
   }
 
@@ -298,13 +299,15 @@ export class App extends Base {
 
   messagesTemplate(messages) {
     let prevMessageTime
+    let prevHash = undefined
     return html`
       <div id="messages" class="messages" ?hidden=${this.selectedMenu !== "contacts" && this.isMobileView()}>
         <ul class="no-list">
           ${messages.map(m => {
-            const template = this.messageTemplate(m, prevMessageTime)
+            let prevMissing = prevHash && m.p !== prevHash
             prevMessageTime = m.t
-            return template
+            prevHash = m.h
+            return this.messageTemplate(m, prevMessageTime, prevMissing)
           })}
         </ul>
         ${this.contact.selected && this.contact.selected.keys
@@ -318,7 +321,7 @@ export class App extends Base {
     `;
   }
 
-  messageTemplate(message, prevMessageTime) {
+  messageTemplate(message, prevMessageTime, prevMissing) {
     const sent = message.f === this.pref.keys.auth.publicKeyHash
     const msToDayMultiplier = 0.00000001157407
     let time = new Date(message.t).toISOString()
@@ -340,6 +343,7 @@ export class App extends Base {
 
     return html`
       ${timeElapsedString ? html`<li class="meta milestone">${timeElapsedString}</span>` : undefined}
+      ${prevMissing ? html`<li class="meta milestone warn">Missing</li>` : undefined}
       <li class="message ${sent ? "sent" : "received"}">
         <div class="message-body">
           <span class="message-text">${message.mP}</span>
@@ -356,7 +360,7 @@ export class App extends Base {
       messages = this.message.list.filter(m => (m.f === selectedPubHash && !m.to) || m.to === selectedPubHash)
     }
     messages = messages
-    .slice(-20, messages.length)
+    .slice(-10, messages.length)
     .sort((a, b) => a.t > b.t)
 
     return html`

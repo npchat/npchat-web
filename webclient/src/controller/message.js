@@ -77,8 +77,17 @@ export class MessageController {
     if (!contact || !contact.keys) {
       return
     }
+    const toPubKeyHash = this.host.contact.selected.keys.auth.publicKeyHash
     const myKeys = this.host.pref.keys
-    const message = await buildMessage(myKeys.auth.keyPair.privateKey, myKeys.dh.keyPair.privateKey, messageText, myKeys.auth.publicKeyHash, contact.keys.dh.base64)
+    let prevHash = undefined
+    for (let i = this.list.length-1; i >= 0; i--) {
+      const m = this.list[i]
+      if (m.f === toPubKeyHash || m.f === myKeys.auth.publicKeyHash && m.to === toPubKeyHash) {
+        prevHash = m.h
+        break
+      }
+    }
+    const message = await buildMessage(myKeys.auth.keyPair.privateKey, myKeys.dh.keyPair.privateKey, messageText, myKeys.auth.publicKeyHash, contact.keys.dh.base64, prevHash)
     const res = await sendMessage(contact.origin, contact.keys.auth.publicKeyHash, message)
     if (res.error) {
       console.log("Failed to send message", res)
