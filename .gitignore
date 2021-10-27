@@ -1,8 +1,6 @@
 *.DS_STORE
-*.pem
 .vscode/
 wrangler.toml
 node_modules
 webclient/www/dist
 worker/dist
-go/go-npchat
