@@ -104,6 +104,7 @@ A message contains the following data.
 	"f":"5qMMiqcHEvfTSuxH7HyQj1WprvMjzO95zZsbyRxW1dk", // from authPublicKeyHash
 	"h":"Nx6wRwmEXxeugQLPSN6UnvOmmDitGYIeMjYJiEx6qyE", // message hash
 	"s":"OYbL0kPZr-zwQQtf4IcrpVuSw0EXKcwlagk0br8JTyNZjwILDye7BMHqdvAuZy69xPrBZ2tQM4lTjyrpzToAKA" // signature
+	"p":"sWHyuh5tAt4iGXP5qxuSIc91BU8ZJS5yronmnc0PdKg" // hash of previous message to detect missing
 }
 ```
 #### 4.1.1 Build message
