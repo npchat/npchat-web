@@ -8,7 +8,7 @@ const nameStorageKey = "name"
 const originStorageKey = "origin"
 const keysStorageKey = "keys"
 const welcomeDismissedStorageKey = "welcomeDismissed"
-const defaultOrigin = "https://npchat.dr-useless.workers.dev"
+const defaultOrigin = "https://axl.npchat.org"
 
 export class PreferenceController {
 	host;
