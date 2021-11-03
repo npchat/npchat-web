@@ -1,4 +1,4 @@
-# npchat
+# npchat-web
 ## 1. A simple & secure host agnostic messaging protocol
 This is an application-layer protocol for secure messaging across hosts.
 
