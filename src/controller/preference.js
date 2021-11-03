@@ -1,8 +1,8 @@
-import { hash } from "../../../util/hash";
-import { authKeyParams, dhKeyParams, genAuthKeyPair, genDHKeyPair, getBytesFromPrivateCryptoKey, getPrivateCryptoKeyFromBytes, importAuthKey, importDHKey } from "../../../util/key";
+import { hash } from "../util/hash";
+import { authKeyParams, dhKeyParams, genAuthKeyPair, genDHKeyPair, getBytesFromPrivateCryptoKey, getPrivateCryptoKeyFromBytes, importAuthKey, importDHKey } from "../util/key";
 import { buildShareable } from "../util/shareable";
 import { generateQR } from "../util/qrcode";
-import { base64ToBytes, bytesToBase64 } from "../../../util/base64";
+import { base64ToBytes, bytesToBase64 } from "../util/base64";
 
 const nameStorageKey = "name"
 const originStorageKey = "origin"

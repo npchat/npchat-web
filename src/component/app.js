@@ -5,7 +5,7 @@ import { MessageController } from "../controller/message";
 import { PreferenceController } from "../controller/preference";
 import { WebSocketController } from "../controller/websocket";
 import { WebPushController } from "../controller/webpush";
-import { base64ToBytes } from "../../../util/base64";
+import { base64ToBytes } from "../util/base64";
 
 export class App extends Base {
   pref = new PreferenceController(this)

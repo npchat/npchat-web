@@ -1,5 +1,5 @@
-import { sign } from "../../../util/auth";
-import { base64ToBytes, bytesToBase64 } from "../../../util/base64";
+import { sign } from "../util/auth";
+import { base64ToBytes, bytesToBase64 } from "../util/base64";
 
 export class WebSocketController {
 	host;

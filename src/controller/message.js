@@ -1,7 +1,7 @@
-import { deriveDHSecret, importAuthKey, importDHKey } from "../../../util/key";
+import { deriveDHSecret, importAuthKey, importDHKey } from "../util/key";
 import { sendMessage, buildMessage, verifyMessage } from "../util/message"
-import { decrypt } from "../../../util/privacy";
-import { base64ToBytes } from "../../../util/base64";
+import { decrypt } from "../util/privacy";
+import { base64ToBytes } from "../util/base64";
 
 const messagesKey = "messages"
 

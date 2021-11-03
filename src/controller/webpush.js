@@ -1,4 +1,4 @@
-import { bytesToBase64 } from "../../../util/base64";
+import { bytesToBase64 } from "../util/base64";
 
 export class WebPushController {
 	host;

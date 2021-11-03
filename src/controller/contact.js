@@ -1,6 +1,6 @@
 
-import { base64ToBytes, bytesToBase64 } from "../../../util/base64";
-import { hash } from "../../../util/hash";
+import { base64ToBytes, bytesToBase64 } from "../util/base64";
+import { hash } from "../util/hash";
 
 const contactsStorageKey = "contacts"
 
