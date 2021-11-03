@@ -1,6 +1,6 @@
 # npchat-web
 ## 1. A simple & secure host agnostic messaging protocol
-This is an application-layer protocol for secure messaging across hosts.
+This is a front-end for npchat, an application-layer protocol for secure messaging across hosts.
 
 It uses Elliptic Curve cryptography for signing, verifying, encrypting & decrypting messages end-to-end.
 
