@@ -4,10 +4,10 @@
 	https://developers.cloudflare.com/workers/learning/using-durable-objects
 */
 
-import { genAuthKeyPair, importAuthKey } from '../../util/key'
-import { sign, verify } from '../../util/auth'
-import { hash } from '../../util/hash'
-import { base64ToBytes, bytesToBase64 } from "../../util/base64"
+import { genAuthKeyPair, importAuthKey } from '../../src/util/key'
+import { sign, verify } from '../../src/util/auth'
+import { hash } from '../../src/util/hash'
+import { base64ToBytes, bytesToBase64 } from "../../src/util/base64"
 
 const vapidAuthPubStorageKey = "vapidAuthPublicKey"
 const vapidAuthPrivStorageKey = "vapidAuthPrivateKey"
