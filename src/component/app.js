@@ -23,7 +23,8 @@ export class App extends Base {
 
   constructor() {
     super()
-    // unfortunately this is required to fix the message input position
+    // unfortunately this is required
+    // to fix the message input position
     window.addEventListener("resize", () => {
       this.requestUpdate()
     })
