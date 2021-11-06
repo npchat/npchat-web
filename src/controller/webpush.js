@@ -5,11 +5,10 @@ export class WebPushController {
 
 	constructor(host) {
 		this.host = host
-		this.appPublicKey = 
 		host.addController(this)
 	}
 
-	async subscribeToPushNotifications(vapidAppPublicKey) {
+	async subscribeToPushNotifications(vapidKey) {
 		if (!navigator.serviceWorker || !window.PushManager) {
 			console.log("ServiceWorker or PushManager not supported")
 			return
@@ -20,10 +19,10 @@ export class WebPushController {
 		if (!gotPermission) return
 		let currentSub = await registration.pushManager.getSubscription()
 		if (currentSub) {
-			// check if vapidAppPublicKey changed
+			// check if vapidKey changed
 			const currentKey = new Uint8Array(currentSub.options.applicationServerKey)
 			const currentKeyBase64 = bytesToBase64(currentKey)
-			if (currentKeyBase64 !== vapidAppPublicKey) {
+			if (currentKeyBase64 !== vapidKey) {
 				await currentSub.unsubscribe()
 				currentSub = undefined
 			}
@@ -31,7 +30,7 @@ export class WebPushController {
 		if (!currentSub) {
 			const sub = await registration.pushManager.subscribe({
 				userVisibleOnly: true,
-				applicationServerKey: vapidAppPublicKey
+				applicationServerKey: vapidKey
 			})
 			currentSub = sub
 			this.host.websocket.socket.send(JSON.stringify({subscription: currentSub.toJSON()}))

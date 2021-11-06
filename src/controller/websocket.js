@@ -56,9 +56,9 @@ export class WebSocketController {
 			this.socket.send(JSON.stringify(challengeResponse))
 			return
 		}
-		if (data.message || data.vapidAppPublicKey) { // handshake was successful
-			if (data.vapidAppPublicKey) {
-				await this.host.webpush.subscribeToPushNotifications(data.vapidAppPublicKey)
+		if (data.message || data.vapidKey) { // handshake was successful
+			if (data.vapidKey) {
+				await this.host.webpush.subscribeToPushNotifications(data.vapidKey)
 			}
 			this.isConnected = true
 			this.host.requestUpdate()

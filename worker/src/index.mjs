@@ -149,7 +149,7 @@ export class Channel {
 			const isAuthenticated = await this.authenticate(data, getAuthPubKeyHashFromRequest(request))
 			if (isAuthenticated) {
 				this.authedSockets.push(ws)
-				ws.send(JSON.stringify({message: "Handshake done", vapidAppPublicKey: this.vapidAppPublicKey}))
+				ws.send(JSON.stringify({message: "Handshake done", vapidKey: this.vapidAppPublicKey}))
 				if (this.messages.length > 0) {
 					this.messages.forEach(m => {
 						ws.send(JSON.stringify(m))
