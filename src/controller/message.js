@@ -18,7 +18,7 @@ export class MessageController {
 		localStorage.setItem(messagesKey, JSON.stringify(this.list))
 	}
 
-	init() {
+	async init() {
 		const stored = localStorage.getItem(messagesKey)
     try {
       const parsed = JSON.parse(stored)
@@ -27,6 +27,7 @@ export class MessageController {
       console.log("Failed to parse stored messages")
       this.list = []
     }
+    await this.checkMissing()
   }
 
 	async handleReceivedMessage(data, doStore) {
@@ -58,22 +59,37 @@ export class MessageController {
 
     const messagePlainBytes = new Uint8Array(await decrypt(ivBytes, derivedKey, mBytes))
 
-    const storable = data
-    storable.mP = new TextDecoder().decode(messagePlainBytes)
-    this.list.push(storable)
-    if (doStore) {
-      this.store()
+    const plain = new TextDecoder().decode(messagePlainBytes)
+    
+    try {
+      const parsed = JSON.parse(plain)
+      if (parsed.resend) { // resend the requested message
+        const msg = {}
+        Object.assign(msg, this.list.find(m => m.h === parsed.resend), {mP: undefined, to: undefined})
+        const contact = this.host.contact.list.find(c => c.keys.auth.publicKeyHash === data.f)
+        await sendMessage(contact.origin, contact.keys.auth.publicKeyHash, msg)
+        console.log("resent message", msg)
+      }
+    } catch (e) {
+      const storable = data
+      storable.mP = plain
+      this.list.push(storable)
+      this.list = this.list.sort((a, b) => a.t > b.t)
+      if (doStore) {
+        this.store()
+      }
+      this.host.requestUpdate()
+      await this.checkMissing()
     }
-    this.host.requestUpdate()
     return isVerified
   }
 
-	async handleSendMessage(messageText) {
+	async sendMessage(messageText, contact, store) {
 		messageText = messageText.trim()
     if (messageText.length < 1) {
       return
     }
-    const contact = this.host.contact.selected
+    contact = contact || this.host.contact.selected
     if (!contact || !contact.keys) {
       return
     }
@@ -95,10 +111,39 @@ export class MessageController {
     }
     message.mP = messageText
     message.to = contact.keys.auth.publicKeyHash
-    this.list.push(message)
-    this.store()
+    if (store) {
+      this.list.push(message)
+      this.store()
+    }
     this.host.requestUpdate()
 	}
+
+  async checkMissing() {
+    this.host.contact.list.forEach(async contact => {
+      const msgs = this.list.filter(m => m.f === contact.keys.auth.publicKeyHash || m.to === contact.keys.auth.publicKeyHash)
+      for (let i = msgs.length-1; i > 0; i--) {
+        const cur = msgs[i]
+        const prev = msgs[i-1]
+        if (cur.p !== prev.h) {
+          // something wrong
+          console.log("something wrong")
+          const p = this.list.find(m => m.h === cur.p)
+          if (p) {
+            // find message pointing to p
+            const toResend = this.list.find(m => m.p === p.h)
+            console.log("contact is missing a message", toResend)
+            const cleaned = {}
+            Object.assign(cleaned, toResend, {to: undefined, mP: undefined})
+            await sendMessage(contact.origin, contact.keys.auth.publicKeyHash, cleaned)
+            console.log("resent", toResend)
+          } else {
+            const resendMsg = JSON.stringify({resend: cur.p})
+            await this.sendMessage(resendMsg, contact)
+          }
+        }
+      }
+    })
+  }
 
   pushAll() {
     this.list.forEach(m => {
