@@ -60,13 +60,14 @@ export class MessageController {
     const messagePlainBytes = new Uint8Array(await decrypt(ivBytes, derivedKey, mBytes))
 
     const plain = new TextDecoder().decode(messagePlainBytes)
+
+    const contact = this.host.contact.list.find(c => c.keys.auth.publicKeyHash === data.f)
     
     try {
       const parsed = JSON.parse(plain)
       if (parsed.resend) { // resend the requested message
         const msg = {}
         Object.assign(msg, this.list.find(m => m.h === parsed.resend), {mP: undefined, to: undefined})
-        const contact = this.host.contact.list.find(c => c.keys.auth.publicKeyHash === data.f)
         await sendMessage(contact.origin, contact.keys.auth.publicKeyHash, msg)
         console.log("resent message", msg)
       }
@@ -79,7 +80,7 @@ export class MessageController {
         this.store()
       }
       this.host.requestUpdate()
-      await this.checkMissing()
+      this.checkMissing(contact)
     }
     return isVerified
   }
@@ -104,11 +105,7 @@ export class MessageController {
       }
     }
     const message = await buildMessage(myKeys.auth.keyPair.privateKey, myKeys.dh.keyPair.privateKey, messageText, myKeys.auth.publicKeyHash, contact.keys.dh.base64, prevHash)
-    const res = await sendMessage(contact.origin, contact.keys.auth.publicKeyHash, message)
-    if (res.error) {
-      console.log("Failed to send message", res)
-      return
-    }
+    await sendMessage(contact.origin, contact.keys.auth.publicKeyHash, message)
     message.mP = messageText
     message.to = contact.keys.auth.publicKeyHash
     if (store) {
@@ -118,31 +115,29 @@ export class MessageController {
     this.host.requestUpdate()
 	}
 
-  async checkMissing() {
-    this.host.contact.list.forEach(async contact => {
-      const msgs = this.list.filter(m => m.f === contact.keys.auth.publicKeyHash || m.to === contact.keys.auth.publicKeyHash)
-      for (let i = msgs.length-1; i > 0; i--) {
-        const cur = msgs[i]
-        const prev = msgs[i-1]
-        if (cur.p !== prev.h) {
-          // something wrong
-          console.log("something wrong")
-          const p = this.list.find(m => m.h === cur.p)
-          if (p) {
-            // find message pointing to p
-            const toResend = this.list.find(m => m.p === p.h)
-            console.log("contact is missing a message", toResend)
-            const cleaned = {}
-            Object.assign(cleaned, toResend, {to: undefined, mP: undefined})
-            await sendMessage(contact.origin, contact.keys.auth.publicKeyHash, cleaned)
-            console.log("resent", toResend)
-          } else {
-            const resendMsg = JSON.stringify({resend: cur.p})
-            await this.sendMessage(resendMsg, contact)
-          }
+  async checkMissing(contact) {
+    const msgs = this.list.filter(m => m.f === contact.keys.auth.publicKeyHash || m.to === contact.keys.auth.publicKeyHash)
+    for (let i = msgs.length-1; i > 0; i--) {
+      const cur = msgs[i]
+      const prev = msgs[i-1]
+      if (cur.p !== prev.h) {
+        // something wrong
+        console.log("something wrong")
+        const p = this.list.find(m => m.h === cur.p)
+        if (p) {
+          // find message pointing to p
+          const toResend = this.list.find(m => m.p === p.h)
+          console.log("contact is missing a message", toResend)
+          const cleaned = {}
+          Object.assign(cleaned, toResend, {to: undefined, mP: undefined})
+          await sendMessage(contact.origin, contact.keys.auth.publicKeyHash, cleaned)
+          console.log("resent", toResend)
+        } else {
+          const resendMsg = JSON.stringify({resend: cur.p})
+          await this.sendMessage(resendMsg, contact)
         }
       }
-    })
+    }
   }
 
   pushAll() {
