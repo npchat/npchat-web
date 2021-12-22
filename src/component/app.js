@@ -23,8 +23,7 @@ export class App extends Base {
 
   constructor() {
     super()
-    // unfortunately this is required
-    // to fix the message input position
+    // unfortunately this is required to fix the message input position
     window.addEventListener("resize", () => {
       this.requestUpdate()
     })
@@ -35,9 +34,9 @@ export class App extends Base {
   }
 
   async initApp() {
-    this.message.init()
     this.contact.init()
     await this.pref.init()
+    await this.message.init()
     this.importFromUrlHash()
     try {
       await this.websocket.connect()
@@ -93,7 +92,7 @@ export class App extends Base {
 
   async handleSendMessage(event) {
     event.preventDefault()
-    await this.message.handleSendMessage(this.messageInput.value)
+    await this.message.sendMessage(this.messageInput.value, undefined, true)
     this.messageInput.value = ""
   }
 

@@ -28,13 +28,17 @@ export class WebPushController {
 			}
 		}
 		if (!currentSub) {
-			const sub = await registration.pushManager.subscribe({
-				userVisibleOnly: true,
-				applicationServerKey: vapidKey
-			})
-			currentSub = sub
-			this.host.websocket.socket.send(JSON.stringify({subscription: currentSub.toJSON()}))
-			console.log("new subscription", currentSub)
+			try {
+				const sub = await registration.pushManager.subscribe({
+					userVisibleOnly: true,
+					applicationServerKey: vapidKey
+				})
+				this.host.websocket.socket.send(JSON.stringify({subscription: sub.toJSON()}))
+				console.log("new subscription", sub)
+			} catch {
+				console.log("failed to subscribe for web push")
+				return
+			}
 		}
 	}
 
