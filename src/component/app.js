@@ -138,7 +138,7 @@ export class App extends Base {
             <span class="label">Chats</span>
           </a>
         </nav>
-        <h1>npchat webclient</h1>
+        <h1>npchat-web</h1>
         <span class="welcome">Hello, ${this.pref.name} ☺️</span>
         <div class="status ${this.websocket.isConnected ? "connected" : ""}"></div>
       </header>
@@ -220,7 +220,7 @@ export class App extends Base {
           <label>
             <span>Origin</span>
             <input type="url" id="preferences-origin"
-                placeholder="https://go.npchat.org"
+                placeholder="https://axl.npchat.org"
                 .value=${this.pref.origin}
                 @change=${e => this.handleChangeOrigin(e)}
                 class="${this.websocket.isConnected ? undefined : "warn"}"/>

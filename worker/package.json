@@ -1,9 +1,0 @@
-{
-	"type": "module",
-	"scripts": {
-		"build": "node ./esbuild.js"
-	},
-	"dependencies": {
-		"esbuild": "^0.13.4"
-	}
-}
