@@ -33,40 +33,42 @@ export class WebSocketController {
 	}
 
 	async handleMessage(event, resolve) {
-		let data
+		let msg
 		try {
-			data = JSON.parse(event.data)
+			msg = JSON.parse(event.data)
 		} catch (e) {
 			console.log("Failed to parse JSON", e)
 			return
 		}
-		if (data.error) {
+		if (msg.error) {
 			this.isConnected = false
-			console.log("WS error", data.error)
+			console.error("WS error:", msg.error)
 			this.host.requestUpdate()
 			return
 		}
-		if (data.challenge) {
-			const solution = await sign(this.host.pref.keys.auth.keyPair.privateKey, base64ToBytes(data.challenge.txt))
+		if (msg.challenge) {
+			const solution = await sign(this.host.pref.keys.auth.keyPair.privateKey, base64ToBytes(msg.challenge.txt))
 			const challengeResponse = {
 				publicKey: this.host.pref.keys.auth.base64.publicKey,
-				challenge: data.challenge,
+				challenge: msg.challenge,
 				solution: bytesToBase64(new Uint8Array(solution))
 			}
 			this.socket.send(JSON.stringify(challengeResponse))
 			return
 		}
-		if (data.message || data.vapidKey) { // handshake was successful
-			if (data.vapidKey) {
-				await this.host.webpush.subscribeToPushNotifications(data.vapidKey)
+		if (msg.message && !msg.error) { // handshake was successful
+			if (msg.vapidKey) {
+				await this.host.webpush.subscribeToPushNotifications(msg.vapidKey)
+			}
+			if (msg.data) {
+				this.parseData(msg.data)
 			}
 			this.isConnected = true
 			this.host.requestUpdate()
 			resolve()
 			return
 		}
-		await this.host.message.handleReceivedMessage(data, true)
-		this.host.requestUpdate()
+		await this.host.message.handleReceivedMessage(msg, true)
 	}
 
 	handleClose(reject) {
@@ -78,8 +80,29 @@ export class WebSocketController {
 	}
 
 	getWebSocket(origin, publicKeyHash) {
-		// go either to ws or wss
-		origin = origin.replace("http", "ws")
+		origin = origin.replace("http", "ws") // either ws or wss
 		return new WebSocket(`${origin}/${publicKeyHash}`)
+	}
+
+	setData(data) {
+		this.socket.send(JSON.stringify({
+			set: "data",
+			data: data
+		}))
+	}
+
+	parseData(data) {
+		let parsed
+		try {
+			parsed = JSON.parse(data)
+		} catch (e) {
+			console.log("Failed to parse JSON", e)
+		}
+		if (parsed && parsed.contacts) {
+			console.log("got contacts", parsed.contacts)
+			parsed.contacts.forEach(c => {
+				this.host.contact.addContact(c)
+			})
+		}
 	}
 }

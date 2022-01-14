@@ -43,6 +43,9 @@ export class ContactController {
 			this.store()
 			this.select(contact)
 			this.host.requestUpdate()
+			this.host.websocket.setData(JSON.stringify({
+				contacts: this.list
+			}))
 		}
 	}
 
@@ -76,6 +79,9 @@ export class ContactController {
 			this.store()
 			this.host.message.list = this.host.message.list.filter(m => m.f !== contact.keys.auth.publicKeyHash)
 			this.host.message.store()
+			this.host.websocket.setData(JSON.stringify({
+				contacts: this.list
+			}))
 			console.log("Contact removed")
 			this.host.requestUpdate()
 		} else {
