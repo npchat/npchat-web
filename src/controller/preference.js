@@ -114,8 +114,7 @@ export class PreferenceController {
 				}
 			},
 			name: this.name,
-			origin: this.origin,
-			contacts: this.host.contact.list
+			origin: this.origin
 		}
 		const bytes = new TextEncoder().encode(JSON.stringify(data))
 		return bytesToBase64(bytes)
