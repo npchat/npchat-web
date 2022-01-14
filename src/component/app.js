@@ -57,13 +57,11 @@ export class App extends Base {
       try {
         const obj = JSON.parse(text)
         if (obj.contact) {
-          await this.contact.addContact(obj.contact)
+          await this.contact.addContact(obj.contact, true)
         } else {
           this.pref.origin = obj.origin || this.pref.origin
           this.pref.name = obj.name || this.pref.name
           this.pref.keys = obj.keys || this.pref.keys
-          obj.contacts.forEach(c => this.contact.addContact(c))
-          this.contact.store()
         }
         this.pref.store()
         this.initApp()
@@ -246,8 +244,10 @@ export class App extends Base {
               </div>
             </div>
           </div>
-          <p>You can push all messages to the inbox so that your other device can collect them. They can only be collected once each time, so you may need to push them again.</p>
+          <p>You can push all messages to the inbox so that your other device can collect them.</p>
           <button @click=${() => this.message.pushAll()}>Push all messages to sync</button>
+          <p>Force-push all your contacts to sync them on another device. This is done automatically when you add/remove a contact.</p>
+          <button @click=${() => this.contact.pushContacts()}>Push contacts</button>
         </div>
       </div>
     `;

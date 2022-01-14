@@ -29,7 +29,7 @@ export class ContactController {
 		localStorage.setItem(contactsStorageKey, JSON.stringify(this.list))
 	}
 
-	async addContact(contact) {
+	async addContact(contact, push) {
 		if (this.isValid(contact)) {
 			const publicKeyRaw = base64ToBytes(contact.keys.auth.base64)
 			const publicKeyHash = new Uint8Array(await hash(publicKeyRaw))
@@ -43,9 +43,9 @@ export class ContactController {
 			this.store()
 			this.select(contact)
 			this.host.requestUpdate()
-			this.host.websocket.setData(JSON.stringify({
-				contacts: this.list
-			}))
+			if (push) {
+				this.pushContacts()
+			}
 		}
 	}
 
@@ -66,7 +66,7 @@ export class ContactController {
       console.log("Failed, missing keys, domain or name", contact)
       return false
     }
-    await this.addContact(contact)
+    await this.addContact(contact, true)
     this.host.requestUpdate();
 		return true;
 	}
@@ -79,14 +79,18 @@ export class ContactController {
 			this.store()
 			this.host.message.list = this.host.message.list.filter(m => m.f !== contact.keys.auth.publicKeyHash)
 			this.host.message.store()
-			this.host.websocket.setData(JSON.stringify({
-				contacts: this.list
-			}))
+			this.pushContacts()
 			console.log("Contact removed")
 			this.host.requestUpdate()
 		} else {
 			console.log("Contact not found")
 		}
+	}
+
+	pushContacts() {
+		this.host.websocket.setData(JSON.stringify({
+			contacts: this.list
+		}))
 	}
 
 	select(contact) {

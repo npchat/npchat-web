@@ -68,7 +68,7 @@ export class WebSocketController {
 			resolve()
 			return
 		}
-		await this.host.message.handleReceivedMessage(msg, true)
+		await this.host.message.handleReceivedMessage(msg)
 	}
 
 	handleClose(reject) {
