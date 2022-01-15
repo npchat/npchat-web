@@ -17,11 +17,11 @@ export class WebSocketController {
 		})
 	}
 
-	connect() {
+	async connect() {
+		this.socket = await this.getWebSocket(this.host.pref.origin, this.host.pref.keys.auth.publicKeyHash)
 		return new Promise((resolve, reject) => {
 			this.isConnected = false
 			this.host.requestUpdate()
-			this.socket = this.getWebSocket(this.host.pref.origin, this.host.pref.keys.auth.publicKeyHash)
 			this.socket.addEventListener("open", () => this.handleOpen())
 			this.socket.addEventListener("close", () => this.handleClose(reject))
 			this.socket.addEventListener("message", async event => this.handleMessage(event, resolve))
@@ -79,7 +79,12 @@ export class WebSocketController {
 		this.host.requestUpdate()
 	}
 
-	getWebSocket(origin, publicKeyHash) {
+	async getWebSocket(origin, publicKeyHash) {
+		const resp = await fetch(`${origin}/${publicKeyHash}`)
+		if (resp.redirected) {
+			const u = resp.url
+			origin = u.endsWith('/') ? u.slice(0, -1) : u
+		}
 		origin = origin.replace("http", "ws") // either ws or wss
 		return new WebSocket(`${origin}/${publicKeyHash}`)
 	}
