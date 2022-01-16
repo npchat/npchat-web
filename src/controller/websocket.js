@@ -62,6 +62,8 @@ export class WebSocketController {
 			}
 			if (msg.data) {
 				this.parseData(msg.data)
+			} else {
+				this.host.contact.pushContacts()
 			}
 			this.isConnected = true
 			this.host.requestUpdate()
@@ -104,7 +106,6 @@ export class WebSocketController {
 			console.log("Failed to parse JSON", e)
 		}
 		if (parsed && parsed.contacts) {
-			console.log("got contacts", parsed.contacts)
 			parsed.contacts.forEach(c => {
 				this.host.contact.addContact(c)
 			})
