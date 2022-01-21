@@ -2,7 +2,8 @@ export function loadPreferences() {
 	return {
 		showWelcome: !localStorage.showWelcome || localStorage.showWelcome === "true",
 		displayName: localStorage.displayName,
-		avatarURL: localStorage.avatarURL
+		avatarURL: localStorage.avatarURL,
+		originURL: localStorage.originURL
 	}
 }
 

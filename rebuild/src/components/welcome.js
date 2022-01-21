@@ -1,6 +1,7 @@
 import { LitElement, html, css } from "lit"
 import { formStyles } from "../styles/form.js"
 import { generalStyles } from "../styles/general.js"
+import { getRoboHashURL } from "../util/avatar.js"
 
 export class Welcome extends LitElement {
 
@@ -21,7 +22,7 @@ export class Welcome extends LitElement {
 
   render() {
     return html`
-		<npchat-modal @close=${this.handleDismiss}>
+		<npchat-modal ?canClose=${false}>
       <h1>Welcome to npchat</h1>
 			<h2>Let's get you set up</h2>
       <form @submit=${this.handleSubmit}>
@@ -33,15 +34,6 @@ export class Welcome extends LitElement {
         <label>
           <span>Your avatar URL</span>
           <input type="text" name="avatarURL" placeholder="" />
-        </label>
-        <label>
-          <span>Your origin URL</span>
-          <input list="origins" name="origin" placeholder="https://axl.npchat.org" />
-          <datalist id="origins">
-            <option value="https://axl.npchat.org">
-            <option value="https://frosty-meadow-296.fly.dev">
-            <option value="https://wispy-feather-9047.fly.dev">
-          </datalist>
         </label>
         <button type="submit">Submit</button>
       </form>
@@ -55,10 +47,14 @@ export class Welcome extends LitElement {
     if (detail.displayName === "") {
       detail.displayName = "Anonymous"
     }
-    this.dispatchEvent(new CustomEvent("welcomeSubmit", { detail }))
+    // set default origin
+    detail.originURL = "https://axl.npchat.org"
+    // generate keys
+    
+    // get fallback avatar from RoboHash
+    if (detail.avatarURL === "") {
+      detail.avatarURL = getRoboHashURL("mongo")
+    }
+    this.dispatchEvent(new CustomEvent("formSubmit", { detail }))
   }
-
-	handleDismiss() {
-		this.dispatchEvent(new CustomEvent("welcomeDismiss"))
-	}
 }

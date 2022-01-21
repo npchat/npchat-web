@@ -4,12 +4,17 @@ export const formStyles = css`
 	label {
 		display: flex;
 		flex-direction: column;
-		font-size: 1.4rem;
 		color: var(--color-darkgrey);
 		margin: 10px 0;
+		width: 100%;
+	}
+
+	label span {
+		font-size: 1.4rem;
 	}
 
 	button {
+		font-size: 1.4rem;
 		padding: 10px 20px;
 		margin: 10px;
 		cursor: pointer;

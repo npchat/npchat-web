@@ -1,5 +1,5 @@
 import { LitElement, html, css } from "lit"
-import { loadPreferences, storePreferences } from "../util/preferences.js"
+import { loadPreferences, storePreferences } from "../util/storage.js"
 
 const logo = new URL("../../assets/npchat-logo.svg", import.meta.url).href
 
@@ -8,8 +8,10 @@ export class App extends LitElement {
     return {
       blur: {type: Boolean},
       showWelcome: {type: Boolean},
+      showPreferences: {type: Boolean},
       displayName: {},
       avatarURL: {},
+      originURL: {}
     }
   }
 
@@ -50,10 +52,10 @@ export class App extends LitElement {
       }
 
       .avatar {
-        height: 100%;
-        width: auto;
+        height: 40px;
+        width: 40px;
         border-radius: 50%;
-        border: 2px solid var(--color-lightgrey);
+        border: 2px solid var(--color-grey);
       }
 
       .avatar:hover {
@@ -61,7 +63,6 @@ export class App extends LitElement {
       }
 
       .preferences-button {
-        height: 40px;
         margin: 0 5px;
       }
     `
@@ -70,15 +71,15 @@ export class App extends LitElement {
   constructor() {
     super()
     Object.assign(this, loadPreferences())
-    this.blur = this.showWelcome
+    this.blur = this.showWelcome || this.showPreferences
   }
 
   render() {
     return html`
-      <main class="${this.blur ? "blur" : undefined}">
+      <main class="${this.blur ? "blur" : ""}">
         <header>
           <img alt="npchat logo" src=${logo} class="logo"/>
-          <a href="#" class="preferences-button">
+          <a href="#" @click=${this.handleShowPreferences} class="preferences-button">
             <img alt="avatar" src=${this.avatarURL} class="avatar"/>
           </a>
         </header>
@@ -86,26 +87,46 @@ export class App extends LitElement {
       </main>
 
       <npchat-welcome
-          @welcomeSubmit=${this.handleWelcomeSubmit}
-          @welcomeDismiss=${this.hideWelcome}
+          @formSubmit=${this.handlePreferencesSubmit}
           ?hidden=${!this.showWelcome}
         ></npchat-welcome>
+
+      <npchat-preferences
+          @formSubmit=${this.handlePreferencesSubmit}
+          @close=${this.hidePreferences}
+          ?hidden=${!this.showPreferences}
+          .preferences=${{
+            displayName: this.displayName,
+            avatarURL: this.avatarURL,
+            originURL: this.originURL
+          }}
+      ></npchat-welcome>
     `
   }
 
-  handleWelcomeSubmit(e) {
-    console.log("details", e.detail)
+  handlePreferencesSubmit(e) {
     Object.assign(this, e.detail)
     storePreferences(e.detail)
     this.hideWelcome()
+    this.hidePreferences()
   }
 
   hideWelcome() {
     this.showWelcome = false
     this.blur = false
-    this.requestUpdate('showWelcome')
     storePreferences({
       showWelcome: this.showWelcome,
     })
+  }
+
+  handleShowPreferences(e) {
+    e.preventDefault()
+    this.showPreferences = true
+    this.blur = true
+  }
+
+  hidePreferences() {
+    this.showPreferences = false
+    this.blur = false
   }
 }
