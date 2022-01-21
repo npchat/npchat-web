@@ -1,4 +1,5 @@
 self.addEventListener("push", event => {
+    // take publicKeyHash from event data & lookup contact display name
     self.registration.showNotification("Received message", {
       tag: "got-message"
   });
