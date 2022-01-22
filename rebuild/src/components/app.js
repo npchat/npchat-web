@@ -1,5 +1,7 @@
 import { LitElement, html, css } from "lit"
+import {classMap} from "lit/directives/class-map.js"
 import { loadPreferences, storePreferences } from "../util/storage.js"
+import { getWebSocket, authenticateSocket } from "../util/websocket.js"
 
 const logo = new URL("../../assets/npchat-logo.svg", import.meta.url).href
 
@@ -9,6 +11,7 @@ export class App extends LitElement {
       blur: {type: Boolean},
       showWelcome: {type: Boolean},
       showPreferences: {type: Boolean},
+      isWebSocketConnected: {type: Boolean},
       displayName: {},
       avatarURL: {},
       originURL: {}
@@ -25,16 +28,13 @@ export class App extends LitElement {
         justify-content: flex-start;
       }
 
-      .blur {
-				height: 100vh;
-				width: 100vw;
-				position: fixed;
-				top: 0;
-				left: 0;
-				z-index: 1;
+      main {
+        transition: filter 300ms;
+      }
+
+      main.blur {
 				filter: blur(10px);
-				background-color: var(--color-offwhite);
-			}
+      }
 
       header {
         width: 100vw;
@@ -56,6 +56,7 @@ export class App extends LitElement {
         width: 40px;
         border-radius: 50%;
         border: 2px solid var(--color-grey);
+        transition: border-color 300ms;
       }
 
       .avatar:hover {
@@ -70,20 +71,45 @@ export class App extends LitElement {
 
   constructor() {
     super()
-    Object.assign(this, loadPreferences())
-    this.blur = this.showWelcome || this.showPreferences
+    loadPreferences().then(pref => {
+      Object.assign(this, pref)
+      this.blur = this.showWelcome
+      try {
+        this.connectWebSocket().then(() => {
+          this.isWebSocketConnected = true
+        })
+      } catch (e) {
+        this.isWebSocketConnected = false
+      }
+    })
+    
+  }
+
+  async connectWebSocket() {
+    if (!this.originURL || !this.keys) {
+      console.error("missing stuff", this.originURL, this.keys)
+      return Promise.reject()
+    }
+    const url = new URL(this.keys.pubKeyHash, this.originURL)
+    const socket = await getWebSocket(url.toString())
+    return authenticateSocket(socket, this.keys.auth.keyPair.privateKey, this.keys.auth.raw.publicKey)
   }
 
   render() {
     return html`
-      <main class="${this.blur ? "blur" : ""}">
+      <main class="${classMap({blur: this.blur})}">
         <header>
           <img alt="npchat logo" src=${logo} class="logo"/>
+          <npchat-status ?isWebSocketConnected=${this.isWebSocketConnected}></npchat-status>
           <a href="#" @click=${this.handleShowPreferences} class="preferences-button">
             <img alt="avatar" src=${this.avatarURL} class="avatar"/>
           </a>
         </header>
         <h1>npchat-web</h1>
+        <h2>Todo</h2>
+        <ul>
+          <li>Modify go-npchat for new auth mechanism</li>
+        </ul>
       </main>
 
       <npchat-welcome
@@ -104,11 +130,18 @@ export class App extends LitElement {
     `
   }
 
-  handlePreferencesSubmit(e) {
+  async handlePreferencesSubmit(e) {
+    let changedOriginURL
+    if (e.detail.originURL !== this.originURL) {
+      changedOriginURL = true
+    }
     Object.assign(this, e.detail)
     storePreferences(e.detail)
     this.hideWelcome()
     this.hidePreferences()
+    if (changedOriginURL) {
+      await this.connectWebSocket()
+    }
   }
 
   hideWelcome() {

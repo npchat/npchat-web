@@ -11,7 +11,8 @@
     "start": "web-dev-server"
   },
   "dependencies": {
-    "lit": "^2.1.1"
+    "lit": "^2.1.1",
+    "msgpackr": "^1.5.2"
   },
   "devDependencies": {
     "@custom-elements-manifest/analyzer": "^0.4.17",

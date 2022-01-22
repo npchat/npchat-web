@@ -63,8 +63,8 @@ export class Modal extends LitElement {
 
 	render() {
 		return html`
-			<div class="container">
-				<a href="#"
+			<div id="modal-container" class="container">
+				<a id="close-button" href="#"
 						@click=${this.handleClose}
 						?hidden=${!this.canClose}
 						class="close">
@@ -77,7 +77,8 @@ export class Modal extends LitElement {
 		`;
 	}
 
-	handleClose() {
+	handleClose(e) {
+		e.preventDefault()
 		this.dispatchEvent(new CustomEvent("close", {
 			bubbles: true, 
 			composed: true

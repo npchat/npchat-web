@@ -32,26 +32,35 @@ export class Preferences extends LitElement {
       <form @submit=${this.handleSubmit}>
         <label>
           <span>Display name</span>
-          <input type="text" name="displayName" placeholder="Anonymous" .value=${this.preferences.displayName} />
+          <input type="text"
+              name="displayName"
+              placeholder="Anonymous"
+              .value=${this.preferences.displayName} />
         </label>
         <label>
           <span>Avatar URL</span>
-          <input type="text" name="avatarURL" placeholder="" .value=${this.preferences.avatarURL} />
-          <p ?hidden=${!(typeof this.preferences.avatarURL === "string" && this.preferences.avatarURL.match("robohash"))}
+          <input type="text"
+              name="avatarURL"
+              placeholder=""
+              .value=${this.preferences.avatarURL} />
+          <p ?hidden=${!(this.preferences.avatarURL && this.preferences.avatarURL.match("robohash"))}
               class="color-light">
             Robots lovingly delivered by Robohash.org
           </p>
         </label>
         <label>
           <span>Origin URL</span>
-          <input list="origins" name="originURL" placeholder="https://axl.npchat.org" .value=${this.preferences.originURL} />
+          <input list="origins"
+              name="originURL"
+              placeholder="https://axl.npchat.org"
+              .value=${this.preferences.originURL} />
           <datalist id="origins">
             <option value="https://axl.npchat.org">
             <option value="https://frosty-meadow-296.fly.dev">
             <option value="https://wispy-feather-9047.fly.dev">
           </datalist>
           <p>Optionally point to your own self-hosted instance.
-              Check the <a href="https://npchat.org/docs" target="_blank">docs</a> for guidance.</p>
+              Check the <a href="https://npchat.org/docs" target="_blank" class="link">docs</a> for guidance.</p>
         </label>
         <button type="submit">Submit</button>
       </form>

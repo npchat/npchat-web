@@ -24,4 +24,9 @@ export const generalStyles = css`
 	h3 {
 		font-size: 1.8rem;
 	}
+
+	a.link {
+		text-decoration: none;
+		color: inherit;
+	}
 `
