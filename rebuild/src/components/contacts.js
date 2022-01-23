@@ -1,13 +1,13 @@
 import { LitElement, html, css } from "lit"
-import { formStyles } from "../styles/form.js"
+import { classMap } from "lit/directives/class-map.js"
 
 export class Contacts extends LitElement {
 
   static get properties() {
     return {
-      showQR: {type: Boolean},
-      shareableURL: {},
-      shareableQR: {}
+      contacts: {type: Object},
+      selected: {type: Object},
+      avatarFallback: {}
     }
   }
 
@@ -20,44 +20,75 @@ export class Contacts extends LitElement {
           align-items: center;
           justify-content: flex-start;
         }
-        
-        .monospace {
-          font-family: monospace;
-          font-size: 1.2rem;
-          overflow-wrap: anywhere;
-          word-break: break-all;
-          user-select: all;
+
+        .contact {
+          display: flex;
+          align-items: center;
+          justify-content: flex-start;
+          cursor: pointer;
+          text-decoration: none;
+          color: var(--color-black);
+          transition: background-color 300ms;
+          padding: 5px;
+          width: calc(100% - 10px);
+        }
+
+        .contact:hover, .contact.selected {
+          background-color: var(--color-darkwhite)
+        }
+
+        .contact.selected .avatar {
+          border-color: var(--color-secondary)
+        }
+
+        .avatar {
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          border: 2px solid var(--color-primary);
+          transition: border-color 300ms;
+        }
+
+        .name {
+          margin-left: 10px;
+          font-size: 1.4rem;
+          user-select: none;
         }
       `,
-      formStyles,
     ]
+  }
+
+  constructor() {
+    super()
+    window.addEventListener("contactsChanged", () => {
+      this.requestUpdate()
+    })
+  }
+
+  contactTemplate(contact) {
+    const isSelected = contact.keys.pubKeyHash === this.selected?.keys.pubKeyHash
+    return html`
+    <a href="#" class="contact ${classMap({selected: isSelected})}" @click=${e => this.handleContactSelected(e, contact)}>
+      <img alt="${contact.displayName}" src=${contact.avatarURL || this.avatarFallback} class="avatar" />
+      <span class="name">${contact.displayName}</span>
+    </a>
+    `
   }
 
   render() {
     return html`
-    <npchat-modal ?canClose=${true}>
-      <div class="container">
-        <div class="monospace">${this.shareableURL}</div>
-        <div ?hidden=${!this.showQR}>
-          <img alt="QR code" src=${this.shareableQR} />
-        </div>
-        <button @click=${this.handleClose}>Done</button>
-      </div>
-    </npchat-modal>
+    <div class="container">
+      ${Object.entries(this.contacts).map(entry => this.contactTemplate(entry[1]))}
+    </div>
     `
   }
 
-  qrCodeTemplate() {
-    return html`
-    
-    `
-  }
-
-  handleClose(e) {
+  handleContactSelected(e, contact) {
     e.preventDefault()
-    this.dispatchEvent(new CustomEvent("close", {
-      bubbles: true,
-      composed: true
+    console.log("selected", contact)
+    this.dispatchEvent(new CustomEvent("contactSelected", {
+      detail: contact
     }))
   }
+  
 }

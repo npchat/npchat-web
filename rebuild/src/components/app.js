@@ -24,7 +24,8 @@ export class App extends LitElement {
       originURL: {},
       shareableURL: {},
       shareableQR: {},
-      contacts: {type: Object}
+      contacts: {type: Object},
+      selectedContact: {type: Object}
     }
   }
 
@@ -118,6 +119,12 @@ export class App extends LitElement {
         <ul>
           <li>Build contacts component</li>
         </ul>
+        <npchat-contacts
+            .contacts=${this.contacts}
+            .avatarFallback=${avatarFallback}
+            .selected=${this.selectedContact}
+            @contactSelected=${e => this.selectedContact = e.detail}
+        ></npchat-contacts>
       </main>
 
       <npchat-welcome
@@ -155,11 +162,11 @@ export class App extends LitElement {
     storePreferences(e.detail)
     this.hideWelcome()
     this.hidePreferences()
+    // push new shareableData to current origin
+    this.push({
+      shareableData: this.buildShareableData()
+    })
     if (changedOriginURL) {
-      // push new shareableData to old origin
-      this.push({
-        shareableData: this.buildShareableData()
-      })
       // connect to new origin
       await this.connectWebSocket()
       this.shareableURL = this.buildShareableLink()
@@ -252,6 +259,9 @@ export class App extends LitElement {
     storePreferences({
       contacts: this.contacts
     })
+    window.dispatchEvent(new CustomEvent("contactsChanged", {
+      detail: this.contacts
+    }))
   }
 
   async connectWebSocket() {

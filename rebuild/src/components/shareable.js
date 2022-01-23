@@ -41,15 +41,10 @@ export class Shareable extends LitElement {
         <div ?hidden=${!this.showQR}>
           <img alt="QR code" src=${this.shareableQR} />
         </div>
+        <p>Share this with others, and scan/copy theirs. When you both have the other's shareable, you can chat. This process is necessary to securely trade keys.</p>
         <button @click=${this.handleClose}>Done</button>
       </div>
     </npchat-modal>
-    `
-  }
-
-  qrCodeTemplate() {
-    return html`
-    
     `
   }
 
