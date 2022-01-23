@@ -1,12 +1,13 @@
 import { LitElement, html, css } from "lit"
 import { classMap } from "lit/directives/class-map.js"
-import { styleMap } from 'lit/directives/style-map.js';
+import { styleMap } from 'lit/directives/style-map.js'
 
 import { pack, unpack } from "msgpackr"
 import { loadPreferences, storePreferences } from "../util/storage.js"
 import { getWebSocket, authenticateSocket } from "../util/websocket.js"
 import { subscribeToPushNotifications } from "../util/webpush.js"
 import { generateQR } from "../util/qrcode.js"
+import { registerProtocolHandler, getDataFromURL } from "../util/protocol-handler.js"
 
 const logo = new URL("../../assets/npchat-logo.svg", import.meta.url).href
 const avatarFallback = new URL("../../assets/avatar.svg", import.meta.url).href
@@ -22,7 +23,8 @@ export class App extends LitElement {
       avatarURL: {},
       originURL: {},
       shareableURL: {},
-      shareableQR: {}
+      shareableQR: {},
+      contacts: {type: Object}
     }
   }
 
@@ -81,25 +83,23 @@ export class App extends LitElement {
 
   constructor() {
     super()
+    this.contacts = {}
     loadPreferences().then(pref => {
       Object.assign(this, pref)
       if (!this.originURL || !this.keys) {
         return
       }
       this.connectWebSocket()
-      this.shareableURL = `${this.originURL}/${this.keys.pubKeyHash}/shareable`
+      this.shareableURL = this.buildShareableLink()
       generateQR(this.shareableURL)
         .then(qr => this.shareableQR = qr)
     })
-
-    const chan = new BroadcastChannel("push")
-    chan.addEventListener("message", msg => {
-      console.log("Message from ServiceWorkeer", msg.data)
-    })
+    registerProtocolHandler()
+    this.handleURLData()
   }
 
   render() {
-    const bgImgUrl = `url(${this.shareableQR})`
+    const bgImgUrl = this.shareableQR && `url(${this.shareableQR})`
     const shouldBlur = this.showWelcome || this.showPreferences || this.showShareable
     return html`
       <main class="${classMap({blur: shouldBlur})}">
@@ -116,7 +116,7 @@ export class App extends LitElement {
         <h1>npchat-web</h1>
         <h2>Todo</h2>
         <ul>
-          <li>Modify go-npchat for new auth mechanism</li>
+          <li>Build contacts component</li>
         </ul>
       </main>
 
@@ -193,7 +193,7 @@ export class App extends LitElement {
   }
 
   buildShareableLink() {
-    return `${this.originURL}/${this.keys.pubKeyHash}/shareable`
+    return `web+npchat:${this.originURL}/${this.keys.pubKeyHash}/shareable`
   }
 
   buildShareableData() {
@@ -228,6 +228,30 @@ export class App extends LitElement {
     } catch (e) {
       console.error(e)
     }
+  }
+
+  async handleURLData() {
+    const urlData = getDataFromURL()
+    if(urlData) {
+      try {
+        const resp = await fetch(urlData)
+        const shareableData = await resp.json()
+        if (shareableData.originURL && shareableData.keys && shareableData.displayName) {
+          console.log("got shareable", shareableData)
+          // add contact
+          this.addContact(shareableData)
+        }
+      } catch (e) {
+        console.log("failed to import data from URL", e)
+      }
+    }
+  }
+
+  addContact(shareableData) {
+    this.contacts[shareableData.keys.pubKeyHash] = shareableData
+    storePreferences({
+      contacts: this.contacts
+    })
   }
 
   async connectWebSocket() {

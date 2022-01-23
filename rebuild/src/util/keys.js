@@ -37,7 +37,7 @@ export async function deriveDHSecret(publicKey, privateKey) {
 	return crypto.subtle.deriveKey(params, privateKey, aesKeyParams, true, ["encrypt", "decrypt"])
 }
 
-export async function getBytesFromPrivateCryptoKey(key) {
+/* export async function getBytesFromPrivateCryptoKey(key) {
 	const jwk = await crypto.subtle.exportKey("jwk", key)
 	return new TextEncoder().encode(JSON.stringify(jwk))
 }
@@ -45,7 +45,7 @@ export async function getBytesFromPrivateCryptoKey(key) {
 export async function getPrivateCryptoKeyFromBytes(bytes, algorithmIdentifier, keyUsages) {
 	const jwk = JSON.parse(new TextDecoder().decode(bytes))
 	return crypto.subtle.importKey("jwk", jwk, algorithmIdentifier, true, keyUsages)
-}
+} */
 
 export async function generateKeys() {
 	const keys = {
@@ -58,7 +58,7 @@ export async function generateKeys() {
 	}
 	keys.auth.raw = {
 		publicKey: new Uint8Array(await crypto.subtle.exportKey("raw", keys.auth.keyPair.publicKey)),
-		privateKey: await getBytesFromPrivateCryptoKey(keys.auth.keyPair.privateKey)
+		// privateKey: await getBytesFromPrivateCryptoKey(keys.auth.keyPair.privateKey)
 	}
 	keys.auth.jwk = {
 		publicKey: await crypto.subtle.exportKey("jwk", keys.auth.keyPair.publicKey),
@@ -67,7 +67,7 @@ export async function generateKeys() {
 	keys.pubKeyHash = toHex(new Uint8Array(await hash(keys.auth.raw.publicKey)))
 	keys.dh.raw = {
 		publicKey: new Uint8Array(await crypto.subtle.exportKey("raw", keys.dh.keyPair.publicKey)),
-		privateKey: await getBytesFromPrivateCryptoKey(keys.dh.keyPair.privateKey)
+		// privateKey: await getBytesFromPrivateCryptoKey(keys.dh.keyPair.privateKey)
 	}
 	console.log("Generated fresh ECDSA P-256 & ECDH P-256 key pairs")
 

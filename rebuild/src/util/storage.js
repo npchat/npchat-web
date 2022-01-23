@@ -1,4 +1,4 @@
-import { importAuthKey, getBytesFromPrivateCryptoKey } from "./keys.js"
+import { importAuthKey } from "./keys.js"
 
 export async function loadPreferences() {
 	const pref = {
@@ -6,7 +6,8 @@ export async function loadPreferences() {
 		displayName: localStorage.displayName,
 		avatarURL: localStorage.avatarURL,
 		originURL: localStorage.originURL,
-		keys: localStorage.keys && JSON.parse(localStorage.keys)
+		keys: localStorage.keys && JSON.parse(localStorage.keys),
+		contacts: localStorage.contacts && JSON.parse(localStorage.contacts)
 	}
 	if (!pref.keys) {
 		return pref
@@ -21,7 +22,7 @@ export async function loadPreferences() {
 	Object.assign(pref.keys.auth, {
 		raw: {
 			publicKey: new Uint8Array(await crypto.subtle.exportKey("raw", pref.keys.auth.keyPair.publicKey)),
-			privateKey: await getBytesFromPrivateCryptoKey(pref.keys.auth.keyPair.privateKey)
+			// privateKey: await getBytesFromPrivateCryptoKey(pref.keys.auth.keyPair.privateKey)
 		}
 	})
 	// TODO: import DH keys
