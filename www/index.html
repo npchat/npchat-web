@@ -4,6 +4,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="Description" content="Put your description here.">
   <base href="/">
 
   <style>
@@ -15,13 +16,26 @@
       font-size: 12px;
       background-color: #FAFAFA;
     }
+
+    :root {
+      --color-primary: #0077FF;
+      --color-secondary: #9B00FF;
+      --color-offwhite: #FAFAFA;
+      --color-darkwhite: #ECECEC;
+      --color-lightgrey: #CCC;
+      --color-grey: #888;
+      --color-darkgrey: #444;
+      --color-green: #2FBF71;
+      --color-red: #FF3E41;
+    }
   </style>
   <title>npchat-web</title>
 </head>
 
 <body>
-  <h1>404</h1>
-  <h2>Nothing here</h2>
+  <npchat-app></npchat-app>
+
+  <script src="./dist/main.js"></script>
 </body>
 
 </html>

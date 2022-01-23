@@ -1,5 +1,6 @@
 import { LitElement, html, css } from "lit"
 import { classMap } from "lit/directives/class-map.js"
+import { avatarFallbackURL } from "./app.js"
 
 export class Contacts extends LitElement {
 
@@ -7,7 +8,6 @@ export class Contacts extends LitElement {
     return {
       contacts: {type: Object},
       selected: {type: Object},
-      avatarFallback: {}
     }
   }
 
@@ -69,7 +69,7 @@ export class Contacts extends LitElement {
     const isSelected = contact.keys.pubKeyHash === this.selected?.keys.pubKeyHash
     return html`
     <a href="#" class="contact ${classMap({selected: isSelected})}" @click=${e => this.handleContactSelected(e, contact)}>
-      <img alt="${contact.displayName}" src=${contact.avatarURL || this.avatarFallback} class="avatar" />
+      <img alt="${contact.displayName}" src=${contact.avatarURL || avatarFallbackURL} class="avatar" />
       <span class="name">${contact.displayName}</span>
     </a>
     `
@@ -78,7 +78,8 @@ export class Contacts extends LitElement {
   render() {
     return html`
     <div class="container">
-      ${Object.entries(this.contacts).map(entry => this.contactTemplate(entry[1]))}
+      ${this.contacts && Object.entries(this.contacts)
+        .map(entry => this.contactTemplate(entry[1]))}
     </div>
     `
   }

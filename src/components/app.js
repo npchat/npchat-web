@@ -9,8 +9,8 @@ import { subscribeToPushNotifications } from "../util/webpush.js"
 import { generateQR } from "../util/qrcode.js"
 import { registerProtocolHandler, getDataFromURL } from "../util/protocol-handler.js"
 
-const logo = new URL("../../assets/npchat-logo.svg", import.meta.url).href
-const avatarFallback = new URL("../../assets/avatar.svg", import.meta.url).href
+export const logoURL = "assets/npchat-logo.svg"
+export const avatarFallbackURL = "assets/avatar.svg"
 
 export class App extends LitElement {
   static get properties() {
@@ -105,13 +105,13 @@ export class App extends LitElement {
     return html`
       <main class="${classMap({blur: shouldBlur})}">
         <header>
-          <img alt="npchat logo" src=${logo} class="logo"/>
+          <img alt="npchat logo" src=${logoURL} class="logo"/>
           <npchat-status ?isWebSocketConnected=${this.isWebSocketConnected}></npchat-status>
           <a href="#" @click=${this.handleShowShareable} class="button">
             <div class="avatar" style=${styleMap({backgroundImage: bgImgUrl})}></div>
           </a>
           <a href="#" @click=${this.handleShowPreferences} class="button">
-            <img alt="avatar" src=${this.avatarURL || avatarFallback} class="avatar"/>
+            <img alt="avatar" src=${this.avatarURL || avatarFallbackURL} class="avatar"/>
           </a>
         </header>
         <h1>npchat-web</h1>
@@ -121,7 +121,6 @@ export class App extends LitElement {
         </ul>
         <npchat-contacts
             .contacts=${this.contacts}
-            .avatarFallback=${avatarFallback}
             .selected=${this.selectedContact}
             @contactSelected=${e => this.selectedContact = e.detail}
         ></npchat-contacts>
