@@ -1,26 +1,28 @@
-import {pack} from "msgpackr/pack"
+import {pack, unpack} from "msgpackr"
 import {sign} from "./auth.js"
 
 export async function authenticateSocket(socket, privateKey, publicKeyRaw) {
-	return new Promise(resolve => {
-		// handle auth message
-		socket.addEventListener("message", data => {
-			console.log("got response message", data)
-			resolve()
+	return new Promise((resolve, reject) => {
+		// handle response message
+		socket.addEventListener("message", async msg => {
+			try {
+				const arrayBuffer = await msg.data.arrayBuffer()
+				const data = unpack(new Uint8Array(arrayBuffer))
+				resolve(data)
+			} catch (e) {
+				reject(e)
+			}
 		}, {once: true})
 
 		// send auth solution
-		// {t, sig(t), publicKey}
 		socket.addEventListener("open", async () => {
-			const t = new TextEncoder().encode(Date.now().toString())
-			console.log(publicKeyRaw)
-			const buf = pack({
-				pubKey: publicKeyRaw,
-				t,
-				sig: new Uint8Array(await sign(privateKey, t))
+			const time = new TextEncoder().encode(Date.now().toString())
+			const buffer = pack({
+				time,
+				sig: new Uint8Array(await sign(privateKey, time)),
+				publicKey: publicKeyRaw
 			})
-			socket.send(buf)
-			console.log("socket open, sending auth solution...", buf.length)
+			socket.send(buffer)
 		}, {once: true})
 	})
 }

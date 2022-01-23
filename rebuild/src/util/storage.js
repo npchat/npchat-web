@@ -25,7 +25,6 @@ export async function loadPreferences() {
 		}
 	})
 	// TODO: import DH keys
-	console.log("imported!", pref)
 	return pref
 }
 

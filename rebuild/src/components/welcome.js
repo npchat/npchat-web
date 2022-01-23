@@ -2,8 +2,6 @@ import { LitElement, html, css } from "lit"
 import { formStyles } from "../styles/form.js"
 import { generalStyles } from "../styles/general.js"
 import { generateKeys } from "../util/keys.js"
-import { hash } from "../util/hash.js"
-import { bytesToBase64 } from "../util/base64.js"
 
 export class Welcome extends LitElement {
 
@@ -53,13 +51,6 @@ export class Welcome extends LitElement {
     detail.originURL = "https://axl.npchat.org"
     // generate keys
     detail.keys = await generateKeys()
-    // get fallback avatar from RoboHash
-    if (detail.avatarURL === "") {
-      // hash pubKeyHash for privacy
-      const bytes = new TextEncoder().encode(detail.keys.pubKeyHash)
-      const h = bytesToBase64(new Uint8Array(await hash(bytes)))
-      detail.avatarURL = `https://robohash.org/${h}?set=set4&bgset=bg2&size=400x400`
-    }
     this.dispatchEvent(new CustomEvent("formSubmit", { detail }))
   }
 }

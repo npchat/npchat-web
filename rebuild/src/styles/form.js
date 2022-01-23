@@ -20,9 +20,10 @@ export const formStyles = css`
 		cursor: pointer;
 		border: 2px solid var(--color-primary);
 		transition: all 300ms;
+		outline: none;
 	}
 
-	button:hover {
+	button:hover, button:focus {
 		background-color: var(--color-lightgrey);
 		border-color: var(--color-secondary);
 	}

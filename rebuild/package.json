@@ -12,7 +12,8 @@
   },
   "dependencies": {
     "lit": "^2.1.1",
-    "msgpackr": "^1.5.2"
+    "msgpackr": "^1.5.2",
+    "qrcode": "^1.5.0"
   },
   "devDependencies": {
     "@custom-elements-manifest/analyzer": "^0.4.17",
@@ -30,7 +31,12 @@
       "prettier"
     ],
     "rules": {
-      "class-methods-use-this": "off"
+      "no-console": "off",
+      "class-methods-use-this": "off",
+      "no-restricted-globals": "off",
+      "consistent-return": "off",
+      "no-plusplus": ["error", { "allowForLoopAfterthoughts": true }],
+      "no-return-assign": "off"
     }
   },
   "prettier": {

@@ -44,16 +44,18 @@ export class Modal extends LitElement {
 					line-height: 1.8rem;
 					font-weight: 600;
 					color: var(--color-darkgrey);
+					background-color: var(--color-lightgrey);
 					padding: 10px;
 					width: 20px;
 					height: 20px;
 					border: 2px solid var(--color-primary);
 					border-radius: 50%;
 					transition: all 300ms;
+					outline: none;
 				}
 
-				a.close:hover {
-					background-color: var(--color-lightgrey);
+				a.close:hover, a.close:focus {
+					background-color: var(--color-grey);
 					border-color: var(--color-secondary);
 				}
 			`,
