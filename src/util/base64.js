@@ -1,7 +1,7 @@
 export function base64ToBytes(base64String) {
 	const padding = '='.repeat((4 - base64String.length % 4) % 4);
 	const base64 = (base64String + padding)
-			.replace(/\-/g, '+')
+			.replace(/-/g, '+')
 			.replace(/_/g, '/')
 	const rawData = atob(base64);
 	const output = new Uint8Array(rawData.length);
@@ -12,10 +12,10 @@ export function base64ToBytes(base64String) {
 }
 
 export function bytesToBase64(uint8Array, start, end) {
-  start = start || 0
-  end = end || uint8Array.byteLength
+  const s = start || 0
+  const e = end || uint8Array.byteLength
   const base64 = btoa(
-    String.fromCharCode.apply(null, Array.from(uint8Array.subarray(start, end)))
+    String.fromCharCode.apply(null, Array.from(uint8Array.subarray(s, e)))
   )
   return base64
 			.replace(/=/g, '')

@@ -1,0 +1,27 @@
+{
+  "name": "npchat-web",
+  "description": "A little front-end for the npchat protocol.",
+  "author": "dr-useless",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dr-useless/npchat-web.git"
+  },
+  "type": "module",
+  "main": "src/index.mjs",
+  "dependencies": {
+    "esbuild": "^0.13.4",
+    "lit": "^2.0.2",
+    "qrcode": "^1.4.4"
+  },
+  "devDependencies": {
+    "npm-run-all": "^4.1.5"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "node ./esbuild.js",
+    "start": "run-p start:**",
+    "start:watch": "node ./esbuild.js --dev --watch",
+    "start:server": "node ./dev-server.js"
+  }
+}
