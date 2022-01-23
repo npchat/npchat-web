@@ -1,4 +1,4 @@
-import QRCode from "qrcode/build/qrcode"
+import QRCode from "qrcode"
 
 export async function generateQR(text, options) {
   try {
