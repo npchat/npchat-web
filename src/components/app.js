@@ -24,7 +24,8 @@ export class App extends LitElement {
       originURL: {},
       shareableQR: {},
       contacts: {type: Object},
-      selectedContact: {type: Object}
+      selectedContact: {type: Object},
+      selectedContactMessages: {type: Array}
     }
   }
 
@@ -93,10 +94,10 @@ export class App extends LitElement {
       const shareableProtocolURL= buildShareableProtocolURL(this.originURL, this.keys.pubKeyHash)
       generateQR(shareableProtocolURL)
         .then(qr => this.shareableQR = qr)
+      this.checkContacts()
     })
     registerProtocolHandler()
     this.handleURLData()
-    this.checkContacts()
   }
 
   render() {
@@ -117,11 +118,14 @@ export class App extends LitElement {
         <npchat-contacts
             .contacts=${this.contacts}
             .selected=${this.selectedContact}
-            @contactSelected=${e => this.selectedContact = e.detail}
+            @contactSelected=${this.handleContactSelected}
             @contactAdded=${e => this.addContact(e.detail)}
         ></npchat-contacts>
         <npchat-contact
           .shareableData=${this.selectedContact}
+          .messages=${this.selectedContactMessages}
+          .myKeys=${this.keys}
+          @messageSent=${this.handleMessageSent}
         ></npchat-contact>
       </main>
 
@@ -203,7 +207,7 @@ export class App extends LitElement {
       originURL: this.originURL,
       keys: {
         auth: this.keys.auth.jwk.publicKey,
-        dh: this.keys.dh.jwk?.publicKey, // TODO: remove "?"
+        dh: this.keys.dh.jwk.publicKey,
         pubKeyHash: this.keys.pubKeyHash
       }
     }))
@@ -222,8 +226,9 @@ export class App extends LitElement {
     try {
       const arrayBuffer = await msg.data.arrayBuffer()
       const data = unpack(new Uint8Array(arrayBuffer))
-      if (data.f) {
+      if (data.m && data.f) {
         console.log("got message", data)
+        
       }
     } catch (e) {
       console.error(e)
@@ -237,8 +242,6 @@ export class App extends LitElement {
         const resp = await fetch(urlData)
         const shareableData = await resp.json()
         if (shareableData.originURL && shareableData.keys && shareableData.displayName) {
-          console.log("got shareable", shareableData)
-          // add contact
           this.addContact(shareableData)
         }
       } catch (e) {
@@ -260,12 +263,34 @@ export class App extends LitElement {
 
   async checkContacts() {
     if (!this.contacts) return
-    Object.entries(this.contacts).forEach(async entry => {
+    await Promise.all(Object.entries(this.contacts).map(async entry => {
       const pubKeyHash = entry[0]
       const contact = entry[1]
       const resp = await fetch(`${contact.originURL}/${pubKeyHash}/shareable`)
-      console.log("shareable", await resp.json())
+      if (resp.status !== 200) return
+      Object.assign(this.contacts[pubKeyHash], await resp.json())
+    }))
+    storePreferences({
+      contacts: this.contacts
     })
+    window.dispatchEvent(new CustomEvent("contactsChanged", {
+      detail: this.contacts
+    }))
+  }
+
+  handleContactSelected(e) {
+    this.selectedContact = e.detail
+    const storedMessages = localStorage.getItem(e.detail.keys.pubKeyHash)
+    if (!storedMessages) {
+      this.selectedContactMessages = []
+      return
+    }
+    this.selectedContactMessages = JSON.parse(storedMessages)
+  }
+
+  handleMessageSent(e) {
+    this.selectedContactMessages.push(e.detail)
+    localStorage.setItem(this.selectedContact.keys.pubKeyHash, JSON.stringify(this.selectedContactMessages))
   }
 
   async connectWebSocket() {
@@ -275,7 +300,7 @@ export class App extends LitElement {
       const socket = await getWebSocket(url.toString())
       socket.addEventListener("close", () => this.isWebSocketConnected = false)
       socket.addEventListener("message", this.handleMessage)
-      const authResp = await authenticateSocket(socket, this.keys.auth.keyPair.privateKey, this.keys.auth.raw.publicKey)
+      const authResp = await authenticateSocket(socket, this.keys.auth.keyPair.privateKey, this.keys.auth.publicKeyRaw)
       const tEnd = performance.now()
       console.log("connected in", (tEnd - tStart).toPrecision(2), "ms")
       if (authResp.error) {

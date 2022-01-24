@@ -56,19 +56,22 @@ export async function generateKeys() {
 			keyPair: await genDHKeyPair()
 		}
 	}
-	keys.auth.raw = {
-		publicKey: new Uint8Array(await crypto.subtle.exportKey("raw", keys.auth.keyPair.publicKey)),
-		// privateKey: await getBytesFromPrivateCryptoKey(keys.auth.keyPair.privateKey)
-	}
+	keys.auth.publicKeyRaw = new Uint8Array(await crypto.subtle.exportKey("raw", keys.auth.keyPair.publicKey))
+	// privateKey: await getBytesFromPrivateCryptoKey(keys.auth.keyPair.privateKey)
 	keys.auth.jwk = {
 		publicKey: await crypto.subtle.exportKey("jwk", keys.auth.keyPair.publicKey),
 		privateKey: await crypto.subtle.exportKey("jwk", keys.auth.keyPair.privateKey)
 	}
-	keys.pubKeyHash = toHex(new Uint8Array(await hash(keys.auth.raw.publicKey)))
-	keys.dh.raw = {
+	keys.pubKeyHash = toHex(new Uint8Array(await hash(keys.auth.publicKeyRaw)))
+	/* keys.dh.raw = {
 		publicKey: new Uint8Array(await crypto.subtle.exportKey("raw", keys.dh.keyPair.publicKey)),
 		// privateKey: await getBytesFromPrivateCryptoKey(keys.dh.keyPair.privateKey)
+	} */
+	keys.dh.jwk = {
+		publicKey: await crypto.subtle.exportKey("jwk", keys.dh.keyPair.publicKey),
+		privateKey: await crypto.subtle.exportKey("jwk", keys.dh.keyPair.privateKey),
 	}
+	
 	console.log("Generated fresh ECDSA P-256 & ECDH P-256 key pairs")
 
 	return keys
