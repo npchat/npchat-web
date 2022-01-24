@@ -71,13 +71,14 @@ export class App extends LitElement {
         transition: border-color 300ms;
       }
 
-      .button:hover .avatar, .button:focus .avatar {
-        border-color: var(--color-primary);
-      }
-
-      .button {
+      .buttonRound {
         margin: 0 5px;
         outline: none;
+        border: none;
+      }
+
+      .buttonRound:hover .avatar, .buttonRound:focus .avatar {
+        border-color: var(--color-primary);
       }
     `
   }
@@ -97,6 +98,7 @@ export class App extends LitElement {
     })
     registerProtocolHandler()
     this.handleURLData()
+    this.checkContacts()
   }
 
   render() {
@@ -107,12 +109,12 @@ export class App extends LitElement {
         <header>
           <img alt="npchat logo" src=${logoURL} class="logo"/>
           <npchat-status ?isWebSocketConnected=${this.isWebSocketConnected}></npchat-status>
-          <a href="#" @click=${this.handleShowShareable} class="button">
+          <button href="#" @click=${this.handleShowShareable} class="buttonRound">
             <div class="avatar" style=${styleMap({backgroundImage: bgImgUrl})}></div>
-          </a>
-          <a href="#" @click=${this.handleShowPreferences} class="button">
+          </button>
+          <button @click=${this.handleShowPreferences} class="buttonRound">
             <img alt="avatar" src=${this.avatarURL || avatarFallbackURL} class="avatar"/>
-          </a>
+          </button>
         </header>
         <h1>npchat-web</h1>
         <h2>Todo</h2>
@@ -180,8 +182,7 @@ export class App extends LitElement {
     })
   }
 
-  handleShowPreferences(e) {
-    e.preventDefault()
+  handleShowPreferences() {
     this.showPreferences = true
   }
 
@@ -189,8 +190,7 @@ export class App extends LitElement {
     this.showPreferences = false
   }
 
-  handleShowShareable(e) {
-    e.preventDefault()
+  handleShowShareable() {
     this.showShareable = true
   }
 
@@ -261,6 +261,16 @@ export class App extends LitElement {
     window.dispatchEvent(new CustomEvent("contactsChanged", {
       detail: this.contacts
     }))
+  }
+
+  async checkContacts() {
+    if (!this.contacts) return
+    Object.entries(this.contacts).forEach(async entry => {
+      const pubKeyHash = entry[0]
+      const contact = entry[1]
+      const resp = await fetch(`${contact.originURL}/${pubKeyHash}/shareable`)
+      console.log("shareable", await resp.json())
+    })
   }
 
   async connectWebSocket() {

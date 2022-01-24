@@ -20,6 +20,13 @@ export class Shareable extends LitElement {
           align-items: center;
           justify-content: flex-start;
         }
+
+        .url {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          padding: 0 10px;
+        }
         
         .monospace {
           font-family: monospace;
@@ -37,7 +44,10 @@ export class Shareable extends LitElement {
     return html`
     <npchat-modal ?canClose=${true}>
       <div class="container">
-        <div class="monospace">${this.shareableURL}</div>
+        <div class="url">
+          <div class="monospace">${this.shareableURL}</div>
+          <button @click=${this.handleCopy} class="button copy">Copy</button>
+        </div>
         <div ?hidden=${!this.showQR}>
           <img alt="QR code" src=${this.shareableQR} />
         </div>
@@ -54,5 +64,14 @@ export class Shareable extends LitElement {
       bubbles: true,
       composed: true
     }))
+  }
+
+  async handleCopy(e) {
+    const button = e.path[0]
+    button.classList.add("success")
+    setTimeout(() => {
+      button.classList.remove("success")
+    }, 500)
+    await navigator.clipboard.writeText(this.shareableURL)
   }
 }

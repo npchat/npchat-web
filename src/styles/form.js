@@ -28,6 +28,10 @@ export const formStyles = css`
 		border-color: var(--color-secondary);
 	}
 
+	button.success {
+		background-color: var(--color-green);
+	}
+
 	input {
 		padding: 10px;
 		font-size: 1.4rem;

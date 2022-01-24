@@ -32,10 +32,10 @@ export class Modal extends LitElement {
 					filter: drop-shadow(0 16px 16px rgba(0,0,0,0.4));
 				}
 
-				a.close:not([hidden]) {
+				button.close:not([hidden]) {
 					position: absolute;
-					top: 7px;
-					right: 5px;
+					top: 10px;
+					right: 10px;
 					display: flex;
 					align-items: center;
 					justify-content: center;
@@ -46,15 +46,15 @@ export class Modal extends LitElement {
 					color: var(--color-darkgrey);
 					background-color: var(--color-lightgrey);
 					padding: 10px;
-					width: 20px;
-					height: 20px;
+					width: 42px;
+					height: 42px;
 					border: 2px solid var(--color-primary);
 					border-radius: 50%;
 					transition: all 300ms;
 					outline: none;
 				}
 
-				a.close:hover, a.close:focus {
+				button.close:hover, button.close:focus {
 					background-color: var(--color-grey);
 					border-color: var(--color-secondary);
 				}
@@ -66,12 +66,11 @@ export class Modal extends LitElement {
 	render() {
 		return html`
 			<div id="modal-container" class="container">
-				<a id="close-button" href="#"
+				<button id="close-button" class="close"
 						@click=${this.handleClose}
-						?hidden=${!this.canClose}
-						class="close">
+						?hidden=${!this.canClose} >
 					x
-				</a>
+				</button>
 				<div class="modal border-gradient">
 					<slot></slot>
 				</div>

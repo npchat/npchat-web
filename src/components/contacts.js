@@ -31,6 +31,7 @@ export class Contacts extends LitElement {
           transition: background-color 300ms;
           padding: 5px;
           width: calc(100% - 10px);
+          border: none;
         }
 
         .contact:hover, .contact.selected {
@@ -68,10 +69,10 @@ export class Contacts extends LitElement {
   contactTemplate(contact) {
     const isSelected = contact.keys.pubKeyHash === this.selected?.keys.pubKeyHash
     return html`
-    <a href="#" class="contact ${classMap({selected: isSelected})}" @click=${e => this.handleContactSelected(e, contact)}>
+    <button class="contact ${classMap({selected: isSelected})}" @click=${e => this.handleContactSelected(contact)}>
       <img alt="${contact.displayName}" src=${contact.avatarURL || avatarFallbackURL} class="avatar" />
       <span class="name">${contact.displayName}</span>
-    </a>
+    </button>
     `
   }
 
@@ -84,8 +85,7 @@ export class Contacts extends LitElement {
     `
   }
 
-  handleContactSelected(e, contact) {
-    e.preventDefault()
+  handleContactSelected(contact) {
     console.log("selected", contact)
     this.dispatchEvent(new CustomEvent("contactSelected", {
       detail: contact
