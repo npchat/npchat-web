@@ -1,11 +1,4 @@
-import { esbuildPlugin } from "@web/dev-server-esbuild";
-import { mainBuildConfig, qrBuildConfig } from "./esbuild.js";
-
-const devMainBuildConfig = {}
-Object.assign(devMainBuildConfig, mainBuildConfig)
-devMainBuildConfig.minify = false
-
-console.log(devMainBuildConfig  )
+// import { esbuildPlugin } from "@web/dev-server-esbuild";
 
 export default /** @type {import('@web/dev-server').DevServerConfig} */ ({
   rootDir: "www",
@@ -17,10 +10,9 @@ export default /** @type {import('@web/dev-server').DevServerConfig} */ ({
   },
 
   /** Set appIndex to enable SPA routing */
-  appIndex: "index.html",
+  // appIndex: "index.html",
 
   plugins: [
-    [esbuildPlugin(devMainBuildConfig)],
-    [esbuildPlugin(qrBuildConfig)],
+    // [esbuildPlugin({target: "esnext"})],
   ],
 });

@@ -1,29 +1,32 @@
 import { build } from "esbuild"
 
-export const mainBuildConfig = {
-	platform: "neutral",
-	bundle: true,
-	minify: true,
-	entryPoints: ["src/main.js"],
-	outdir: "www/dist"
+function isDev() {
+	return process.argv.indexOf("--dev") >= 0
 }
 
-export const qrBuildConfig = {
+const builds = []
+
+// main
+builds.push(build({
+	platform: "neutral",
+	bundle: true,
+	minify: !isDev(),
+	watch: isDev(),
+	entryPoints: ["src/main.js"],
+	outdir: "www/dist"
+}))
+
+// qrcode lib
+builds.push(build({
 	platform: "neutral",
 	bundle: false,
 	minify: true,
 	minifyIdentifiers: false,
 	entryPoints: ["node_modules/qrcode/build/qrcode.js"],
 	outfile: "www/dist/qrlib.js"
-}
-
-const builds = []
-
-builds.push(build(mainBuildConfig))
-
-builds.push(build(qrBuildConfig))
+}))
 
 
 Promise.all(builds)
-	.then(() => console.log("esbuild done"))
+	.then(() => console.log(`esbuild ${isDev() ? "dev" : "prod"} done`))
 
