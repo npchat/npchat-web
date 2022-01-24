@@ -5,14 +5,29 @@ import { generateKeys } from "../util/keys.js"
 
 export class Welcome extends LitElement {
 
+  static get properties() {
+    return {
+      slideNumber: {type: Number}
+    }
+  }
+
   static get styles() {
     return [
       css`
-      form {
+      .flex {
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: flex-start;
+      }
+
+      p {
+        font-size: 1.2rem;
+      }
+
+      img {
+        height: 200px;
+        margin: 10px 0;
       }
       `,
       formStyles,
@@ -20,22 +35,51 @@ export class Welcome extends LitElement {
     ]
   }
 
+  constructor() {
+    super()
+    this.slideNumber = 0
+  }
+
+  fingerprintTemplate() {
+    return html`
+    
+    `
+  }
+
   render() {
     return html`
 		<npchat-modal ?canClose=${false}>
-      <h1>Welcome to npchat</h1>
-			<h2>Let's get you set up</h2>
       <form @submit=${this.handleSubmit}>
-        <label>
-          <span>Your display name</span>
-          <input type="text" name="displayName" placeholder="Anonymous" />
-        </label>
-        <p class="color-light">Optional</p>
-        <label>
-          <span>Your avatar URL</span>
-          <input type="text" name="avatarURL" placeholder="" />
-        </label>
-        <button type="submit">Submit</button>
+        <div ?hidden=${this.slideNumber !== 0}>
+          <h1>Welcome to npchat</h1>
+          <h2>Let's get you set up</h2>
+          <p ?hidden=${this.browserSupportsProtocolHandlers()}>
+            It looks like your browser does support some modern web APIs.
+            For the best experience,
+            ${this.browserUsesChromium() ? "update your browser" : "switch to Brave or Google Chrome"}.
+          </p>
+          <div class="flex">
+            <label>
+              <span>Your display name</span>
+              <input type="text" name="displayName" placeholder="Anonymous" />
+            </label>
+            <p class="color-light">Optional</p>
+            <label>
+              <span>Your avatar URL</span>
+              <input type="text" name="avatarURL" placeholder="" />
+            </label>
+            <button type="button" @click=${() => this.slideNumber += 1}>
+              Continue
+            </button>
+          </div>
+        </div>
+        <div ?hidden=${this.slideNumber !== 1}>
+          <h2>Generated fresh crypto keys</h2>
+          <div class="flex">
+            <img alt="fingerprint" src="assets/fingerprint.svg" />
+            <button type="submit">OK</button>
+          </div>
+        </div>
       </form>
 		</npchat-modal>
     `
@@ -52,5 +96,15 @@ export class Welcome extends LitElement {
     // generate keys
     detail.keys = await generateKeys()
     this.dispatchEvent(new CustomEvent("formSubmit", { detail }))
+  }
+
+  browserSupportsProtocolHandlers() {
+    return typeof navigator.registerProtocolHandler === "function"
+  }
+
+  browserUsesChromium() {
+    return navigator.userAgentData.brands
+      .filter(b => b.brand.toLowerCase() === "chromium" && parseInt(b.version, 10) >= 97)
+      .length > 0
   }
 }

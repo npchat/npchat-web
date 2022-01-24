@@ -1,6 +1,7 @@
 import { LitElement, html, css } from "lit"
 import { classMap } from "lit/directives/class-map.js"
 import { avatarFallbackURL } from "./app.js"
+import { formStyles } from "../styles/form.js"
 
 export class Contacts extends LitElement {
 
@@ -8,16 +9,28 @@ export class Contacts extends LitElement {
     return {
       contacts: {type: Object},
       selected: {type: Object},
+      filter: {}
     }
   }
 
   static get styles() {
     return [
+      formStyles,
       css`
         .container {
+          margin: 5px;
           display: flex;
           flex-direction: column;
-          align-items: center;
+          justify-content: flex-start;
+        }
+
+        input {
+          margin-bottom: 5px;
+        }
+
+        .list {
+          display: flex;
+          flex-direction: column;
           justify-content: flex-start;
         }
 
@@ -30,7 +43,7 @@ export class Contacts extends LitElement {
           color: var(--color-black);
           transition: background-color 300ms;
           padding: 5px;
-          width: calc(100% - 10px);
+          margin: 0;
           border: none;
         }
 
@@ -55,12 +68,13 @@ export class Contacts extends LitElement {
           font-size: 1.4rem;
           user-select: none;
         }
-      `,
+      `
     ]
   }
 
   constructor() {
     super()
+    this.filter = ""
     window.addEventListener("contactsChanged", () => {
       this.requestUpdate()
     })
@@ -76,11 +90,25 @@ export class Contacts extends LitElement {
     `
   }
 
+  filterContacts() {
+    if (!this.contacts) return []
+    const entries = Object.entries(this.contacts)
+    if (!this.filter) {
+      return entries
+    }
+    return entries
+      .filter(entry => JSON.stringify(entry[1]).indexOf(this.filter) > -1)
+  }
+
   render() {
     return html`
     <div class="container">
-      ${this.contacts && Object.entries(this.contacts)
-        .map(entry => this.contactTemplate(entry[1]))}
+      <div class="import">
+        <input type="text" placeholder="search or import" @input=${this.handleInput} />
+      </div>
+      <div class="list">
+        ${this.filterContacts().map(entry => this.contactTemplate(entry[1]))}
+      </div>
     </div>
     `
   }
@@ -90,6 +118,30 @@ export class Contacts extends LitElement {
     this.dispatchEvent(new CustomEvent("contactSelected", {
       detail: contact
     }))
+  }
+
+  async handleInput(e) {
+    const input = e.path[0]
+    const {value} = input
+
+    if (!value.startsWith("http")) {
+      this.filter = value
+      return
+    }
+
+    this.filter = ""
+    try {
+      const resp = await fetch(value)
+      const shareableData = await resp.json()
+      if (shareableData.originURL && shareableData.keys && shareableData.displayName) {
+        input.value = ""
+        this.dispatchEvent(new CustomEvent("contactAdded", {
+          detail: shareableData
+        }))
+      }
+    } catch (error) {
+      console.log("invalid shareable", error)
+    }
   }
   
 }

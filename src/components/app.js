@@ -7,7 +7,7 @@ import { loadPreferences, storePreferences } from "../util/storage.js"
 import { getWebSocket, authenticateSocket } from "../util/websocket.js"
 import { subscribeToPushNotifications } from "../util/webpush.js"
 import { generateQR } from "../util/qrcode.js"
-import { registerProtocolHandler, getDataFromURL } from "../util/protocol-handler.js"
+import { registerProtocolHandler, getDataFromURL, buildShareableProtocolURL } from "../util/shareable.js"
 
 export const logoURL = "assets/npchat-logo.svg"
 export const avatarFallbackURL = "assets/avatar.svg"
@@ -22,7 +22,6 @@ export class App extends LitElement {
       displayName: {},
       avatarURL: {},
       originURL: {},
-      shareableURL: {},
       shareableQR: {},
       contacts: {type: Object},
       selectedContact: {type: Object}
@@ -91,8 +90,8 @@ export class App extends LitElement {
         return
       }
       this.connectWebSocket()
-      this.shareableURL = this.buildShareableLink()
-      generateQR(this.shareableURL)
+      const shareableProtocolURL= buildShareableProtocolURL(this.originURL, this.keys.pubKeyHash)
+      generateQR(shareableProtocolURL)
         .then(qr => this.shareableQR = qr)
     })
     registerProtocolHandler()
@@ -115,16 +114,15 @@ export class App extends LitElement {
             <img alt="avatar" src=${this.avatarURL || avatarFallbackURL} class="avatar"/>
           </button>
         </header>
-        <h1>npchat-web</h1>
-        <h2>Todo</h2>
-        <ul>
-          <li>Build contacts component</li>
-        </ul>
         <npchat-contacts
             .contacts=${this.contacts}
             .selected=${this.selectedContact}
             @contactSelected=${e => this.selectedContact = e.detail}
+            @contactAdded=${e => this.addContact(e.detail)}
         ></npchat-contacts>
+        <npchat-contact
+          .shareableData=${this.selectedContact}
+        ></npchat-contact>
       </main>
 
       <npchat-welcome
@@ -145,8 +143,8 @@ export class App extends LitElement {
 
       <npchat-shareable
           @close=${this.hideShareable}
-          shareableURL=${this.shareableURL}
-          shareableQR=${this.shareableQR}
+          originURL=${this.originURL}
+          pubKeyHash=${this.keys && this.keys.pubKeyHash}
           ?showQR=${true}
           ?hidden=${!this.showShareable}
         ></npchat-shareable>
@@ -159,7 +157,10 @@ export class App extends LitElement {
       changedOriginURL = true
     }
     Object.assign(this, e.detail)
-    storePreferences(e.detail)
+    storePreferences(e.detail) 
+    this.shareableQR = await generateQR(
+      buildShareableProtocolURL(this.originURL, this.keys.pubKeyHash)
+    )
     this.hideWelcome()
     this.hidePreferences()
     // push new shareableData to current origin
@@ -169,8 +170,6 @@ export class App extends LitElement {
     if (changedOriginURL) {
       // connect to new origin
       await this.connectWebSocket()
-      this.shareableURL = this.buildShareableLink()
-      this.shareableQR = await generateQR(this.shareableURL)
     }
   }
 
@@ -195,10 +194,6 @@ export class App extends LitElement {
 
   hideShareable() {
     this.showShareable = false
-  }
-
-  buildShareableLink() {
-    return `web+npchat:${this.originURL}/${this.keys.pubKeyHash}/shareable`
   }
 
   buildShareableData() {

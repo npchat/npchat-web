@@ -9,6 +9,10 @@ export const formStyles = css`
 		width: 100%;
 	}
 
+	label.no-flex {
+		display: block;
+	}
+
 	label span {
 		font-size: 1.4rem;
 	}
