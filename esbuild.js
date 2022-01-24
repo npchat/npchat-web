@@ -1,11 +1,29 @@
 import { build } from "esbuild"
 
-build({
+export const mainBuildConfig = {
 	platform: "neutral",
-	format: "esm",
 	bundle: true,
 	minify: true,
 	entryPoints: ["src/main.js"],
 	outdir: "www/dist"
-}).then(() => console.log(`esbuild done`))
+}
+
+export const qrBuildConfig = {
+	platform: "neutral",
+	bundle: false,
+	minify: true,
+	minifyIdentifiers: false,
+	entryPoints: ["node_modules/qrcode/build/qrcode.js"],
+	outfile: "www/dist/qrlib.js"
+}
+
+const builds = []
+
+builds.push(build(mainBuildConfig))
+
+builds.push(build(qrBuildConfig))
+
+
+Promise.all(builds)
+	.then(() => console.log("esbuild done"))
 
