@@ -69,7 +69,7 @@ export class Contacts extends LitElement {
   contactTemplate(contact) {
     const isSelected = contact.keys.pubKeyHash === this.selected?.keys.pubKeyHash
     return html`
-    <button class="contact ${classMap({selected: isSelected})}" @click=${e => this.handleContactSelected(contact)}>
+    <button class="contact ${classMap({selected: isSelected})}" @click=${() => this.handleContactSelected(contact)}>
       <img alt="${contact.displayName}" src=${contact.avatarURL || avatarFallbackURL} class="avatar" />
       <span class="name">${contact.displayName}</span>
     </button>

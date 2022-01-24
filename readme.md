@@ -1,5 +1,5 @@
 <p align="center">
-  <img width="200" src="https://open-wc.org/hero.png"></img>
+  <img width="200" src="./www/assets/npchat-logo.svg"></img>
 </p>
 
 # npchat-web

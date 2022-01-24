@@ -85,7 +85,6 @@ export class App extends LitElement {
 
   constructor() {
     super()
-    this.contacts = {}
     loadPreferences().then(pref => {
       Object.assign(this, pref)
       if (!this.originURL || !this.keys) {
@@ -254,6 +253,7 @@ export class App extends LitElement {
   }
 
   addContact(shareableData) {
+    this.contacts = this.contacts || {}
     this.contacts[shareableData.keys.pubKeyHash] = shareableData
     storePreferences({
       contacts: this.contacts
