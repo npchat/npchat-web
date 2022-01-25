@@ -1,6 +1,6 @@
-import { aesKeyParams } from "./privacy.js"
-import { hash } from "./hash.js"
-import { toBase64 } from "./base64.js"
+import { aesKeyParams } from "../util/privacy.js"
+import { hash } from "../util/hash.js"
+import { toBase64 } from "../util/base64.js"
 
 const authKeyParams = {
   name: "ECDSA",

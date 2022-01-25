@@ -1,10 +1,10 @@
 import { pack } from "msgpackr"
-import { sign, verify } from "./auth.js"
-import { hash } from "./hash.js"
+import { sign, verify } from "../util/auth.js"
+import { hash } from "../util/hash.js"
 import { deriveDHSecret } from "./keys.js"
-import { encrypt, getIV } from "./privacy.js"
-import { isEqual } from "./bytes.js"
-import { toBase64 } from "./base64.js"
+import { encrypt, getIV } from "../util/privacy.js"
+import { isEqual } from "../util/bytes.js"
+import { toBase64 } from "../util/base64.js"
 
 export async function buildMessage(
   authPriv,

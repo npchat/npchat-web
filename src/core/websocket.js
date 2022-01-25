@@ -1,5 +1,5 @@
 import { pack, unpack } from "msgpackr"
-import { sign } from "./auth.js"
+import { sign } from "../util/auth.js"
 
 export async function authenticateSocket(socket, privateKey, publicKeyRaw) {
   return new Promise((resolve, reject) => {

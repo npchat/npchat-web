@@ -1,7 +1,7 @@
 import { LitElement, html, css } from "lit"
 import { formStyles } from "../styles/form.js"
 import { generalStyles } from "../styles/general.js"
-import { generateKeys } from "../util/keys.js"
+import { generateKeys } from "../core/keys.js"
 
 export class Welcome extends LitElement {
   static get properties() {

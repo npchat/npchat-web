@@ -1,16 +1,16 @@
 import { LitElement, html, css } from "lit"
 import { pack } from "msgpackr"
 import { formStyles } from "../styles/form.js"
-import { buildMessage } from "../util/message.js"
-import { importDHKey, importAuthKey } from "../util/keys.js"
+import { buildMessage } from "../core/message.js"
+import { importDHKey, importAuthKey } from "../core/keys.js"
 import { fromBase64, toBase64 } from "../util/base64.js"
+import { openDBConn } from "../core/db.js"
 
 export class Chat extends LitElement {
   static get properties() {
     return {
-      shareable: { type: Object },
-      messages: { type: Array },
-      myKeys: { type: Object },
+      contact: { type: Object },
+      myKeys: { type: Object }
     }
   }
 
@@ -47,23 +47,41 @@ export class Chat extends LitElement {
     ]
   }
 
-  async willUpdate() {
-    if (!this.shareable) return
-    this.theirKeys = {
-      auth: await importAuthKey("jwk", this.shareable.keys.auth, [
-        "verify",
-      ]),
-      dh: await importDHKey("jwk", this.shareable.keys.dh, []),
-    }
-    this.myPubKeyHashBytes = fromBase64(this.myKeys.pubKeyHash)
-  }
-
   constructor() {
     super()
-    window.addEventListener("contactsChanged", () => {
-      this.requestUpdate()
+    this.messages = []
+    this.init()
+
+    window.addEventListener("messageReceived", event => {
+      console.log("got message yo!")
+      // if from contact, display message
+      if (this.contact.keys.pubKeyHash === event.detail.with) {
+        console.log("from current", event.detail)
+        this.messages.push(event.detail)
+        this.update()
+      }
     })
   }
+
+  async init() {
+    this.db = await openDBConn()
+  }
+
+  async willUpdate() {
+    if (!this.contact) return
+    this.theirKeys = {
+      auth: await importAuthKey("jwk", this.contact.keys.auth, [
+        "verify",
+      ]),
+      dh: await importDHKey("jwk", this.contact.keys.dh, []),
+    }
+    this.myPubKeyHashBytes = fromBase64(this.myKeys.pubKeyHash)
+
+    await this.fetchMessages()
+    this.update()
+  }
+
+
 
   timeTemplate(msgTime, prevMsgTime) {
     if (!prevMsgTime) return
@@ -101,7 +119,7 @@ export class Chat extends LitElement {
     let prevMsgTime
     return html`
       <div class="container">
-        <div class="list" ?hidden=${!this.shareable}>
+        <div class="list" ?hidden=${!this.contact}>
           ${this.messages?.map(m => {
             const template = this.messageTemplate(m, prevMsgTime)
             prevMsgTime = m.t
@@ -110,13 +128,19 @@ export class Chat extends LitElement {
         </div>
         <form
           class="compose"
-          ?hidden=${!this.shareable}
+          ?hidden=${!this.contact}
           @submit=${this.handleSubmit}
         >
           <input type="text" placeholder="write a message" name="messageText" />
         </form>
       </div>
     `
+  }
+
+  async fetchMessages() {
+    if (!this.contact) return
+    this.messages = await this.db.getAllFromIndex("messages", "with", this.contact.keys.pubKeyHash)
+    this.messages.sort((a, b) => a.t - b.t)
   }
 
   async handleSubmit(e) {
@@ -130,7 +154,7 @@ export class Chat extends LitElement {
       this.myPubKeyHashBytes,
       this.theirKeys.dh
     )
-    const url = `${this.shareable.originURL}/${this.shareable.keys.pubKeyHash}`
+    const url = `${this.contact.originURL}/${this.contact.keys.pubKeyHash}`
     const resp = await fetch(url, {
       method: "POST",
       body: pack(msg),
@@ -139,13 +163,12 @@ export class Chat extends LitElement {
       t: msg.t,
       h: toBase64(msg.h),
       m: messageText,
-      sent: resp.status === 200,
+      with: this.contact.keys.pubKeyHash,
+      in: false, // outgoing
+      sent: resp.status === 200
     }
-    this.dispatchEvent(
-      new CustomEvent("messageSent", {
-        detail: toStore,
-      })
-    )
-    this.requestUpdate()
+    this.db.put("messages", toStore, toStore.h)
+    this.messages.push(toStore)
+    this.update()
   }
 }

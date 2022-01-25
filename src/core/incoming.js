@@ -1,4 +1,9 @@
-export async function handleIncomingMessage(msg, db) {
+import { unpack } from "msgpackr"
+import { decrypt } from "../util/privacy"
+import { deriveDHSecret, importAuthKey, importDHKey } from "./keys"
+import { verifyMessage } from "./message"
+
+export async function handleIncomingMessage(msg, db, myKeys) {
   if (!(msg.data instanceof Blob)) return
   const arrayBuffer = await msg.data.arrayBuffer()
   const data = unpack(new Uint8Array(arrayBuffer))
@@ -23,7 +28,7 @@ export async function handleIncomingMessage(msg, db) {
   const dhPublicKey = await importDHKey("jwk", contact.keys.dh, [])
   const dhSecret = await deriveDHSecret(
     dhPublicKey,
-    this.keys.dh.keyPair.privateKey
+    myKeys.dh.keyPair.privateKey
   )
   const decrypted = await decrypt(data.iv, dhSecret, data.m)
   const msgPlainText = new TextDecoder().decode(decrypted)
@@ -33,9 +38,10 @@ export async function handleIncomingMessage(msg, db) {
     t: data.t,
     h: hashB64,
     m: msgPlainText,
-    f: fromPubKeyHash
+    with: fromPubKeyHash,
+    in: true
   }
-  await db.put("messages", toStore)
+  await db.put("messages", toStore, hashB64)
 
   const eventDetail = {
     displayName: contact.displayName
@@ -44,17 +50,4 @@ export async function handleIncomingMessage(msg, db) {
   window.dispatchEvent(new CustomEvent("messageReceived", {
     detail: eventDetail
   }))
-
-
-  /*
-  // notify
-  if (!this.selectedContact?.keys.pubKeyHash === fromPubKeyHash) {
-    const preview = `${msgPlainText.slice(0, 25)}${
-      msgPlainText.length > 25 ? "..." : ""
-    }`
-    this.toast.show(`${contact.displayName}: ${preview}`)
-  }
-
-  localStorage.lastMessageFrom = fromPubKeyHash
-  */
 }

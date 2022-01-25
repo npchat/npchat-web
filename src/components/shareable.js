@@ -2,7 +2,7 @@ import { LitElement, html, css } from "lit"
 import { formStyles } from "../styles/form.js"
 import {
   buildShareableURL,
-} from "../util/shareable.js"
+} from "../core/shareable.js"
 import { generateQR } from "../util/qrcode.js"
 
 export class Shareable extends LitElement {

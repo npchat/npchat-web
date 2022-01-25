@@ -2,8 +2,8 @@ import { LitElement, html, css } from "lit"
 import { classMap } from "lit/directives/class-map.js"
 import { avatarFallbackURL } from "./app.js"
 import { formStyles } from "../styles/form.js"
-import { protocolScheme } from "../util/shareable.js"
-import { openDBConn } from "../util/db.js";
+import { fetchUsingURLData, protocolScheme } from "../core/shareable.js"
+import { openDBConn } from "../core/db.js";
 
 export class Contacts extends LitElement {
   static get properties() {
@@ -76,11 +76,22 @@ export class Contacts extends LitElement {
     ]
   }
 
+  get toast() {
+    return this.renderRoot?.querySelector("npchat-toast") ?? null
+  }
+
   constructor() {
     super()
     this.filter = ""
-    window.addEventListener("contactsChanged", () => {
-      this.requestUpdate()
+    window.addEventListener("messageReceived", event => {
+      const msg = event.detail
+      localStorage.lastMessageFrom = msg.f
+      if (this.selected?.keys.pubKeyHash === event.detail.with) return
+      // notify if contact not selected
+      const preview = `${msg.m.slice(0, 25)}${
+        msg.m.length > 25 ? "..." : ""
+      }`
+      this.toast.show(`${msg.displayName}: ${preview}`)
     })
     this.init()
   }
@@ -88,6 +99,12 @@ export class Contacts extends LitElement {
   async init() {
     this.db = await openDBConn()
     await this.loadContacts()
+
+    // import from URL
+    const toImport = await fetchUsingURLData()
+    if (toImport && toImport.originURL && toImport.keys) {
+      this.addContact(toImport)
+    }
   }
 
   contactTemplate(contact) {
@@ -108,17 +125,6 @@ export class Contacts extends LitElement {
     `
   }
 
-  filterContacts() {
-    if (!this.contacts) return []
-    const entries = Object.entries(this.contacts)
-    if (!this.filter) {
-      return entries
-    }
-    return entries.filter(
-      entry => JSON.stringify(entry[1]).indexOf(this.filter) > -1
-    )
-  }
-
   render() {
     return html`
       <div class="container">
@@ -133,15 +139,37 @@ export class Contacts extends LitElement {
           ${this.filterContacts().map(entry => this.contactTemplate(entry[1]))}
         </div>
         <npchat-chat
-          .shareable=${this.selected}
+          .contact=${this.selected}
           .myKeys=${this.keys}
         ></npchat-chat>
       </div>
+      <npchat-toast></npchat-toast>
     `
   }
 
   async loadContacts() {
     this.contacts = await this.db.getAll("contacts")
+  }
+
+  async checkContacts() {
+    // if (!this.contacts) return
+    await Promise.all(
+      Object.entries(this.contacts).map(async contact => {
+        // const contact = entry[1]
+        const resp = await fetch(`${contact.originURL}/${pubKeyHash}/shareable`)
+        if (resp.status !== 200) return
+        // don't update keys
+        const { displayName, avatarURL, originURL } = await resp.json()
+        Object.assign(this.contacts[pubKeyHash], {
+          displayName,
+          avatarURL,
+          originURL,
+        })
+      })
+    )
+    storePreferences({
+      contacts: this.contacts,
+    })
   }
 
   async handleInput(e) {
@@ -170,7 +198,27 @@ export class Contacts extends LitElement {
         }, 500)
       }
     } catch (error) {
-      console.log("invalid shareable", error)
+      return error
     }
+  }
+
+  async addContact(data) {
+    const current = await this.db.get("contacts", data.keys.pubKeyHash)
+    await this.db.put("contacts", data, data.keys.pubKeyHash)
+    const name = current.displayName || data.displayName
+    this.toast.show(
+      `${current ? "Updated data for" : "Imported contact"} ${name}`
+    )
+  }
+
+  filterContacts() {
+    if (!this.contacts) return []
+    const entries = Object.entries(this.contacts)
+    if (!this.filter) {
+      return entries
+    }
+    return entries.filter(
+      entry => JSON.stringify(entry[1]).indexOf(this.filter) > -1
+    )
   }
 }

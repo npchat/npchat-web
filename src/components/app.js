@@ -1,19 +1,19 @@
 import { LitElement, html, css } from "lit"
 import { classMap } from "lit/directives/class-map.js"
 import { styleMap } from "lit/directives/style-map.js"
-import { pack, unpack } from "msgpackr"
-import { loadPreferences, storePreferences } from "../util/storage.js"
-import { getWebSocket, authenticateSocket } from "../util/websocket.js"
-import { subscribeToPushNotifications } from "../util/webpush.js"
+import { pack } from "msgpackr"
+import { loadPreferences, storePreferences } from "../core/storage.js"
+import { getWebSocket, authenticateSocket } from "../core/websocket.js"
+import { subscribeToPushNotifications } from "../core/webpush.js"
 import { generateQR } from "../util/qrcode.js"
 import {
   registerProtocolHandler,
   fetchUsingURLData,
   buildShareableURL,
-} from "../util/shareable.js"
+} from "../core/shareable.js"
 import { fromBase64, toBase64 } from "../util/base64.js"
-import { openDBConn } from "../util/db.js"
-import { handleIncomingMessage } from "../util/incoming.js"
+import { openDBConn } from "../core/db.js"
+import { handleIncomingMessage } from "../core/incoming.js"
 
 export const logoURL = "assets/npchat-logo.svg"
 export const avatarFallbackURL = "assets/avatar.svg"
@@ -87,10 +87,6 @@ export class App extends LitElement {
     `
   }
 
-  get toast() {
-    return this.renderRoot?.querySelector("npchat-toast") ?? null
-  }
-
   constructor() {
     super()
     window.toBase64 = toBase64
@@ -117,14 +113,6 @@ export class App extends LitElement {
       this.keys.pubKeyHash
     )
     this.shareableQR = await generateQR(shaereableURL)
-
-    await this.checkContacts()
-
-    // import from URL
-    const toImport = await fetchUsingURLData()
-    if (toImport && toImport.originURL && toImport.keys) {
-      this.addContact(toImport)
-    }
   }
 
   render() {
@@ -158,8 +146,6 @@ export class App extends LitElement {
         </header>
         <npchat-contacts .keys=${this.keys}></npchat-contacts>
       </main>
-
-      <npchat-toast></npchat-toast>
 
       <npchat-welcome
         @formSubmit=${this.handlePreferencesSubmit}
@@ -252,62 +238,6 @@ export class App extends LitElement {
     this.socket.send(pack(object))
   }
 
-  addContact(shareableData) {
-    this.contacts = this.contacts || {}
-    const current = this.contacts[shareableData.keys.pubKeyHash]
-    this.contacts[shareableData.keys.pubKeyHash] = shareableData
-    storePreferences({
-      contacts: this.contacts,
-    })
-    window.dispatchEvent(
-      new CustomEvent("contactsChanged", {
-        detail: this.contacts,
-      })
-    )
-    const name = current.displayName || shareableData.displayName
-    this.toast.show(
-      `${current ? "Updated data for" : "Imported contact"} ${name}`
-    )
-  }
-
-  async checkContacts() {
-    if (!this.contacts) return
-    await Promise.all(
-      Object.entries(this.contacts).map(async entry => {
-        const pubKeyHash = entry[0]
-        const contact = entry[1]
-        const resp = await fetch(`${contact.originURL}/${pubKeyHash}/shareable`)
-        if (resp.status !== 200) return
-        // don't update keys
-        const { displayName, avatarURL, originURL } = await resp.json()
-        Object.assign(this.contacts[pubKeyHash], {
-          displayName,
-          avatarURL,
-          originURL,
-        })
-      })
-    )
-    storePreferences({
-      contacts: this.contacts,
-    })
-    window.dispatchEvent(
-      new CustomEvent("contactsChanged", {
-        detail: this.contacts,
-      })
-    )
-  }
-
-  selectContact(contact) {
-    this.selectedContact = contact
-    const storedMessages = localStorage.getItem(contact.keys.pubKeyHash)
-    if (!storedMessages) {
-      this.selectedContactMessages = []
-      return
-    }
-    this.selectedContactMessages = JSON.parse(storedMessages)
-      .sort((a, b) => a.t - b.t)
-  }
-
   handleMessageSent(e) {
     this.selectedContactMessages.push(e.detail)
     localStorage.setItem(
@@ -325,7 +255,7 @@ export class App extends LitElement {
         "close",
         () => (this.isWebSocketConnected = false)
       )
-      socket.addEventListener("message", e => handleIncomingMessage(e, this.db))
+      socket.addEventListener("message", e => handleIncomingMessage(e, this.db, this.keys))
       const authResp = await authenticateSocket(
         socket,
         this.keys.auth.keyPair.privateKey,

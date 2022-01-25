@@ -1,4 +1,4 @@
-import { toBase64 } from "./base64.js"
+import { toBase64 } from "../util/base64.js"
 
 async function registerServiceWorker() {
   try {
