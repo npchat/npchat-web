@@ -8,7 +8,6 @@ export async function loadPreferences() {
     avatarURL: localStorage.avatarURL,
     originURL: localStorage.originURL,
     keys: localStorage.keys && JSON.parse(localStorage.keys),
-    contacts: localStorage.contacts && JSON.parse(localStorage.contacts),
   }
   if (!pref.keys) {
     return pref

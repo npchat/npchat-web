@@ -11,6 +11,7 @@ export class Contacts extends LitElement {
       contacts: { type: Object },
       selected: { type: Object },
       filter: {},
+      keys: {type: Object}
     }
   }
 
@@ -118,17 +119,6 @@ export class Contacts extends LitElement {
     )
   }
 
-  chatTemplate() {
-    return html`
-    <npchat-chat
-      .shareable=${this.selectedContact}
-      .messages=${this.selectedContactMessages}
-      .myKeys=${this.keys}
-      @messageSent=${this.handleMessageSent}
-    ></npchat-chat>
-    `
-  }
-
   render() {
     return html`
       <div class="container">
@@ -142,6 +132,10 @@ export class Contacts extends LitElement {
         <div class="list">
           ${this.filterContacts().map(entry => this.contactTemplate(entry[1]))}
         </div>
+        <npchat-chat
+          .shareable=${this.selected}
+          .myKeys=${this.keys}
+        ></npchat-chat>
       </div>
     `
   }

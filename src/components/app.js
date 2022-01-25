@@ -11,10 +11,9 @@ import {
   fetchUsingURLData,
   buildShareableURL,
 } from "../util/shareable.js"
-import { decrypt } from "../util/privacy.js"
-import { deriveDHSecret, importDHKey, importAuthKey } from "../util/keys.js"
-import { verifyMessage } from "../util/message.js"
 import { fromBase64, toBase64 } from "../util/base64.js"
+import { openDBConn } from "../util/db.js"
+import { handleIncomingMessage } from "../util/incoming.js"
 
 export const logoURL = "assets/npchat-logo.svg"
 export const avatarFallbackURL = "assets/avatar.svg"
@@ -107,6 +106,8 @@ export class App extends LitElement {
       return 
     }
 
+    this.db = await openDBConn()
+
     // connect to origin
     await this.connectWebSocket()
 
@@ -155,7 +156,7 @@ export class App extends LitElement {
             />
           </button>
         </header>
-        <npchat-contacts></npchat-contacts>
+        <npchat-contacts .keys=${this.keys}></npchat-contacts>
       </main>
 
       <npchat-toast></npchat-toast>
@@ -251,64 +252,6 @@ export class App extends LitElement {
     this.socket.send(pack(object))
   }
 
-  async handleIncomingMessage(msg) {
-    if (!(msg.data instanceof Blob)) return
-    const arrayBuffer = await msg.data.arrayBuffer()
-    const data = unpack(new Uint8Array(arrayBuffer))
-    if (!data.m || !data.f) return
-
-    // match contact
-    const fromPubKeyHash = toBase64(data.f)
-    const [, contact] = Object.entries(this.contacts).find(
-      entry => entry[0] === fromPubKeyHash
-    )
-    if (!contact) return
-
-    // check does not already exist
-    const stored = localStorage.getItem(fromPubKeyHash)
-    const parsed = (stored && JSON.parse(stored)) || []
-    const hashB64 = toBase64(data.h)
-    if (parsed.find(m => m.h === hashB64)) return
-
-    // verify signature
-    const authKey = await importAuthKey("jwk", contact.keys.auth, ["verify"])
-    const isVerified = await verifyMessage(authKey, data)
-    if (!isVerified) return
-
-    // decrypt
-    const dhPublicKey = await importDHKey("jwk", contact.keys.dh, [])
-    const dhSecret = await deriveDHSecret(
-      dhPublicKey,
-      this.keys.dh.keyPair.privateKey
-    )
-    const decrypted = await decrypt(data.iv, dhSecret, data.m)
-    const msgPlainText = new TextDecoder().decode(decrypted)
-
-    // store
-    const toStore = {
-      t: data.t,
-      h: hashB64,
-      m: msgPlainText,
-    }
-    parsed.push(toStore)
-    localStorage.setItem(fromPubKeyHash, JSON.stringify(parsed))
-
-    // update view if contact is selected
-    if (this.selectedContact?.keys.pubKeyHash === fromPubKeyHash) {
-      this.selectedContactMessages.push(toStore)
-    }
-
-    // notify
-    if (!this.selectedContact?.keys.pubKeyHash === fromPubKeyHash) {
-      const preview = `${msgPlainText.slice(0, 25)}${
-        msgPlainText.length > 25 ? "..." : ""
-      }`
-      this.toast.show(`${contact.displayName}: ${preview}`)
-    }
-
-    localStorage.lastMessageFrom = fromPubKeyHash
-  }
-
   addContact(shareableData) {
     this.contacts = this.contacts || {}
     const current = this.contacts[shareableData.keys.pubKeyHash]
@@ -382,7 +325,7 @@ export class App extends LitElement {
         "close",
         () => (this.isWebSocketConnected = false)
       )
-      socket.addEventListener("message", e => this.handleIncomingMessage(e))
+      socket.addEventListener("message", e => handleIncomingMessage(e, this.db))
       const authResp = await authenticateSocket(
         socket,
         this.keys.auth.keyPair.privateKey,

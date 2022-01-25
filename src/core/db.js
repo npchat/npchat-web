@@ -7,6 +7,7 @@ export async function openDBConn() {
   return openDB(dbName, dbVersion, {
     upgrade(db) {
       db.createObjectStore("contacts")
+      db.createObjectStore("messages")
     }
   })
 }
