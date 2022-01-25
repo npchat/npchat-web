@@ -42,6 +42,7 @@ export class Contacts extends LitElement {
           cursor: pointer;
           text-decoration: none;
           color: var(--color-black);
+          background-color: var(--color-offwhite);
           transition: background-color 300ms;
           padding: 5px;
           margin: 0;

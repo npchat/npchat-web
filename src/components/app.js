@@ -6,9 +6,11 @@ import { loadPreferences, storePreferences } from "../util/storage.js"
 import { getWebSocket, authenticateSocket } from "../util/websocket.js"
 import { subscribeToPushNotifications } from "../util/webpush.js"
 import { generateQR } from "../util/qrcode.js"
-import { registerProtocolHandler, getDataFromURL, buildShareableProtocolURL } from "../util/shareable.js"
+import { registerProtocolHandler, fetchUsingURLData, buildShareableProtocolURL } from "../util/shareable.js"
 import { decrypt } from "../util/privacy.js"
+import { deriveDHSecret, importDHKey } from "../util/keys.js"
 import { toHex } from "../util/hex.js"
+import { verifyMessage } from "../util/message.js"
 
 export const logoURL = "assets/npchat-logo.svg"
 export const avatarFallbackURL = "assets/avatar.svg"
@@ -90,19 +92,26 @@ export class App extends LitElement {
 
   constructor() {
     super()
-    loadPreferences().then(pref => {
-      Object.assign(this, pref)
-      if (!this.originURL || !this.keys) {
-        return
-      }
-      this.connectWebSocket()
-      const shareableProtocolURL= buildShareableProtocolURL(this.originURL, this.keys.pubKeyHash)
-      generateQR(shareableProtocolURL)
-        .then(qr => this.shareableQR = qr)
-      this.checkContacts()
-    })
+    this.init()
+  }
+
+  async init() {
     registerProtocolHandler()
-    this.handleURLData()
+    const pref = await loadPreferences()
+    Object.assign(this, pref)
+    if (!this.originURL || !this.keys) {
+      return
+    }
+    await this.connectWebSocket()
+    // make QR
+    const shaereableURL = buildShareableProtocolURL(this.originURL, this.keys.pubKeyHash)
+    this.shareableQR = await generateQR(shaereableURL)
+    await this.checkContacts()
+    // import from URL
+    const toImport = await fetchUsingURLData()
+    if (toImport && toImport.originURL && toImport.keys) {
+      this.addContact(toImport)
+    }
   }
 
   render() {
@@ -233,35 +242,35 @@ export class App extends LitElement {
     const arrayBuffer = await msg.data.arrayBuffer()
     const data = unpack(new Uint8Array(arrayBuffer))
     if (data.m && data.f) {
-      console.log("got message", data)
       // match contact
       const fromPubKeyHash = toHex(data.f)
-      console.log("contacts", this.contacts)
-      const contact = Object.entries(this.contacts).find(entry => entry[0] === fromPubKeyHash)
+      const [, contact] = Object.entries(this.contacts).find(entry => entry[0] === fromPubKeyHash)
       if (!contact) {
         console.log("no contact found, will not handle")
         return
       }
 
+      // verify signature
+      verifyMessage()
+
+      const dhPublicKey = await importDHKey("jwk", contact.keys.dh, [])
+      const dhSecret = await deriveDHSecret(dhPublicKey, this.keys.dh.keyPair.privateKey)
+
       // decrypt
-      decrypt(data.iv, )
+      const msgPlainText = await decrypt(data.iv, dhSecret, data.m)
+      data.m = new TextDecoder().decode(msgPlainText)
+
+      if (this.selectedContact?.keys.pubKeyHash === fromPubKeyHash) {
+        this.selectedContactMessages.push()
+      }
+
+      const preview = `${data.m.slice(0, 25)}${data.m.length>25?"...":""}`
+      // TODO: Add click handler
+      this.toast.show(`${contact.displayName}: ${preview}`)
     }
   }
 
-  async handleURLData() {
-    const urlData = getDataFromURL()
-    if(urlData) {
-      try {
-        const resp = await fetch(urlData)
-        const shareableData = await resp.json()
-        if (shareableData.originURL && shareableData.keys && shareableData.displayName) {
-          this.addContact(shareableData)
-        }
-      } catch (e) {
-        console.log("failed to import data from URL", e)
-      }
-    }
-  }
+
 
   addContact(shareableData) {
     this.contacts = this.contacts || {}
@@ -317,7 +326,7 @@ export class App extends LitElement {
       const tStart = performance.now()
       const socket = await  getWebSocket(url.toString())
       socket.addEventListener("close", () => this.isWebSocketConnected = false)
-      socket.addEventListener("message", this.handleIncomingMessage)
+      socket.addEventListener("message", e => this.handleIncomingMessage(e))
       const authResp = await authenticateSocket(socket, this.keys.auth.keyPair.privateKey, this.keys.auth.publicKeyRaw)
       const tEnd = performance.now()
       console.log("connected in", (tEnd - tStart).toPrecision(2), "ms")

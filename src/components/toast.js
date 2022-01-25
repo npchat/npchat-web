@@ -1,4 +1,5 @@
 import { LitElement, html, css } from "lit"
+import { generalStyles } from "../styles/general.js"
 
 export class Toast extends LitElement {
 
@@ -17,10 +18,11 @@ export class Toast extends LitElement {
           justify-content: center;
           pointer-events: none;
           position: fixed;
-          bottom: -100px;
+          bottom: -80px;
+          max-height: 76px;
           left: 0;
           opacity: 0;
-          transition: bottom, opacity 300ms;
+          transition: all 500ms;
         }
 
         .container.active {
@@ -32,10 +34,11 @@ export class Toast extends LitElement {
           padding: 20px;
           font-size: 1.2rem;
           background-color: var(--color-darkwhite);
-          border: 2px solid var(--color-primary);
           max-width: 80vw;
+          border: 2px solid;
         }
-      `
+      `,
+      generalStyles
     ]
   }
 
@@ -47,7 +50,7 @@ export class Toast extends LitElement {
   render() {
     return html`
     <div class="container">
-      <div class="toast">
+      <div class="toast border-gradient">
         ${this.message}
       </div>
     </div>

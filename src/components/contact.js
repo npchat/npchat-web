@@ -90,6 +90,7 @@ export class Contact extends LitElement {
   async handleSubmit(e) {
     e.preventDefault()
     const {messageText} = Object.fromEntries(new FormData(e.target))
+    e.target.querySelector("input").value = ""
     const message = await buildMessage(
       this.myKeys.auth.keyPair.privateKey,
       this.myKeys.dh.keyPair.privateKey,
@@ -102,9 +103,14 @@ export class Contact extends LitElement {
       method: "POST",
       body: pack(message)
     })
-    message.sent = resp.status === 200
+    const toStore = {
+      m: messageText,
+      t: message.t,
+      h: message.h,
+      sent: resp.status === 200
+    }
     this.dispatchEvent(new CustomEvent("messageSent", {
-      detail: message
+      detail: toStore
     }))
     this.requestUpdate()
   }

@@ -22,3 +22,15 @@ export function buildShareableFallbackURL(originURL, pubKeyHash) {
 	const shareable = buildShareableFallback(originURL, pubKeyHash)
 	return `${window.location.origin}#${protocolScheme}:${shareable}`
 }
+
+export async function fetchUsingURLData() {
+	const urlData = getDataFromURL()
+	if(urlData) {
+		try {
+			const resp = await fetch(urlData)
+			return resp.json()
+		} catch (e) {
+			console.log("failed to import data from URL", e)
+		}
+	}
+}
