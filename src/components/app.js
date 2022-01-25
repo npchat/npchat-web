@@ -15,7 +15,7 @@ import { decrypt } from "../util/privacy.js"
 import { deriveDHSecret, importDHKey, importAuthKey } from "../util/keys.js"
 import { toHex } from "../util/hex.js"
 import { verifyMessage } from "../util/message.js"
-import { base64ToBytes, bytesToBase64 } from "../util/base64.js"
+import { bytesToBase64 } from "../util/base64.js"
 
 export const logoURL = "assets/npchat-logo.svg"
 export const avatarFallbackURL = "assets/avatar.svg"
@@ -108,6 +108,11 @@ export class App extends LitElement {
     if (!this.originURL || !this.keys) {
       return
     }
+    // select contact of last message received
+    const lastMessageFrom = localStorage.lastMessageFrom
+    if (lastMessageFrom) {
+      this.selectContact(this.contacts[lastMessageFrom])
+    }
     await this.connectWebSocket()
     // make QR
     const shaereableURL = buildShareableProtocolURL(
@@ -155,11 +160,11 @@ export class App extends LitElement {
         <npchat-contacts
           .contacts=${this.contacts}
           .selected=${this.selectedContact}
-          @contactSelected=${this.handleContactSelected}
+          @contactSelected=${e => this.selectContact(e.detail)}
           @contactAdded=${e => this.addContact(e.detail)}
         ></npchat-contacts>
         <npchat-contact
-          .shareableData=${this.selectedContact}
+          .shareable=${this.selectedContact}
           .messages=${this.selectedContactMessages}
           .myKeys=${this.keys}
           @messageSent=${this.handleMessageSent}
@@ -275,7 +280,8 @@ export class App extends LitElement {
     // check does not already exist
     const stored = localStorage.getItem(fromPubKeyHash)
     const parsed = (stored && JSON.parse(stored)) || []
-    if (parsed.find(m => m.h === data.h)) return
+    const hashB64 = bytesToBase64(data.h)
+    if (parsed.find(m => m.h === hashB64)) return
 
     // verify signature
     const authKey = await importAuthKey("jwk", contact.keys.auth, ["verify"])
@@ -291,16 +297,12 @@ export class App extends LitElement {
     const decrypted = await decrypt(data.iv, dhSecret, data.m)
     const msgPlainText = new TextDecoder().decode(decrypted)
 
-    console.log("hash", data.h)
-
     // store
     const toStore = {
       t: data.t,
-      h: bytesToBase64(data.h),
+      h: hashB64,
       m: msgPlainText,
     }
-
-    console.log("toStore", base64ToBytes(toStore.h))
     parsed.push(toStore)
     localStorage.setItem(fromPubKeyHash, JSON.stringify(parsed))
 
@@ -316,6 +318,8 @@ export class App extends LitElement {
       }`
       this.toast.show(`${contact.displayName}: ${preview}`)
     }
+
+    localStorage.lastMessageFrom = fromPubKeyHash
   }
 
   addContact(shareableData) {
@@ -344,7 +348,7 @@ export class App extends LitElement {
         const contact = entry[1]
         const resp = await fetch(`${contact.originURL}/${pubKeyHash}/shareable`)
         if (resp.status !== 200) return
-        // don't update keys like this
+        // don't update keys
         const { displayName, avatarURL, originURL } = await resp.json()
         Object.assign(this.contacts[pubKeyHash], {
           displayName,
@@ -363,14 +367,15 @@ export class App extends LitElement {
     )
   }
 
-  handleContactSelected(e) {
-    this.selectedContact = e.detail
-    const storedMessages = localStorage.getItem(e.detail.keys.pubKeyHash)
+  selectContact(contact) {
+    this.selectedContact = contact
+    const storedMessages = localStorage.getItem(contact.keys.pubKeyHash)
     if (!storedMessages) {
       this.selectedContactMessages = []
       return
     }
     this.selectedContactMessages = JSON.parse(storedMessages)
+      .sort((a, b) => a.t - b.t)
   }
 
   handleMessageSent(e) {

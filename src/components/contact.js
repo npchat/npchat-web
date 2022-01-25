@@ -4,11 +4,12 @@ import { formStyles } from "../styles/form.js"
 import { fromHex } from "../util/hex.js"
 import { buildMessage } from "../util/message.js"
 import { importDHKey, importAuthKey } from "../util/keys.js"
+import { bytesToBase64 } from "../util/base64.js"
 
 export class Contact extends LitElement {
   static get properties() {
     return {
-      shareableData: { type: Object },
+      shareable: { type: Object },
       messages: { type: Array },
       myKeys: { type: Object },
     }
@@ -48,12 +49,12 @@ export class Contact extends LitElement {
   }
 
   async willUpdate() {
-    if (!this.shareableData) return
+    if (!this.shareable) return
     this.theirKeys = {
-      auth: await importAuthKey("jwk", this.shareableData.keys.auth, [
+      auth: await importAuthKey("jwk", this.shareable.keys.auth, [
         "verify",
       ]),
-      dh: await importDHKey("jwk", this.shareableData.keys.dh, []),
+      dh: await importDHKey("jwk", this.shareable.keys.dh, []),
     }
     this.myPubKeyHashBytes = fromHex(this.myKeys.pubKeyHash)
   }
@@ -65,23 +66,52 @@ export class Contact extends LitElement {
     })
   }
 
-  messageTemplate(message) {
+  timeTemplate(msgTime, prevMsgTime) {
+    if (!prevMsgTime) return
+    const msgDate = new Date(msgTime)
+    const prevDate = new Date(prevMsgTime)
+    const ms = msgDate - prevDate
+    const hoursSincePrev = ms / 1000 / 60 / 60
+    
+    // if not same day as prev
+    if (msgDate.getDay !== prevDate.getDay || hoursSincePrev >= 24) {
+      // if msg is today show "Today"
+      if (msgDate.getDay() === new Date(Date.now()).getDay()) {
+        return html`
+        <div class="milestone">Today</div>
+        `
+      }
+      // show date
+      const date = new Intl.DateTimeFormat().format(msgDate)
+      return html`
+      <div class="milestone">${date}</div>
+      `
+    }
+  }
+
+  messageTemplate(msg, prevMsgTime) {
     return html`
+      ${this.timeTemplate(msg.t, prevMsgTime)}
       <div class="message">
-        <p>${message.m}</p>
+        <p>${msg.m}</p>
       </div>
     `
   }
 
   render() {
+    let prevMsgTime
     return html`
       <div class="container">
-        <div class="list" ?hidden=${!this.shareableData}>
-          ${this.messages && this.messages.map(m => this.messageTemplate(m))}
+        <div class="list" ?hidden=${!this.shareable}>
+          ${this.messages?.map(m => {
+            const template = this.messageTemplate(m, prevMsgTime)
+            prevMsgTime = m.t
+            return template
+          })}
         </div>
         <form
           class="compose"
-          ?hidden=${!this.shareableData}
+          ?hidden=${!this.shareable}
           @submit=${this.handleSubmit}
         >
           <input type="text" placeholder="write a message" name="messageText" />
@@ -94,22 +124,22 @@ export class Contact extends LitElement {
     e.preventDefault()
     const { messageText } = Object.fromEntries(new FormData(e.target))
     e.target.querySelector("input").value = ""
-    const message = await buildMessage(
+    const msg = await buildMessage(
       this.myKeys.auth.keyPair.privateKey,
       this.myKeys.dh.keyPair.privateKey,
       messageText,
       this.myPubKeyHashBytes,
       this.theirKeys.dh
     )
-    const url = `${this.shareableData.originURL}/${this.shareableData.keys.pubKeyHash}`
+    const url = `${this.shareable.originURL}/${this.shareable.keys.pubKeyHash}`
     const resp = await fetch(url, {
       method: "POST",
-      body: pack(message),
+      body: pack(msg),
     })
     const toStore = {
+      t: msg.t,
+      h: bytesToBase64(msg.h),
       m: messageText,
-      t: message.t,
-      h: message.h,
       sent: resp.status === 200,
     }
     this.dispatchEvent(
