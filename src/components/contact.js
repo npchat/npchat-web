@@ -6,12 +6,11 @@ import { buildMessage } from "../util/message.js"
 import { importDHKey, importAuthKey } from "../util/keys.js"
 
 export class Contact extends LitElement {
-
   static get properties() {
     return {
-      shareableData: {type: Object},
-      messages: {type: Array},
-      myKeys: {type: Object}
+      shareableData: { type: Object },
+      messages: { type: Array },
+      myKeys: { type: Object },
     }
   }
 
@@ -44,15 +43,17 @@ export class Contact extends LitElement {
           font-size: 1.4rem;
           user-select: none;
         }
-      `
+      `,
     ]
   }
 
   async willUpdate() {
     if (!this.shareableData) return
     this.theirKeys = {
-      auth: await importAuthKey("jwk", this.shareableData.keys.auth, ["verify"]),
-      dh: await importDHKey("jwk", this.shareableData.keys.dh, [])
+      auth: await importAuthKey("jwk", this.shareableData.keys.auth, [
+        "verify",
+      ]),
+      dh: await importDHKey("jwk", this.shareableData.keys.dh, []),
     }
     this.myPubKeyHashBytes = fromHex(this.myKeys.pubKeyHash)
   }
@@ -74,22 +75,24 @@ export class Contact extends LitElement {
 
   render() {
     return html`
-    <div class="container">
-      <div class="list" ?hidden=${!this.shareableData}>
-        ${this.messages && this.messages.map(m => this.messageTemplate(m))}
+      <div class="container">
+        <div class="list" ?hidden=${!this.shareableData}>
+          ${this.messages && this.messages.map(m => this.messageTemplate(m))}
+        </div>
+        <form
+          class="compose"
+          ?hidden=${!this.shareableData}
+          @submit=${this.handleSubmit}
+        >
+          <input type="text" placeholder="write a message" name="messageText" />
+        </form>
       </div>
-      <form class="compose"
-        ?hidden=${!this.shareableData}
-        @submit=${this.handleSubmit}>
-        <input type="text" placeholder="write a message" name="messageText"/>
-      </form>
-    </div>
     `
   }
 
   async handleSubmit(e) {
     e.preventDefault()
-    const {messageText} = Object.fromEntries(new FormData(e.target))
+    const { messageText } = Object.fromEntries(new FormData(e.target))
     e.target.querySelector("input").value = ""
     const message = await buildMessage(
       this.myKeys.auth.keyPair.privateKey,
@@ -101,17 +104,19 @@ export class Contact extends LitElement {
     const url = `${this.shareableData.originURL}/${this.shareableData.keys.pubKeyHash}`
     const resp = await fetch(url, {
       method: "POST",
-      body: pack(message)
+      body: pack(message),
     })
     const toStore = {
       m: messageText,
       t: message.t,
       h: message.h,
-      sent: resp.status === 200
+      sent: resp.status === 200,
     }
-    this.dispatchEvent(new CustomEvent("messageSent", {
-      detail: toStore
-    }))
+    this.dispatchEvent(
+      new CustomEvent("messageSent", {
+        detail: toStore,
+      })
+    )
     this.requestUpdate()
   }
 }

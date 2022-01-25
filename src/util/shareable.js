@@ -1,36 +1,41 @@
 export const protocolScheme = "web+npchat"
 
 export function registerProtocolHandler() {
-	navigator.registerProtocolHandler(protocolScheme, `${window.location.origin}#%s`, "npchat shareable")
+  navigator.registerProtocolHandler(
+    protocolScheme,
+    `${window.location.origin}#%s`,
+    "npchat shareable"
+  )
 }
 
 export function getDataFromURL() {
-	if(!window.location.hash) return
-	return decodeURIComponent(window.location.hash)
-			.slice(protocolScheme.length+2)
+  if (!window.location.hash) return
+  return decodeURIComponent(window.location.hash).slice(
+    protocolScheme.length + 2
+  )
 }
 
 export function buildShareableProtocolURL(originURL, pubKeyHash) {
-	return `${protocolScheme}:${originURL}/${pubKeyHash}/shareable`
+  return `${protocolScheme}:${originURL}/${pubKeyHash}/shareable`
 }
 
 export function buildShareableFallback(originURL, pubKeyHash) {
-	return `${originURL}/${pubKeyHash}/shareable`
+  return `${originURL}/${pubKeyHash}/shareable`
 }
 
 export function buildShareableFallbackURL(originURL, pubKeyHash) {
-	const shareable = buildShareableFallback(originURL, pubKeyHash)
-	return `${window.location.origin}#${protocolScheme}:${shareable}`
+  const shareable = buildShareableFallback(originURL, pubKeyHash)
+  return `${window.location.origin}#${protocolScheme}:${shareable}`
 }
 
 export async function fetchUsingURLData() {
-	const urlData = getDataFromURL()
-	if(urlData) {
-		try {
-			const resp = await fetch(urlData)
-			return resp.json()
-		} catch (e) {
-			console.log("failed to import data from URL", e)
-		}
-	}
+  const urlData = getDataFromURL()
+  if (urlData) {
+    try {
+      const resp = await fetch(urlData)
+      return resp.json()
+    } catch (e) {
+      console.log("failed to import data from URL", e)
+    }
+  }
 }

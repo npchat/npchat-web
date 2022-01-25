@@ -1,11 +1,10 @@
 import { LitElement, html, css } from "lit"
-import {classMap} from "lit/directives/class-map.js"
+import { classMap } from "lit/directives/class-map.js"
 
 export class Status extends LitElement {
-
   static get properties() {
     return {
-      isWebSocketConnected: {type: Boolean}
+      isWebSocketConnected: { type: Boolean },
     }
   }
 
@@ -50,8 +49,10 @@ export class Status extends LitElement {
 
   render() {
     return html`
-      <div class=${classMap({connected: this.isWebSocketConnected})}></div>
-      <span class=${classMap({connected: this.isWebSocketConnected})}>Not connected</span>
+      <div class=${classMap({ connected: this.isWebSocketConnected })}></div>
+      <span class=${classMap({ connected: this.isWebSocketConnected })}
+        >Not connected</span
+      >
     `
   }
 }

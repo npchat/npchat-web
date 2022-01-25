@@ -5,12 +5,11 @@ import { formStyles } from "../styles/form.js"
 import { protocolScheme } from "../util/shareable.js"
 
 export class Contacts extends LitElement {
-
   static get properties() {
     return {
-      contacts: {type: Object},
-      selected: {type: Object},
-      filter: {}
+      contacts: { type: Object },
+      selected: { type: Object },
+      filter: {},
     }
   }
 
@@ -49,12 +48,13 @@ export class Contacts extends LitElement {
           border: none;
         }
 
-        .contact:hover, .contact.selected {
-          background-color: var(--color-darkwhite)
+        .contact:hover,
+        .contact.selected {
+          background-color: var(--color-darkwhite);
         }
 
         .contact.selected .avatar {
-          border-color: var(--color-secondary)
+          border-color: var(--color-secondary);
         }
 
         .avatar {
@@ -70,7 +70,7 @@ export class Contacts extends LitElement {
           font-size: 1.4rem;
           user-select: none;
         }
-      `
+      `,
     ]
   }
 
@@ -83,12 +83,20 @@ export class Contacts extends LitElement {
   }
 
   contactTemplate(contact) {
-    const isSelected = contact.keys.pubKeyHash === this.selected?.keys.pubKeyHash
+    const isSelected =
+      contact.keys.pubKeyHash === this.selected?.keys.pubKeyHash
     return html`
-    <button class="contact ${classMap({selected: isSelected})}" @click=${() => this.handleContactSelected(contact)}>
-      <img alt="${contact.displayName}" src=${contact.avatarURL || avatarFallbackURL} class="avatar" />
-      <span class="name">${contact.displayName}</span>
-    </button>
+      <button
+        class="contact ${classMap({ selected: isSelected })}"
+        @click=${() => this.handleContactSelected(contact)}
+      >
+        <img
+          alt="${contact.displayName}"
+          src=${contact.avatarURL || avatarFallbackURL}
+          class="avatar"
+        />
+        <span class="name">${contact.displayName}</span>
+      </button>
     `
   }
 
@@ -98,33 +106,40 @@ export class Contacts extends LitElement {
     if (!this.filter) {
       return entries
     }
-    return entries
-      .filter(entry => JSON.stringify(entry[1]).indexOf(this.filter) > -1)
+    return entries.filter(
+      entry => JSON.stringify(entry[1]).indexOf(this.filter) > -1
+    )
   }
 
   render() {
     return html`
-    <div class="container">
-      <div class="import">
-        <input type="text" placeholder="search or import" @input=${this.handleInput} />
+      <div class="container">
+        <div class="import">
+          <input
+            type="text"
+            placeholder="search or import"
+            @input=${this.handleInput}
+          />
+        </div>
+        <div class="list">
+          ${this.filterContacts().map(entry => this.contactTemplate(entry[1]))}
+        </div>
       </div>
-      <div class="list">
-        ${this.filterContacts().map(entry => this.contactTemplate(entry[1]))}
-      </div>
-    </div>
     `
   }
 
   handleContactSelected(contact) {
     console.log("selected", contact)
-    this.dispatchEvent(new CustomEvent("contactSelected", {
-      detail: contact
-    }))
+    this.dispatchEvent(
+      new CustomEvent("contactSelected", {
+        detail: contact,
+      })
+    )
   }
 
   async handleInput(e) {
     const input = e.path[0]
-    let {value} = input
+    let { value } = input
     if (!value.startsWith("http") && !value.startsWith(protocolScheme)) {
       this.filter = value
       return
@@ -134,15 +149,20 @@ export class Contacts extends LitElement {
     try {
       const resp = await fetch(value)
       const shareableData = await resp.json()
-      if (shareableData.originURL && shareableData.keys && shareableData.displayName) {
+      if (
+        shareableData.originURL &&
+        shareableData.keys &&
+        shareableData.displayName
+      ) {
         input.value = ""
-        this.dispatchEvent(new CustomEvent("contactAdded", {
-          detail: shareableData
-        }))
+        this.dispatchEvent(
+          new CustomEvent("contactAdded", {
+            detail: shareableData,
+          })
+        )
       }
     } catch (error) {
       console.log("invalid shareable", error)
     }
   }
-  
 }

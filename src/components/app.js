@@ -1,16 +1,21 @@
 import { LitElement, html, css } from "lit"
 import { classMap } from "lit/directives/class-map.js"
-import { styleMap } from 'lit/directives/style-map.js'
+import { styleMap } from "lit/directives/style-map.js"
 import { pack, unpack } from "msgpackr"
 import { loadPreferences, storePreferences } from "../util/storage.js"
 import { getWebSocket, authenticateSocket } from "../util/websocket.js"
 import { subscribeToPushNotifications } from "../util/webpush.js"
 import { generateQR } from "../util/qrcode.js"
-import { registerProtocolHandler, fetchUsingURLData, buildShareableProtocolURL } from "../util/shareable.js"
+import {
+  registerProtocolHandler,
+  fetchUsingURLData,
+  buildShareableProtocolURL,
+} from "../util/shareable.js"
 import { decrypt } from "../util/privacy.js"
-import { deriveDHSecret, importDHKey } from "../util/keys.js"
+import { deriveDHSecret, importDHKey, importAuthKey } from "../util/keys.js"
 import { toHex } from "../util/hex.js"
 import { verifyMessage } from "../util/message.js"
+import { base64ToBytes, bytesToBase64 } from "../util/base64.js"
 
 export const logoURL = "assets/npchat-logo.svg"
 export const avatarFallbackURL = "assets/avatar.svg"
@@ -18,17 +23,17 @@ export const avatarFallbackURL = "assets/avatar.svg"
 export class App extends LitElement {
   static get properties() {
     return {
-      showWelcome: {type: Boolean},
-      showPreferences: {type: Boolean},
-      showShareable: {type: Boolean},
-      isWebSocketConnected: {type: Boolean},
+      showWelcome: { type: Boolean },
+      showPreferences: { type: Boolean },
+      showShareable: { type: Boolean },
+      isWebSocketConnected: { type: Boolean },
       displayName: {},
       avatarURL: {},
       originURL: {},
       shareableQR: {},
-      contacts: {type: Object},
-      selectedContact: {type: Object},
-      selectedContactMessages: {type: Array}
+      contacts: { type: Object },
+      selectedContact: { type: Object },
+      selectedContactMessages: { type: Array },
     }
   }
 
@@ -47,7 +52,7 @@ export class App extends LitElement {
       }
 
       main.blur {
-				filter: blur(10px);
+        filter: blur(10px);
       }
 
       header {
@@ -56,7 +61,7 @@ export class App extends LitElement {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        background-color: var(--color-darkwhite)
+        background-color: var(--color-darkwhite);
       }
 
       .logo {
@@ -80,7 +85,8 @@ export class App extends LitElement {
         border: none;
       }
 
-      .buttonRound:hover .avatar, .buttonRound:focus .avatar {
+      .buttonRound:hover .avatar,
+      .buttonRound:focus .avatar {
         border-color: var(--color-primary);
       }
     `
@@ -104,7 +110,10 @@ export class App extends LitElement {
     }
     await this.connectWebSocket()
     // make QR
-    const shaereableURL = buildShareableProtocolURL(this.originURL, this.keys.pubKeyHash)
+    const shaereableURL = buildShareableProtocolURL(
+      this.originURL,
+      this.keys.pubKeyHash
+    )
     this.shareableQR = await generateQR(shaereableURL)
     await this.checkContacts()
     // import from URL
@@ -116,24 +125,38 @@ export class App extends LitElement {
 
   render() {
     const qrImgUrl = this.shareableQR && `url(${this.shareableQR})`
-    const shouldBlur = this.showWelcome || this.showPreferences || this.showShareable
+    const shouldBlur =
+      this.showWelcome || this.showPreferences || this.showShareable
     return html`
-      <main class="${classMap({blur: shouldBlur})}">
+      <main class="${classMap({ blur: shouldBlur })}">
         <header>
-          <img alt="npchat logo" src=${logoURL} class="logo"/>
-          <npchat-status ?isWebSocketConnected=${this.isWebSocketConnected}></npchat-status>
-          <button href="#" @click=${this.handleShowShareable} class="buttonRound">
-            <div class="avatar" style=${styleMap({backgroundImage: qrImgUrl})}></div>
+          <img alt="npchat logo" src=${logoURL} class="logo" />
+          <npchat-status
+            ?isWebSocketConnected=${this.isWebSocketConnected}
+          ></npchat-status>
+          <button
+            href="#"
+            @click=${this.handleShowShareable}
+            class="buttonRound"
+          >
+            <div
+              class="avatar"
+              style=${styleMap({ backgroundImage: qrImgUrl })}
+            ></div>
           </button>
           <button @click=${this.handleShowPreferences} class="buttonRound">
-            <img alt="avatar" src=${this.avatarURL || avatarFallbackURL} class="avatar"/>
+            <img
+              alt="avatar"
+              src=${this.avatarURL || avatarFallbackURL}
+              class="avatar"
+            />
           </button>
         </header>
         <npchat-contacts
-            .contacts=${this.contacts}
-            .selected=${this.selectedContact}
-            @contactSelected=${this.handleContactSelected}
-            @contactAdded=${e => this.addContact(e.detail)}
+          .contacts=${this.contacts}
+          .selected=${this.selectedContact}
+          @contactSelected=${this.handleContactSelected}
+          @contactAdded=${e => this.addContact(e.detail)}
         ></npchat-contacts>
         <npchat-contact
           .shareableData=${this.selectedContact}
@@ -146,28 +169,28 @@ export class App extends LitElement {
       <npchat-toast></npchat-toast>
 
       <npchat-welcome
-          @formSubmit=${this.handlePreferencesSubmit}
-          ?hidden=${!this.showWelcome}
-        ></npchat-welcome>
+        @formSubmit=${this.handlePreferencesSubmit}
+        ?hidden=${!this.showWelcome}
+      ></npchat-welcome>
 
       <npchat-preferences
-          @formSubmit=${this.handlePreferencesSubmit}
-          @close=${this.hidePreferences}
-          ?hidden=${!this.showPreferences}
-          .preferences=${{
-            displayName: this.displayName,
-            avatarURL: this.avatarURL,
-            originURL: this.originURL
-          }}
-        ></npchat-preferences>
+        @formSubmit=${this.handlePreferencesSubmit}
+        @close=${this.hidePreferences}
+        ?hidden=${!this.showPreferences}
+        .preferences=${{
+          displayName: this.displayName,
+          avatarURL: this.avatarURL,
+          originURL: this.originURL,
+        }}
+      ></npchat-preferences>
 
       <npchat-shareable
-          @close=${this.hideShareable}
-          originURL=${this.originURL}
-          pubKeyHash=${this.keys && this.keys.pubKeyHash}
-          ?showQR=${true}
-          ?hidden=${!this.showShareable}
-        ></npchat-shareable>
+        @close=${this.hideShareable}
+        originURL=${this.originURL}
+        pubKeyHash=${this.keys && this.keys.pubKeyHash}
+        ?showQR=${true}
+        ?hidden=${!this.showShareable}
+      ></npchat-shareable>
     `
   }
 
@@ -177,7 +200,7 @@ export class App extends LitElement {
       changedOriginURL = true
     }
     Object.assign(this, e.detail)
-    storePreferences(e.detail) 
+    storePreferences(e.detail)
     this.shareableQR = await generateQR(
       buildShareableProtocolURL(this.originURL, this.keys.pubKeyHash)
     )
@@ -185,7 +208,7 @@ export class App extends LitElement {
     this.hidePreferences()
     // push new shareableData to current origin
     this.push({
-      shareableData: this.buildShareableData()
+      shareableData: this.buildShareableData(),
     })
     if (changedOriginURL) {
       // connect to new origin
@@ -217,16 +240,18 @@ export class App extends LitElement {
   }
 
   buildShareableData() {
-    return new TextEncoder().encode(JSON.stringify({
-      displayName: this.displayName,
-      avatarURL: this.avatarURL,
-      originURL: this.originURL,
-      keys: {
-        auth: this.keys.auth.jwk.publicKey,
-        dh: this.keys.dh.jwk.publicKey,
-        pubKeyHash: this.keys.pubKeyHash
-      }
-    }))
+    return new TextEncoder().encode(
+      JSON.stringify({
+        displayName: this.displayName,
+        avatarURL: this.avatarURL,
+        originURL: this.originURL,
+        keys: {
+          auth: this.keys.auth.jwk.publicKey,
+          dh: this.keys.dh.jwk.publicKey,
+          pubKeyHash: this.keys.pubKeyHash,
+        },
+      })
+    )
   }
 
   push(object) {
@@ -235,74 +260,107 @@ export class App extends LitElement {
   }
 
   async handleIncomingMessage(msg) {
-    if (!(msg.data instanceof Blob)) {
-      console.log("received non-binary message, will not handle", msg.data)
-      return
-    }
+    if (!(msg.data instanceof Blob)) return
     const arrayBuffer = await msg.data.arrayBuffer()
     const data = unpack(new Uint8Array(arrayBuffer))
-    if (data.m && data.f) {
-      // match contact
-      const fromPubKeyHash = toHex(data.f)
-      const [, contact] = Object.entries(this.contacts).find(entry => entry[0] === fromPubKeyHash)
-      if (!contact) {
-        console.log("no contact found, will not handle")
-        return
-      }
+    if (!data.m || !data.f) return
 
-      // verify signature
-      verifyMessage()
+    // match contact
+    const fromPubKeyHash = toHex(data.f)
+    const [, contact] = Object.entries(this.contacts).find(
+      entry => entry[0] === fromPubKeyHash
+    )
+    if (!contact) return
 
-      const dhPublicKey = await importDHKey("jwk", contact.keys.dh, [])
-      const dhSecret = await deriveDHSecret(dhPublicKey, this.keys.dh.keyPair.privateKey)
+    // check does not already exist
+    const stored = localStorage.getItem(fromPubKeyHash)
+    const parsed = (stored && JSON.parse(stored)) || []
+    if (parsed.find(m => m.h === data.h)) return
 
-      // decrypt
-      const msgPlainText = await decrypt(data.iv, dhSecret, data.m)
-      data.m = new TextDecoder().decode(msgPlainText)
+    // verify signature
+    const authKey = await importAuthKey("jwk", contact.keys.auth, ["verify"])
+    const isVerified = await verifyMessage(authKey, data)
+    if (!isVerified) return
 
-      if (this.selectedContact?.keys.pubKeyHash === fromPubKeyHash) {
-        this.selectedContactMessages.push()
-      }
+    // decrypt
+    const dhPublicKey = await importDHKey("jwk", contact.keys.dh, [])
+    const dhSecret = await deriveDHSecret(
+      dhPublicKey,
+      this.keys.dh.keyPair.privateKey
+    )
+    const decrypted = await decrypt(data.iv, dhSecret, data.m)
+    const msgPlainText = new TextDecoder().decode(decrypted)
 
-      const preview = `${data.m.slice(0, 25)}${data.m.length>25?"...":""}`
-      // TODO: Add click handler
+    console.log("hash", data.h)
+
+    // store
+    const toStore = {
+      t: data.t,
+      h: bytesToBase64(data.h),
+      m: msgPlainText,
+    }
+
+    console.log("toStore", base64ToBytes(toStore.h))
+    parsed.push(toStore)
+    localStorage.setItem(fromPubKeyHash, JSON.stringify(parsed))
+
+    // update view if contact is selected
+    if (this.selectedContact?.keys.pubKeyHash === fromPubKeyHash) {
+      this.selectedContactMessages.push(toStore)
+    }
+
+    // notify
+    if (!this.selectedContact?.keys.pubKeyHash === fromPubKeyHash) {
+      const preview = `${msgPlainText.slice(0, 25)}${
+        msgPlainText.length > 25 ? "..." : ""
+      }`
       this.toast.show(`${contact.displayName}: ${preview}`)
     }
   }
-
-
 
   addContact(shareableData) {
     this.contacts = this.contacts || {}
     const current = this.contacts[shareableData.keys.pubKeyHash]
     this.contacts[shareableData.keys.pubKeyHash] = shareableData
     storePreferences({
-      contacts: this.contacts
+      contacts: this.contacts,
     })
-    window.dispatchEvent(new CustomEvent("contactsChanged", {
-      detail: this.contacts
-    }))
+    window.dispatchEvent(
+      new CustomEvent("contactsChanged", {
+        detail: this.contacts,
+      })
+    )
     const name = current.displayName || shareableData.displayName
-    this.toast.show(`${current ? "Updated data for" : "Imported contact"} ${name}`)
+    this.toast.show(
+      `${current ? "Updated data for" : "Imported contact"} ${name}`
+    )
   }
 
   async checkContacts() {
     if (!this.contacts) return
-    await Promise.all(Object.entries(this.contacts).map(async entry => {
-      const pubKeyHash = entry[0]
-      const contact = entry[1]
-      const resp = await fetch(`${contact.originURL}/${pubKeyHash}/shareable`)
-      if (resp.status !== 200) return
-      // don't update keys like this
-      const {displayName, avatarURL, originURL} = await resp.json()
-      Object.assign(this.contacts[pubKeyHash], {displayName, avatarURL, originURL})
-    }))
+    await Promise.all(
+      Object.entries(this.contacts).map(async entry => {
+        const pubKeyHash = entry[0]
+        const contact = entry[1]
+        const resp = await fetch(`${contact.originURL}/${pubKeyHash}/shareable`)
+        if (resp.status !== 200) return
+        // don't update keys like this
+        const { displayName, avatarURL, originURL } = await resp.json()
+        Object.assign(this.contacts[pubKeyHash], {
+          displayName,
+          avatarURL,
+          originURL,
+        })
+      })
+    )
     storePreferences({
-      contacts: this.contacts
+      contacts: this.contacts,
     })
-    window.dispatchEvent(new CustomEvent("contactsChanged", {
-      detail: this.contacts
-    }))
+    window.dispatchEvent(
+      new CustomEvent("contactsChanged", {
+        detail: this.contacts,
+      })
+    )
   }
 
   handleContactSelected(e) {
@@ -317,17 +375,27 @@ export class App extends LitElement {
 
   handleMessageSent(e) {
     this.selectedContactMessages.push(e.detail)
-    localStorage.setItem(this.selectedContact.keys.pubKeyHash, JSON.stringify(this.selectedContactMessages))
+    localStorage.setItem(
+      this.selectedContact.keys.pubKeyHash,
+      JSON.stringify(this.selectedContactMessages)
+    )
   }
 
   async connectWebSocket() {
     try {
       const url = new URL(this.keys.pubKeyHash, this.originURL)
       const tStart = performance.now()
-      const socket = await  getWebSocket(url.toString())
-      socket.addEventListener("close", () => this.isWebSocketConnected = false)
+      const socket = await getWebSocket(url.toString())
+      socket.addEventListener(
+        "close",
+        () => (this.isWebSocketConnected = false)
+      )
       socket.addEventListener("message", e => this.handleIncomingMessage(e))
-      const authResp = await authenticateSocket(socket, this.keys.auth.keyPair.privateKey, this.keys.auth.publicKeyRaw)
+      const authResp = await authenticateSocket(
+        socket,
+        this.keys.auth.keyPair.privateKey,
+        this.keys.auth.publicKeyRaw
+      )
       const tEnd = performance.now()
       console.log("connected in", (tEnd - tStart).toPrecision(2), "ms")
       if (authResp.error) {
@@ -338,19 +406,19 @@ export class App extends LitElement {
       // handle data
       if (authResp.data) {
         // TODO: HANDLE DATA
-
         // const data = unpack(authResp.data)
         // console.log("unpacked", data)
-
         // smart merge with stored data (adding new contacts)
       }
       const sub = await subscribeToPushNotifications(authResp.vapidKey)
-      socket.send(pack({
-        // double-pack to prevent unmarshalling by server
-        data: pack({ contacts: [] }),
-        shareableData: this.buildShareableData(),
-        sub: sub || ""
-      }))
+      socket.send(
+        pack({
+          // double-pack to prevent unmarshalling by server
+          data: pack({ contacts: [] }),
+          shareableData: this.buildShareableData(),
+          sub: sub || "",
+        })
+      )
       this.socket = socket
       return Promise.resolve(socket)
     } catch (e) {

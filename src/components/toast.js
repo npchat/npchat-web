@@ -2,10 +2,9 @@ import { LitElement, html, css } from "lit"
 import { generalStyles } from "../styles/general.js"
 
 export class Toast extends LitElement {
-
   static get properties() {
     return {
-      message: {}
+      message: {},
     }
   }
 
@@ -38,7 +37,7 @@ export class Toast extends LitElement {
           border: 2px solid;
         }
       `,
-      generalStyles
+      generalStyles,
     ]
   }
 
@@ -49,11 +48,9 @@ export class Toast extends LitElement {
 
   render() {
     return html`
-    <div class="container">
-      <div class="toast border-gradient">
-        ${this.message}
+      <div class="container">
+        <div class="toast border-gradient">${this.message}</div>
       </div>
-    </div>
     `
   }
 
@@ -67,11 +64,9 @@ export class Toast extends LitElement {
         this.active = false
       }, timeout || 2000)
     }
-    
   }
 
   get container() {
     return this.renderRoot?.querySelector(".container") ?? null
   }
-  
 }
