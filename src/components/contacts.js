@@ -2,6 +2,7 @@ import { LitElement, html, css } from "lit"
 import { classMap } from "lit/directives/class-map.js"
 import { avatarFallbackURL } from "./app.js"
 import { formStyles } from "../styles/form.js"
+import { protocolScheme } from "../util/shareable.js"
 
 export class Contacts extends LitElement {
 
@@ -122,14 +123,13 @@ export class Contacts extends LitElement {
 
   async handleInput(e) {
     const input = e.path[0]
-    const {value} = input
-
-    if (!value.startsWith("http")) {
+    let {value} = input
+    if (!value.startsWith("http") && !value.startsWith(protocolScheme)) {
       this.filter = value
       return
     }
-
     this.filter = ""
+    value = value.replace(`${protocolScheme}:`, "")
     try {
       const resp = await fetch(value)
       const shareableData = await resp.json()

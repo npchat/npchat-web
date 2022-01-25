@@ -1,4 +1,4 @@
-const protocolScheme = "web+npchat"
+export const protocolScheme = "web+npchat"
 
 export function registerProtocolHandler() {
 	navigator.registerProtocolHandler(protocolScheme, `${window.location.origin}#%s`, "npchat shareable")

@@ -1,13 +1,14 @@
 import { LitElement, html, css } from "lit"
 import { classMap } from "lit/directives/class-map.js"
 import { styleMap } from 'lit/directives/style-map.js'
-
 import { pack, unpack } from "msgpackr"
 import { loadPreferences, storePreferences } from "../util/storage.js"
 import { getWebSocket, authenticateSocket } from "../util/websocket.js"
 import { subscribeToPushNotifications } from "../util/webpush.js"
 import { generateQR } from "../util/qrcode.js"
 import { registerProtocolHandler, getDataFromURL, buildShareableProtocolURL } from "../util/shareable.js"
+import { decrypt } from "../util/privacy.js"
+import { toHex } from "../util/hex.js"
 
 export const logoURL = "assets/npchat-logo.svg"
 export const avatarFallbackURL = "assets/avatar.svg"
@@ -83,6 +84,10 @@ export class App extends LitElement {
     `
   }
 
+  get toast() {
+    return this.renderRoot?.querySelector("npchat-toast") ?? null
+  }
+
   constructor() {
     super()
     loadPreferences().then(pref => {
@@ -101,7 +106,7 @@ export class App extends LitElement {
   }
 
   render() {
-    const bgImgUrl = this.shareableQR && `url(${this.shareableQR})`
+    const qrImgUrl = this.shareableQR && `url(${this.shareableQR})`
     const shouldBlur = this.showWelcome || this.showPreferences || this.showShareable
     return html`
       <main class="${classMap({blur: shouldBlur})}">
@@ -109,7 +114,7 @@ export class App extends LitElement {
           <img alt="npchat logo" src=${logoURL} class="logo"/>
           <npchat-status ?isWebSocketConnected=${this.isWebSocketConnected}></npchat-status>
           <button href="#" @click=${this.handleShowShareable} class="buttonRound">
-            <div class="avatar" style=${styleMap({backgroundImage: bgImgUrl})}></div>
+            <div class="avatar" style=${styleMap({backgroundImage: qrImgUrl})}></div>
           </button>
           <button @click=${this.handleShowPreferences} class="buttonRound">
             <img alt="avatar" src=${this.avatarURL || avatarFallbackURL} class="avatar"/>
@@ -128,6 +133,8 @@ export class App extends LitElement {
           @messageSent=${this.handleMessageSent}
         ></npchat-contact>
       </main>
+
+      <npchat-toast></npchat-toast>
 
       <npchat-welcome
           @formSubmit=${this.handlePreferencesSubmit}
@@ -218,20 +225,26 @@ export class App extends LitElement {
     this.socket.send(pack(object))
   }
 
-  async handleMessage(msg) {
+  async handleIncomingMessage(msg) {
     if (!(msg.data instanceof Blob)) {
       console.log("received non-binary message, will not handle", msg.data)
       return
     }
-    try {
-      const arrayBuffer = await msg.data.arrayBuffer()
-      const data = unpack(new Uint8Array(arrayBuffer))
-      if (data.m && data.f) {
-        console.log("got message", data)
-        
+    const arrayBuffer = await msg.data.arrayBuffer()
+    const data = unpack(new Uint8Array(arrayBuffer))
+    if (data.m && data.f) {
+      console.log("got message", data)
+      // match contact
+      const fromPubKeyHash = toHex(data.f)
+      console.log("contacts", this.contacts)
+      const contact = Object.entries(this.contacts).find(entry => entry[0] === fromPubKeyHash)
+      if (!contact) {
+        console.log("no contact found, will not handle")
+        return
       }
-    } catch (e) {
-      console.error(e)
+
+      // decrypt
+      decrypt(data.iv, )
     }
   }
 
@@ -252,6 +265,7 @@ export class App extends LitElement {
 
   addContact(shareableData) {
     this.contacts = this.contacts || {}
+    const current = this.contacts[shareableData.keys.pubKeyHash]
     this.contacts[shareableData.keys.pubKeyHash] = shareableData
     storePreferences({
       contacts: this.contacts
@@ -259,6 +273,8 @@ export class App extends LitElement {
     window.dispatchEvent(new CustomEvent("contactsChanged", {
       detail: this.contacts
     }))
+    const name = current.displayName || shareableData.displayName
+    this.toast.show(`${current ? "Updated data for" : "Imported contact"} ${name}`)
   }
 
   async checkContacts() {
@@ -268,7 +284,9 @@ export class App extends LitElement {
       const contact = entry[1]
       const resp = await fetch(`${contact.originURL}/${pubKeyHash}/shareable`)
       if (resp.status !== 200) return
-      Object.assign(this.contacts[pubKeyHash], await resp.json())
+      // don't update keys like this
+      const {displayName, avatarURL, originURL} = await resp.json()
+      Object.assign(this.contacts[pubKeyHash], {displayName, avatarURL, originURL})
     }))
     storePreferences({
       contacts: this.contacts
@@ -297,9 +315,9 @@ export class App extends LitElement {
     try {
       const url = new URL(this.keys.pubKeyHash, this.originURL)
       const tStart = performance.now()
-      const socket = await getWebSocket(url.toString())
+      const socket = await  getWebSocket(url.toString())
       socket.addEventListener("close", () => this.isWebSocketConnected = false)
-      socket.addEventListener("message", this.handleMessage)
+      socket.addEventListener("message", this.handleIncomingMessage)
       const authResp = await authenticateSocket(socket, this.keys.auth.keyPair.privateKey, this.keys.auth.publicKeyRaw)
       const tEnd = performance.now()
       console.log("connected in", (tEnd - tStart).toPrecision(2), "ms")
@@ -310,6 +328,8 @@ export class App extends LitElement {
       this.isWebSocketConnected = true
       // handle data
       if (authResp.data) {
+        // TODO: HANDLE DATA
+
         // const data = unpack(authResp.data)
         // console.log("unpacked", data)
 
@@ -320,7 +340,6 @@ export class App extends LitElement {
         // double-pack to prevent unmarshalling by server
         data: pack({ contacts: [] }),
         shareableData: this.buildShareableData(),
-        // send sub
         sub: sub || ""
       }))
       this.socket = socket

@@ -24,6 +24,7 @@ export class Contact extends LitElement {
           display: flex;
           flex-direction: column;
           justify-content: flex-start;
+          max-width: 100vw;
         }
 
         input {
@@ -63,17 +64,6 @@ export class Contact extends LitElement {
     })
   }
 
-
-  filterContacts() {
-    if (!this.contacts) return []
-    const entries = Object.entries(this.contacts)
-    if (!this.filter) {
-      return entries
-    }
-    return entries
-      .filter(entry => JSON.stringify(entry[1]).indexOf(this.filter) > -1)
-  }
-
   messageTemplate(message) {
     return html`
       <div class="message">
@@ -100,9 +90,6 @@ export class Contact extends LitElement {
   async handleSubmit(e) {
     e.preventDefault()
     const {messageText} = Object.fromEntries(new FormData(e.target))
-
-    console.log("myKeys", this.myKeys)
-
     const message = await buildMessage(
       this.myKeys.auth.keyPair.privateKey,
       this.myKeys.dh.keyPair.privateKey,
@@ -110,7 +97,6 @@ export class Contact extends LitElement {
       this.myPubKeyHashBytes,
       this.theirKeys.dh
     )
-
     const url = `${this.shareableData.originURL}/${this.shareableData.keys.pubKeyHash}`
     const resp = await fetch(url, {
       method: "POST",
