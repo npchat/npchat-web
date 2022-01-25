@@ -9,7 +9,7 @@ import { generateQR } from "../util/qrcode.js"
 import {
   registerProtocolHandler,
   fetchUsingURLData,
-  buildShareableProtocolURL,
+  buildShareableURL,
 } from "../util/shareable.js"
 import { decrypt } from "../util/privacy.js"
 import { deriveDHSecret, importDHKey, importAuthKey } from "../util/keys.js"
@@ -115,7 +115,7 @@ export class App extends LitElement {
     }
     await this.connectWebSocket()
     // make QR
-    const shaereableURL = buildShareableProtocolURL(
+    const shaereableURL = buildShareableURL(
       this.originURL,
       this.keys.pubKeyHash
     )
@@ -207,7 +207,7 @@ export class App extends LitElement {
     Object.assign(this, e.detail)
     storePreferences(e.detail)
     this.shareableQR = await generateQR(
-      buildShareableProtocolURL(this.originURL, this.keys.pubKeyHash)
+      buildShareableURL(this.originURL, this.keys.pubKeyHash)
     )
     this.hideWelcome()
     this.hidePreferences()

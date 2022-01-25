@@ -1,9 +1,7 @@
 import { LitElement, html, css } from "lit"
 import { formStyles } from "../styles/form.js"
 import {
-  buildShareableProtocolURL,
-  buildShareableFallback,
-  buildShareableFallbackURL,
+  buildShareableURL,
 } from "../util/shareable.js"
 import { generateQR } from "../util/qrcode.js"
 
@@ -11,7 +9,6 @@ export class Shareable extends LitElement {
   static get properties() {
     return {
       showQR: { type: Boolean },
-      showFallback: { type: Boolean },
       originURL: {},
       pubKeyHash: {},
     }
@@ -47,82 +44,39 @@ export class Shareable extends LitElement {
 
   constructor() {
     super()
-    this.shareableProtocolURL = ""
-    this.shareableProtocolQR = ""
-    this.shareableFallback = ""
-    this.shareableFallbackQR = ""
+    this.shareableURL = ""
+    this.shareableQR = ""
   }
 
   willUpdate() {
-    this.shareableProtocolURL = buildShareableProtocolURL(
-      this.originURL,
-      this.pubKeyHash
-    )
-    this.shareableFallback = buildShareableFallback(
+    this.shareableURL = buildShareableURL(
       this.originURL,
       this.pubKeyHash
     )
 
-    const shareableProtocolQRPromise = generateQR(this.shareableProtocolURL)
-
-    const fallbackURL = buildShareableFallbackURL(
-      this.originURL,
-      this.pubKeyHash
-    )
-    const shareableFallbackQRPromise = generateQR(fallbackURL)
-
-    Promise.all([shareableProtocolQRPromise, shareableFallbackQRPromise]).then(
-      QRs => {
-        ;[this.shareableProtocolQR, this.shareableFallbackQR] = QRs
+    generateQR(this.shareableURL)
+      .then(qr => {
+        this.shareableQR = qr
         this.update()
-      }
-    )
-  }
-
-  normalTemplate() {
-    return html`
-      <div class="text">
-        <div class="monospace">${this.shareableProtocolURL}</div>
-        <button @click=${this.handleCopy} class="button copy">Copy</button>
-      </div>
-      <div ?hidden=${!this.showQR}>
-        <img alt="QR code" src=${this.shareableProtocolQR} />
-      </div>
-    `
-  }
-
-  fallbackTemplate() {
-    return html`
-      <p>Give this to your friend, for him to import manually.</p>
-      <div class="text">
-        <div class="monospace">${this.shareableFallback}</div>
-        <button @click=${this.handleCopy} class="button copy">Copy</button>
-      </div>
-      <div ?hidden=${!this.showQR} class="container">
-        <p>Or let them scan this QR code for ${window.location.host}</p>
-        <img alt="QR code" src=${this.shareableFallbackQR} />
-      </div>
-    `
+      })
   }
 
   render() {
     return html`
       <npchat-modal ?canClose=${true}>
         <div class="container">
-          ${this.showFallback ? this.fallbackTemplate() : this.normalTemplate()}
+          <div class="text">
+            <div class="monospace">${this.shareableURL}</div>
+            <button @click=${this.handleCopy} class="button copy">Copy</button>
+          </div>
+          <div ?hidden=${!this.showQR}>
+            <img alt="QR code" src=${this.shareableQR} />
+          </div>
           <p>
             Share this with others, and scan/copy theirs. When you both have the
             other's shareable, you can chat. This process is necessary to
             securely trade keys.
           </p>
-          <label class="no-flex">
-            <input
-              type="checkbox"
-              ?checked=${this.showFallback}
-              @change=${this.handleShowFallbackChange}
-            />
-            <span>Show fallback for older browsers</span>
-          </label>
           <button @click=${this.handleClose}>Done</button>
         </div>
       </npchat-modal>
@@ -145,13 +99,6 @@ export class Shareable extends LitElement {
     setTimeout(() => {
       button.classList.remove("success")
     }, 500)
-    const data = this.showFallback
-      ? this.shareableFallback
-      : this.shareableProtocolURL
-    await navigator.clipboard.writeText(data)
-  }
-
-  handleShowFallbackChange(e) {
-    this.showFallback = e.path[0].checked
+    await navigator.clipboard.writeText(this.shareableURL)
   }
 }

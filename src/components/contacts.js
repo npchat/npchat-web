@@ -160,6 +160,10 @@ export class Contacts extends LitElement {
             detail: shareableData,
           })
         )
+        input.classList.add("success")
+        setTimeout(() => {
+          input.classList.remove("success")
+        }, 500)
       }
     } catch (error) {
       console.log("invalid shareable", error)

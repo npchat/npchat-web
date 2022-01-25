@@ -33,19 +33,20 @@ export const formStyles = css`
     border-color: var(--color-secondary);
   }
 
-  button.success {
-    background-color: var(--color-green);
-  }
-
   input {
     padding: 10px;
     font-size: 1.4rem;
     border: 2px solid var(--color-lightgrey);
     color: var(--color-darkgrey);
+    transition: background-color 300ms;
   }
 
   input:focus {
     outline: 0;
     border: 2px solid var(--color-secondary);
+  }
+
+  button.success, input.success {
+    background-color: var(--color-green);
   }
 `

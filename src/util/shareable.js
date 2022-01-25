@@ -15,17 +15,8 @@ export function getDataFromURL() {
   )
 }
 
-export function buildShareableProtocolURL(originURL, pubKeyHash) {
+export function buildShareableURL(originURL, pubKeyHash) {
   return `${protocolScheme}:${originURL}/${pubKeyHash}/shareable`
-}
-
-export function buildShareableFallback(originURL, pubKeyHash) {
-  return `${originURL}/${pubKeyHash}/shareable`
-}
-
-export function buildShareableFallbackURL(originURL, pubKeyHash) {
-  const shareable = buildShareableFallback(originURL, pubKeyHash)
-  return `${window.location.origin}#${protocolScheme}:${shareable}`
 }
 
 export async function fetchUsingURLData() {
