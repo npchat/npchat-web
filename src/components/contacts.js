@@ -3,6 +3,7 @@ import { classMap } from "lit/directives/class-map.js"
 import { avatarFallbackURL } from "./app.js"
 import { formStyles } from "../styles/form.js"
 import { protocolScheme } from "../util/shareable.js"
+import { openDBConn } from "../util/db.js";
 
 export class Contacts extends LitElement {
   static get properties() {
@@ -80,6 +81,12 @@ export class Contacts extends LitElement {
     window.addEventListener("contactsChanged", () => {
       this.requestUpdate()
     })
+    this.init()
+  }
+
+  async init() {
+    this.db = await openDBConn()
+    await this.loadContacts()
   }
 
   contactTemplate(contact) {
@@ -88,7 +95,7 @@ export class Contacts extends LitElement {
     return html`
       <button
         class="contact ${classMap({ selected: isSelected })}"
-        @click=${() => this.handleContactSelected(contact)}
+        @click=${() => this.selected = contact}
       >
         <img
           alt="${contact.displayName}"
@@ -111,6 +118,17 @@ export class Contacts extends LitElement {
     )
   }
 
+  chatTemplate() {
+    return html`
+    <npchat-chat
+      .shareable=${this.selectedContact}
+      .messages=${this.selectedContactMessages}
+      .myKeys=${this.keys}
+      @messageSent=${this.handleMessageSent}
+    ></npchat-chat>
+    `
+  }
+
   render() {
     return html`
       <div class="container">
@@ -128,13 +146,8 @@ export class Contacts extends LitElement {
     `
   }
 
-  handleContactSelected(contact) {
-    console.log("selected", contact)
-    this.dispatchEvent(
-      new CustomEvent("contactSelected", {
-        detail: contact,
-      })
-    )
+  async loadContacts() {
+    this.contacts = await this.db.getAll("contacts")
   }
 
   async handleInput(e) {
@@ -154,12 +167,9 @@ export class Contacts extends LitElement {
         shareableData.keys &&
         shareableData.displayName
       ) {
+        await this.db.put("contacts", shareableData, shareableData.keys.pubKeyHash)
+        await this.loadContacts()
         input.value = ""
-        this.dispatchEvent(
-          new CustomEvent("contactAdded", {
-            detail: shareableData,
-          })
-        )
         input.classList.add("success")
         setTimeout(() => {
           input.classList.remove("success")

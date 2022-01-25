@@ -13,9 +13,8 @@ import {
 } from "../util/shareable.js"
 import { decrypt } from "../util/privacy.js"
 import { deriveDHSecret, importDHKey, importAuthKey } from "../util/keys.js"
-import { toHex } from "../util/hex.js"
 import { verifyMessage } from "../util/message.js"
-import { bytesToBase64 } from "../util/base64.js"
+import { fromBase64, toBase64 } from "../util/base64.js"
 
 export const logoURL = "assets/npchat-logo.svg"
 export const avatarFallbackURL = "assets/avatar.svg"
@@ -30,10 +29,7 @@ export class App extends LitElement {
       displayName: {},
       avatarURL: {},
       originURL: {},
-      shareableQR: {},
-      contacts: { type: Object },
-      selectedContact: { type: Object },
-      selectedContactMessages: { type: Array },
+      shareableQR: {}
     }
   }
 
@@ -98,6 +94,8 @@ export class App extends LitElement {
 
   constructor() {
     super()
+    window.toBase64 = toBase64
+    window.fromBase64 = fromBase64
     this.init()
   }
 
@@ -106,21 +104,21 @@ export class App extends LitElement {
     const pref = await loadPreferences()
     Object.assign(this, pref)
     if (!this.originURL || !this.keys) {
-      return
+      return 
     }
-    // select contact of last message received
-    const lastMessageFrom = localStorage.lastMessageFrom
-    if (lastMessageFrom) {
-      this.selectContact(this.contacts[lastMessageFrom])
-    }
+
+    // connect to origin
     await this.connectWebSocket()
+
     // make QR
     const shaereableURL = buildShareableURL(
       this.originURL,
       this.keys.pubKeyHash
     )
     this.shareableQR = await generateQR(shaereableURL)
+
     await this.checkContacts()
+
     // import from URL
     const toImport = await fetchUsingURLData()
     if (toImport && toImport.originURL && toImport.keys) {
@@ -157,18 +155,7 @@ export class App extends LitElement {
             />
           </button>
         </header>
-        <npchat-contacts
-          .contacts=${this.contacts}
-          .selected=${this.selectedContact}
-          @contactSelected=${e => this.selectContact(e.detail)}
-          @contactAdded=${e => this.addContact(e.detail)}
-        ></npchat-contacts>
-        <npchat-contact
-          .shareable=${this.selectedContact}
-          .messages=${this.selectedContactMessages}
-          .myKeys=${this.keys}
-          @messageSent=${this.handleMessageSent}
-        ></npchat-contact>
+        <npchat-contacts></npchat-contacts>
       </main>
 
       <npchat-toast></npchat-toast>
@@ -271,7 +258,7 @@ export class App extends LitElement {
     if (!data.m || !data.f) return
 
     // match contact
-    const fromPubKeyHash = toHex(data.f)
+    const fromPubKeyHash = toBase64(data.f)
     const [, contact] = Object.entries(this.contacts).find(
       entry => entry[0] === fromPubKeyHash
     )
@@ -280,7 +267,7 @@ export class App extends LitElement {
     // check does not already exist
     const stored = localStorage.getItem(fromPubKeyHash)
     const parsed = (stored && JSON.parse(stored)) || []
-    const hashB64 = bytesToBase64(data.h)
+    const hashB64 = toBase64(data.h)
     if (parsed.find(m => m.h === hashB64)) return
 
     // verify signature

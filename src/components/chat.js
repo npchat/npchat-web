@@ -1,12 +1,11 @@
 import { LitElement, html, css } from "lit"
 import { pack } from "msgpackr"
 import { formStyles } from "../styles/form.js"
-import { fromHex } from "../util/hex.js"
 import { buildMessage } from "../util/message.js"
 import { importDHKey, importAuthKey } from "../util/keys.js"
-import { bytesToBase64 } from "../util/base64.js"
+import { fromBase64, toBase64 } from "../util/base64.js"
 
-export class Contact extends LitElement {
+export class Chat extends LitElement {
   static get properties() {
     return {
       shareable: { type: Object },
@@ -56,7 +55,7 @@ export class Contact extends LitElement {
       ]),
       dh: await importDHKey("jwk", this.shareable.keys.dh, []),
     }
-    this.myPubKeyHashBytes = fromHex(this.myKeys.pubKeyHash)
+    this.myPubKeyHashBytes = fromBase64(this.myKeys.pubKeyHash)
   }
 
   constructor() {
@@ -138,7 +137,7 @@ export class Contact extends LitElement {
     })
     const toStore = {
       t: msg.t,
-      h: bytesToBase64(msg.h),
+      h: toBase64(msg.h),
       m: messageText,
       sent: resp.status === 200,
     }

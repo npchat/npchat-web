@@ -3,8 +3,8 @@ import { sign, verify } from "./auth.js"
 import { hash } from "./hash.js"
 import { deriveDHSecret } from "./keys.js"
 import { encrypt, getIV } from "./privacy.js"
-import { toHex } from "./hex.js"
 import { isEqual } from "./bytes.js"
+import { toBase64 } from "./base64.js"
 
 export async function buildMessage(
   authPriv,
@@ -14,7 +14,7 @@ export async function buildMessage(
   dhPublicKey
 ) {
   const t = Date.now()
-  const iv = await getIV(toHex(from) + t)
+  const iv = await getIV(toBase64(from) + t)
   const ivBytes = new Uint8Array(iv)
   const derivedKey = await deriveDHSecret(dhPublicKey, dhPrivateKey)
   const encrypted = await encrypt(

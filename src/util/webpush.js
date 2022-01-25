@@ -1,4 +1,4 @@
-import { bytesToBase64 } from "./base64.js"
+import { toBase64 } from "./base64.js"
 
 async function registerServiceWorker() {
   try {
@@ -34,7 +34,7 @@ export async function subscribeToPushNotifications(vapidKey) {
   if (currentSub) {
     // check if vapidKey changed
     const currentKey = new Uint8Array(currentSub.options.applicationServerKey)
-    const currentKeyBase64 = bytesToBase64(currentKey)
+    const currentKeyBase64 = toBase64(currentKey)
     if (currentKeyBase64 !== vapidKey) {
       await currentSub.unsubscribe()
       currentSub = undefined

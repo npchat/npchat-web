@@ -1,6 +1,6 @@
 import { aesKeyParams } from "./privacy.js"
 import { hash } from "./hash.js"
-import { toHex } from "./hex.js"
+import { toBase64 } from "./base64.js"
 
 const authKeyParams = {
   name: "ECDSA",
@@ -71,7 +71,7 @@ export async function generateKeys() {
       keys.auth.keyPair.privateKey
     ),
   }
-  keys.pubKeyHash = toHex(new Uint8Array(await hash(keys.auth.publicKeyRaw)))
+  keys.pubKeyHash = toBase64(new Uint8Array(await hash(keys.auth.publicKeyRaw)))
   keys.dh.jwk = {
     publicKey: await crypto.subtle.exportKey("jwk", keys.dh.keyPair.publicKey),
     privateKey: await crypto.subtle.exportKey(

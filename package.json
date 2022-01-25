@@ -17,6 +17,7 @@
     "esbuild": "^0.14.13",
     "lit": "^2.1.1",
     "msgpackr": "^1.5.2",
+    "idb": "^7.0.0",
     "qrcode": "^1.5.0"
   },
   "devDependencies": {
