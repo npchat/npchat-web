@@ -51,7 +51,7 @@ export class Welcome extends LitElement {
             <h1>Welcome to npchat</h1>
             <h2>Let's get you set up</h2>
             <p ?hidden=${this.browserSupportsProtocolHandlers()}>
-              It looks like your browser does support some modern web APIs. For
+              It looks like your browser doesn't support some modern web APIs. For
               the best experience,
               ${this.browserUsesChromium()
                 ? "update your browser"
