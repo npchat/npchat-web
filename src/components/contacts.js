@@ -141,6 +141,7 @@ export class Contacts extends LitElement {
         type="text"
         placeholder="search or import"
         @input=${this.handleInput}
+        @change=${this.handleInput}
       />
     </div>
     <div class="list">
@@ -191,7 +192,7 @@ export class Contacts extends LitElement {
   }
 
   async handleInput(e) {
-    const input = e.path[0]
+    const input = e.target
     let { value } = input
     if (!value.startsWith("http") && !value.startsWith(protocolScheme)) {
       this.filter = value.toLowerCase()
