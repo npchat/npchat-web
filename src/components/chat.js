@@ -35,20 +35,39 @@ export class Chat extends LitElement {
       formStyles,
       css`
         .container {
-          margin: 5px;
           display: flex;
           flex-direction: column;
           justify-content: flex-start;
-          max-width: 100vw;
+        }
+
+        .header {
+          display: flex;
+          align-items: center;
+          padding: 5px;
+          position: sticky;
+          top: 0;
+          min-height: 50px;
+          background-color: var(--color-offwhite);
+          filter: drop-shadow(0 5px 5px rgba(0, 0, 0, 0.2));
+        }
+
+        .compose {
+          position: sticky;
+          bottom: 0;
+          padding: 5px;
+          display: flex;
+          background-color: var(--color-offwhite);
+          filter: drop-shadow(0 -5px 5px rgba(0, 0, 0, 0.1));
         }
 
         input {
-          margin-bottom: 5px;
+          flex-grow: 1;
         }
 
         .avatar {
           width: 40px;
           height: 40px;
+          margin-left: 10px;
           border-radius: 50%;
           border: 2px solid var(--color-secondary);
         }
@@ -65,8 +84,8 @@ export class Chat extends LitElement {
           background: transparent;
           border: 2px solid var(--color-lightgrey);
           border-radius: 50%;
-          width: 40px;
-          height: 40px;
+          width: 44px;
+          height: 44px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -88,7 +107,7 @@ export class Chat extends LitElement {
     super()
     this.init()
     this.cursorPosition = 0
-    this.limit = 10
+    this.limit = 50
     this.reactiveMsgs = []
 
     window.addEventListener("messageReceived", event => {
@@ -152,14 +171,14 @@ export class Chat extends LitElement {
       <div class="container">
         ${this.headerTemplate()}
         <div class="list">
-        ${this.task.render({
-          complete: (msgs) => html`${msgs.map(m => {
-            const template = this.messageTemplate(m, prevMsgTime)
-            prevMsgTime = m.t
-            return template
-          })}`
-        })}
-        ${this.reactiveMsgs?.map(m => this.messageTemplate(m))}
+          ${this.task.render({
+            complete: (msgs) => html`${msgs.map(m => {
+              const template = this.messageTemplate(m, prevMsgTime)
+              prevMsgTime = m.t
+              return template
+            })}`
+          })}
+          ${this.reactiveMsgs?.map(m => this.messageTemplate(m))}
         </div>
         <form
           class="compose"
@@ -220,6 +239,7 @@ export class Chat extends LitElement {
     this.db.put("messages", toStore, msg.t)
     this.reactiveMsgs.push(toStore)
     this.requestUpdate()
+    localStorage.lastMessagePubKeyHash = this.contact.keys.pubKeyHash
   }
 
   async fetchMessages(pubKeyHash, position, limit) {

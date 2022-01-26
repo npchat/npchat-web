@@ -20,14 +20,22 @@ export class Contacts extends LitElement {
       formStyles,
       css`
         .container {
-          margin: 5px;
           display: flex;
           flex-direction: column;
           justify-content: flex-start;
         }
 
+        .import {
+          display: flex;
+          position: sticky;
+          top: 0;
+          min-height: 60px;
+          background-color: var(--color-offwhite);
+        }
+
         input {
-          margin-bottom: 5px;
+          margin: 5px;
+          flex-grow: 1;
         }
 
         .list {
@@ -80,10 +88,9 @@ export class Contacts extends LitElement {
 
   constructor() {
     super()
-    this.filter = ""
     window.addEventListener("messageReceived", async event => {
       const msg = event.detail
-      localStorage.lastMessageFrom = msg.with
+      localStorage.lastMessagePubKeyHash = msg.with
       if (this.selected?.keys.pubKeyHash === event.detail.with) return
       // notify if contact not selected
       const preview = `${msg.m.slice(0, 25)}${
@@ -97,7 +104,7 @@ export class Contacts extends LitElement {
   async init() {
     this.db = await openDBConn()
     await this.loadContacts()
-    this.select(this.contacts.find(c => c.keys.pubKeyHash === localStorage.lastMessageFrom))
+    this.select(this.contacts.find(c => c.keys.pubKeyHash === localStorage.lastMessagePubKeyHash))
     await this.checkContacts()
     // import from URL
     const toImport = await fetchUsingURLData()
@@ -134,7 +141,7 @@ export class Contacts extends LitElement {
       />
     </div>
     <div class="list">
-      ${this.filterContacts().map(entry => this.contactTemplate(entry[1]))}
+      ${this.filterContacts().map(c => this.contactTemplate(c))}
     </div>
         `
   }
@@ -166,10 +173,13 @@ export class Contacts extends LitElement {
       const current = {}
       Object.assign(current, contact)
       Object.assign(current, {displayName, avatarURL, originURL})
-      await this.db.put("contacts", current, contact.keys.pubKeyHash)
+      return this.db.put("contacts", current, contact.keys.pubKeyHash)
     }))
     await this.loadContacts()
-    this.requestUpdate()
+    if (!this.selected) return
+    const selectedPkh = this.selected.keys.pubKeyHash
+    const selected = this.contacts.find(c => c.keys.pubKeyHash === selectedPkh)
+    this.select(selected)
   }
 
   select(contact) {
@@ -181,7 +191,7 @@ export class Contacts extends LitElement {
     const input = e.path[0]
     let { value } = input
     if (!value.startsWith("http") && !value.startsWith(protocolScheme)) {
-      this.filter = value
+      this.filter = value.toLowerCase()
       return
     }
     this.filter = ""
@@ -218,12 +228,11 @@ export class Contacts extends LitElement {
 
   filterContacts() {
     if (!this.contacts) return []
-    const entries = Object.entries(this.contacts)
     if (!this.filter) {
-      return entries
+      return this.contacts
     }
-    return entries.filter(
-      entry => JSON.stringify(entry[1]).indexOf(this.filter) > -1
+    return [...this.contacts].filter(
+      c => JSON.stringify(c).toLowerCase().indexOf(this.filter) > -1
     )
   }
 }

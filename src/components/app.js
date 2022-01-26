@@ -8,7 +8,6 @@ import { subscribeToPushNotifications } from "../core/webpush.js"
 import { generateQR } from "../util/qrcode.js"
 import {
   registerProtocolHandler,
-  fetchUsingURLData,
   buildShareableURL,
 } from "../core/shareable.js"
 import { fromBase64, toBase64 } from "../util/base64.js"
@@ -54,6 +53,8 @@ export class App extends LitElement {
         width: 100vw;
         height: 60px;
         display: flex;
+        position: sticky;
+        top: 0;
         justify-content: space-between;
         align-items: center;
         background-color: var(--color-darkwhite);
