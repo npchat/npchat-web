@@ -170,6 +170,7 @@ export class Contacts extends LitElement {
   async updateContacts() {
     const contacts = await this.db.getAll("contacts")
     await Promise.all(contacts.map(async c => {
+      try {
       const resp = await fetch(`${c.originURL}/${c.keys.pubKeyHash}/shareable`)
       if (resp.status !== 200) return
       // don't update keys
@@ -178,6 +179,9 @@ export class Contacts extends LitElement {
       Object.assign(current, c)
       Object.assign(current, {displayName, avatarURL, originURL})
       return this.db.put("contacts", current, c.keys.pubKeyHash)
+      } catch {
+        return Promise.resolve()
+      }
     }))
   }
 
@@ -194,7 +198,9 @@ export class Contacts extends LitElement {
       return
     }
     this.filter = ""
-    value = value.replace(`${protocolScheme}:`, "")
+    value = value
+    .replace(" ", "") // fix scanned URL (not QR)
+    .replace(`${protocolScheme}:`, "")
     try {
       const resp = await fetch(value)
       const shareableData = await resp.json()

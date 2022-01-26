@@ -92,8 +92,6 @@ export class App extends LitElement {
 
   constructor() {
     super()
-    window.toBase64 = toBase64
-    window.fromBase64 = fromBase64
     this.init()
   }
 
@@ -104,18 +102,13 @@ export class App extends LitElement {
     if (!this.originURL || !this.keys) {
       return 
     }
-
     this.db = await openDBConn()
-
-    // connect to origin
-    await this.connectWebSocket()
-
-    // make QR
     const shaereableURL = buildShareableURL(
       this.originURL,
       this.keys.pubKeyHash
     )
     this.shareableQR = await generateQR(shaereableURL)
+    return this.connectWebSocket()
   }
 
   render() {
