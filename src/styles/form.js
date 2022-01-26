@@ -46,7 +46,7 @@ export const formStyles = css`
     border: 2px solid var(--color-secondary);
   }
 
-  button.success, input.success {
+  button.normal.success, input.success {
     background-color: var(--color-green);
   }
 `

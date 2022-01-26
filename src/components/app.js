@@ -47,6 +47,8 @@ export class App extends LitElement {
 
       main.blur {
         filter: blur(10px);
+        max-height: 100vh;
+        overflow: hidden;
       }
 
       header {

@@ -103,9 +103,12 @@ export class Contacts extends LitElement {
 
   async init() {
     this.db = await openDBConn()
+    await this.updateContacts()
     await this.loadContacts()
-    this.select(this.contacts.find(c => c.keys.pubKeyHash === localStorage.lastMessagePubKeyHash))
-    await this.checkContacts()
+
+    const toSelect = this.contacts.find(c => c.keys.pubKeyHash === localStorage.lastMessagePubKeyHash)
+    if (toSelect) this.select(toSelect)
+
     // import from URL
     const toImport = await fetchUsingURLData()
     if (toImport && toImport.originURL && toImport.keys) {
@@ -164,22 +167,18 @@ export class Contacts extends LitElement {
     this.contacts = await this.db.getAll("contacts")
   }
 
-  async checkContacts() {
-    await Promise.all(this.contacts.map(async contact => {
-      const resp = await fetch(`${contact.originURL}/${contact.keys.pubKeyHash}/shareable`)
+  async updateContacts() {
+    const contacts = await this.db.getAll("contacts")
+    await Promise.all(contacts.map(async c => {
+      const resp = await fetch(`${c.originURL}/${c.keys.pubKeyHash}/shareable`)
       if (resp.status !== 200) return
       // don't update keys
       const { displayName, avatarURL, originURL } = await resp.json()
       const current = {}
-      Object.assign(current, contact)
+      Object.assign(current, c)
       Object.assign(current, {displayName, avatarURL, originURL})
-      return this.db.put("contacts", current, contact.keys.pubKeyHash)
+      return this.db.put("contacts", current, c.keys.pubKeyHash)
     }))
-    await this.loadContacts()
-    if (!this.selected) return
-    const selectedPkh = this.selected.keys.pubKeyHash
-    const selected = this.contacts.find(c => c.keys.pubKeyHash === selectedPkh)
-    this.select(selected)
   }
 
   select(contact) {

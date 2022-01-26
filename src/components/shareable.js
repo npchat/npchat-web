@@ -94,7 +94,7 @@ export class Shareable extends LitElement {
   }
 
   async handleCopy(e) {
-    const button = e.path[0]
+    const button = e.target
     button.classList.add("success")
     setTimeout(() => {
       button.classList.remove("success")

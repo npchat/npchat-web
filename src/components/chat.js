@@ -1,4 +1,5 @@
 import { LitElement, html, css } from "lit"
+import { classMap } from "lit/directives/class-map.js"
 import {Task} from "@lit-labs/task"
 import { pack } from "msgpackr"
 import { formStyles } from "../styles/form.js"
@@ -10,23 +11,23 @@ import { avatarFallbackURL } from "./app.js"
 
 export class Chat extends LitElement {
 
-  task = new Task(
+  /* task = new Task(
     this,
-    async ([pubKeyHash, cursorPosition, limit]) => {
-      console.log("messages for", pubKeyHash, cursorPosition, limit)
-      this.reactiveMsgs = []
-      return this.fetchMessages(pubKeyHash, cursorPosition, limit)
+    async ([pubKeyHash]) => {
+      
     },
-    () => [this.contact?.keys.pubKeyHash, this.cursorPosition, this.limit]
-  )
+    () => [this.contact?.keys.pubKeyHash],
+  ) */
 
   static get properties() {
     return {
       myKeys: { type: Object },
       contact: { type: Object },
-      cursorPosition: { type: Number },
+      cursorPos: { type: Number },
       limit: { type: Number },
-      reactiveMsgs: { type: Array }
+      reactiveMsgs: { type: Array },
+      storedMsgs: { type: Array },
+      allLoaded: {type: Boolean }
     }
   }
 
@@ -37,7 +38,6 @@ export class Chat extends LitElement {
         .container {
           display: flex;
           flex-direction: column;
-          justify-content: flex-start;
         }
 
         .header {
@@ -49,6 +49,34 @@ export class Chat extends LitElement {
           min-height: 50px;
           background-color: var(--color-offwhite);
           filter: drop-shadow(0 5px 5px rgba(0, 0, 0, 0.2));
+        }
+
+        .list {
+          padding: 5px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        }
+
+        .message {
+          background-color: rgba(0, 119, 255, 0.3);
+          padding: 5px 10px;
+        }
+
+        .messageContainer {
+          display: flex;
+          margin: 5px 0;
+          justify-content: flex-end;
+          width: calc(100vw - 10px);
+          max-width: 400px;
+        }
+
+        .messageContainer.in {
+          justify-content: flex-start;
+        }
+
+        .messageContainer.in .message {
+          background-color: var(--color-offwhite);
         }
 
         .compose {
@@ -106,45 +134,23 @@ export class Chat extends LitElement {
   constructor() {
     super()
     this.init()
-    this.cursorPosition = 0
-    this.limit = 50
     this.reactiveMsgs = []
+    this.storedMsgs = []
 
     window.addEventListener("messageReceived", event => {
+      if (event.detail.with !== this.contact.keys.pubKeyHash) return
       this.reactiveMsgs.push(event.detail)
       this.requestUpdate()
     })
   }
 
-  timeTemplate(msgTime, prevMsgTime) {
-    if (!prevMsgTime) return
-    const msgDate = new Date(msgTime)
-    const prevDate = new Date(prevMsgTime)
-    const ms = msgDate - prevDate
-    const hoursSincePrev = ms / 1000 / 60 / 60
-    
-    // if not same day as prev
-    if (msgDate.getDay !== prevDate.getDay || hoursSincePrev >= 24) {
-      // if msg is today show "Today"
-      if (msgDate.getDay() === new Date(Date.now()).getDay()) {
-        return html`
-        <div class="milestone">Today</div>
-        `
-      }
-      // show date
-      const date = new Intl.DateTimeFormat().format(msgDate)
-      return html`
-      <div class="milestone">${date}</div>
-      `
-    }
-  }
-
-  messageTemplate(msg, prevMsgTime) {
+  messageTemplate(msg) {
     return html`
-      ${this.timeTemplate(msg.t, prevMsgTime)}
+    <div id="${msg.t}" class="messageContainer ${classMap({in: msg.in})}">
       <div class="message">
         <p>${msg.m}</p>
       </div>
+    </div>
     `
   }
 
@@ -166,18 +172,12 @@ export class Chat extends LitElement {
   }
 
   render() {
-    let prevMsgTime
     return html`
       <div class="container">
         ${this.headerTemplate()}
         <div class="list">
-          ${this.task.render({
-            complete: (msgs) => html`${msgs.map(m => {
-              const template = this.messageTemplate(m, prevMsgTime)
-              prevMsgTime = m.t
-              return template
-            })}`
-          })}
+          <button ?hidden=${this.allLoaded} @click=${() => this.loadMoreMessages()} class="normal">Load more</div>
+          ${this.storedMsgs?.map(m => this.messageTemplate(m))}
           ${this.reactiveMsgs?.map(m => this.messageTemplate(m))}
         </div>
         <form
@@ -198,6 +198,14 @@ export class Chat extends LitElement {
   async setContact(contact) {
     this.contact = contact
     if (!this.contact) return
+
+    this.storedMsgs = []
+    this.reactiveMsgs = []
+    this.cursorPos = 0
+    this.limit = 10
+    await this.loadMoreMessages()
+    this.allLoaded = this.limit > this.storedMsgs.length
+
     this.theirKeys = {
       auth: await importAuthKey("jwk", this.contact.keys.auth, [
         "verify",
@@ -242,22 +250,35 @@ export class Chat extends LitElement {
     localStorage.lastMessagePubKeyHash = this.contact.keys.pubKeyHash
   }
 
-  async fetchMessages(pubKeyHash, position, limit) {
-    if (!pubKeyHash) return []
+  async loadMoreMessages() {
+    this.reactiveMsgs = []
+    const msgs = await this.fetchMessagesFromDB()
+    if (msgs.length > 0) {
+    this.storedMsgs = [...msgs.reverse(), ...this.storedMsgs]
+    } else {
+      this.allLoaded = true
+    }
+  }
+
+  async fetchMessagesFromDB() {
     const tx = this.db.transaction("messages", "readonly")
     const index = tx.store.index("with")
-    const cursor = await index.openKeyCursor(pubKeyHash, "prev")
+    const cursor = await index.openKeyCursor(this.contact.keys.pubKeyHash, "prev")
     if (!cursor) return []
 
-    if (position > 0) await cursor.advance(position)
+    if (this.cursorPos > 0) {
+      const advanced = await cursor.advance(this.cursorPos)
+      if (!advanced) return []
+    }
 
     const keys = []
-    if (cursor) for await (const c of cursor) {
-      if (keys.length >= limit) {
+    for await (const c of cursor) {
+      keys.push(c.primaryKey)
+      if (keys.length >= this.limit) {
         break;
       }
-      keys.push(c.primaryKey)
     }
+    this.cursorPos += keys.length
     
     const msgs = []
     for await (const k of keys) {
