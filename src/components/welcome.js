@@ -102,6 +102,7 @@ export class Welcome extends LitElement {
   }
 
   browserUsesChromium() {
+    if (!navigator.userAgentData) return false
     return (
       navigator.userAgentData.brands.filter(
         b =>

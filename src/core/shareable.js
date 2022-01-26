@@ -1,6 +1,7 @@
 export const protocolScheme = "web+npchat"
 
 export function registerProtocolHandler() {
+  if (typeof navigator.registerProtocolHandler !== "function") return
   navigator.registerProtocolHandler(
     protocolScheme,
     `${window.location.origin}#%s`,
