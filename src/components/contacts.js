@@ -50,13 +50,8 @@ export class Contacts extends LitElement {
           border: none;
         }
 
-        .contact:hover,
-        .contact.selected {
+        .contact:hover {
           background-color: var(--color-darkwhite);
-        }
-
-        .contact.selected .avatar {
-          border-color: var(--color-secondary);
         }
 
         .avatar {
@@ -64,7 +59,6 @@ export class Contacts extends LitElement {
           height: 40px;
           border-radius: 50%;
           border: 2px solid var(--color-primary);
-          transition: border-color 300ms;
         }
 
         .name {
@@ -76,6 +70,10 @@ export class Contacts extends LitElement {
     ]
   }
 
+  get chat() {
+    return this.renderRoot?.querySelector("npchat-chat")
+  }
+
   get toast() {
     return this.renderRoot?.querySelector("npchat-toast") ?? null
   }
@@ -83,9 +81,9 @@ export class Contacts extends LitElement {
   constructor() {
     super()
     this.filter = ""
-    window.addEventListener("messageReceived", event => {
+    window.addEventListener("messageReceived", async event => {
       const msg = event.detail
-      localStorage.lastMessageFrom = msg.f
+      localStorage.lastMessageFrom = msg.with
       if (this.selected?.keys.pubKeyHash === event.detail.with) return
       // notify if contact not selected
       const preview = `${msg.m.slice(0, 25)}${
@@ -99,7 +97,8 @@ export class Contacts extends LitElement {
   async init() {
     this.db = await openDBConn()
     await this.loadContacts()
-
+    this.select(this.contacts.find(c => c.keys.pubKeyHash === localStorage.lastMessageFrom))
+    await this.checkContacts()
     // import from URL
     const toImport = await fetchUsingURLData()
     if (toImport && toImport.originURL && toImport.keys) {
@@ -113,7 +112,7 @@ export class Contacts extends LitElement {
     return html`
       <button
         class="contact ${classMap({ selected: isSelected })}"
-        @click=${() => this.selected = contact}
+        @click=${() => this.select(contact)}
       >
         <img
           alt="${contact.displayName}"
@@ -125,22 +124,29 @@ export class Contacts extends LitElement {
     `
   }
 
+  contactListTemplate() {
+    return html`
+    <div class="import">
+      <input
+        type="text"
+        placeholder="search or import"
+        @input=${this.handleInput}
+      />
+    </div>
+    <div class="list">
+      ${this.filterContacts().map(entry => this.contactTemplate(entry[1]))}
+    </div>
+        `
+  }
+
   render() {
     return html`
       <div class="container">
-        <div class="import">
-          <input
-            type="text"
-            placeholder="search or import"
-            @input=${this.handleInput}
-          />
-        </div>
-        <div class="list">
-          ${this.filterContacts().map(entry => this.contactTemplate(entry[1]))}
-        </div>
+        ${this.selected ? undefined : this.contactListTemplate()}
         <npchat-chat
-          .contact=${this.selected}
+          ?hidden=${!this.selected}
           .myKeys=${this.keys}
+          @contactCleared=${() => this.select(undefined)}
         ></npchat-chat>
       </div>
       <npchat-toast></npchat-toast>
@@ -152,24 +158,23 @@ export class Contacts extends LitElement {
   }
 
   async checkContacts() {
-    // if (!this.contacts) return
-    await Promise.all(
-      Object.entries(this.contacts).map(async contact => {
-        // const contact = entry[1]
-        const resp = await fetch(`${contact.originURL}/${pubKeyHash}/shareable`)
-        if (resp.status !== 200) return
-        // don't update keys
-        const { displayName, avatarURL, originURL } = await resp.json()
-        Object.assign(this.contacts[pubKeyHash], {
-          displayName,
-          avatarURL,
-          originURL,
-        })
-      })
-    )
-    storePreferences({
-      contacts: this.contacts,
-    })
+    await Promise.all(this.contacts.map(async contact => {
+      const resp = await fetch(`${contact.originURL}/${contact.keys.pubKeyHash}/shareable`)
+      if (resp.status !== 200) return
+      // don't update keys
+      const { displayName, avatarURL, originURL } = await resp.json()
+      const current = {}
+      Object.assign(current, contact)
+      Object.assign(current, {displayName, avatarURL, originURL})
+      await this.db.put("contacts", current, contact.keys.pubKeyHash)
+    }))
+    await this.loadContacts()
+    this.requestUpdate()
+  }
+
+  select(contact) {
+    this.selected = contact
+    this.chat?.setContact(contact)
   }
 
   async handleInput(e) {

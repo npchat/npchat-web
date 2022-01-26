@@ -17,7 +17,7 @@ export const formStyles = css`
     font-size: 1.4rem;
   }
 
-  button {
+  button.normal {
     font-size: 1.4rem;
     padding: 10px 20px;
     margin: 10px;
@@ -27,8 +27,8 @@ export const formStyles = css`
     outline: none;
   }
 
-  button:hover,
-  button:focus {
+  button.normal:hover,
+  button.normal:focus {
     background-color: var(--color-lightgrey);
     border-color: var(--color-secondary);
   }

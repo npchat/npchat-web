@@ -1,16 +1,32 @@
 import { LitElement, html, css } from "lit"
+import {Task} from "@lit-labs/task"
 import { pack } from "msgpackr"
 import { formStyles } from "../styles/form.js"
 import { buildMessage } from "../core/message.js"
 import { importDHKey, importAuthKey } from "../core/keys.js"
 import { fromBase64, toBase64 } from "../util/base64.js"
 import { openDBConn } from "../core/db.js"
+import { avatarFallbackURL } from "./app.js"
 
 export class Chat extends LitElement {
+
+  task = new Task(
+    this,
+    async ([pubKeyHash, cursorPosition, limit]) => {
+      console.log("messages for", pubKeyHash, cursorPosition, limit)
+      this.reactiveMsgs = []
+      return this.fetchMessages(pubKeyHash, cursorPosition, limit)
+    },
+    () => [this.contact?.keys.pubKeyHash, this.cursorPosition, this.limit]
+  )
+
   static get properties() {
     return {
+      myKeys: { type: Object },
       contact: { type: Object },
-      myKeys: { type: Object }
+      cursorPosition: { type: Number },
+      limit: { type: Number },
+      reactiveMsgs: { type: Array }
     }
   }
 
@@ -34,8 +50,7 @@ export class Chat extends LitElement {
           width: 40px;
           height: 40px;
           border-radius: 50%;
-          border: 2px solid var(--color-primary);
-          transition: border-color 300ms;
+          border: 2px solid var(--color-secondary);
         }
 
         .name {
@@ -43,45 +58,44 @@ export class Chat extends LitElement {
           font-size: 1.4rem;
           user-select: none;
         }
+
+        .icon {
+          border: 0;
+          outline: 0;
+          background: transparent;
+          border: 2px solid var(--color-lightgrey);
+          border-radius: 50%;
+          width: 40px;
+          height: 40px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .icon img {
+          width: 30px;
+          height: 30px;
+        }
+
+        .icon:hover, .icon:focus {
+          border: 2px solid var(--color-primary)
+        }
       `,
     ]
   }
 
   constructor() {
     super()
-    this.messages = []
     this.init()
+    this.cursorPosition = 0
+    this.limit = 10
+    this.reactiveMsgs = []
 
     window.addEventListener("messageReceived", event => {
-      console.log("got message yo!")
-      // if from contact, display message
-      if (this.contact.keys.pubKeyHash === event.detail.with) {
-        console.log("from current", event.detail)
-        this.messages.push(event.detail)
-        this.update()
-      }
+      this.reactiveMsgs.push(event.detail)
+      this.requestUpdate()
     })
   }
-
-  async init() {
-    this.db = await openDBConn()
-  }
-
-  async willUpdate() {
-    if (!this.contact) return
-    this.theirKeys = {
-      auth: await importAuthKey("jwk", this.contact.keys.auth, [
-        "verify",
-      ]),
-      dh: await importDHKey("jwk", this.contact.keys.dh, []),
-    }
-    this.myPubKeyHashBytes = fromBase64(this.myKeys.pubKeyHash)
-
-    await this.fetchMessages()
-    this.update()
-  }
-
-
 
   timeTemplate(msgTime, prevMsgTime) {
     if (!prevMsgTime) return
@@ -115,16 +129,37 @@ export class Chat extends LitElement {
     `
   }
 
+  headerTemplate() {
+    if (!this.contact) return
+    return html`
+    <div class="header">
+      <button @click=${this.clearContact} class="icon">
+        <img alt="back" src="assets/arrow_back.svg" />
+      </button>
+      <img
+          alt="${this.contact.displayName}"
+          src=${this.contact.avatarURL || avatarFallbackURL}
+          class="avatar"
+        />
+        <span class="name">${this.contact.displayName}</span>
+    </div>
+    `
+  }
+
   render() {
     let prevMsgTime
     return html`
       <div class="container">
-        <div class="list" ?hidden=${!this.contact}>
-          ${this.messages?.map(m => {
+        ${this.headerTemplate()}
+        <div class="list">
+        ${this.task.render({
+          complete: (msgs) => html`${msgs.map(m => {
             const template = this.messageTemplate(m, prevMsgTime)
             prevMsgTime = m.t
             return template
-          })}
+          })}`
+        })}
+        ${this.reactiveMsgs?.map(m => this.messageTemplate(m))}
         </div>
         <form
           class="compose"
@@ -137,10 +172,25 @@ export class Chat extends LitElement {
     `
   }
 
-  async fetchMessages() {
+  async init() {
+    this.db = await openDBConn()
+  }
+
+  async setContact(contact) {
+    this.contact = contact
     if (!this.contact) return
-    this.messages = await this.db.getAllFromIndex("messages", "with", this.contact.keys.pubKeyHash)
-    this.messages.sort((a, b) => a.t - b.t)
+    this.theirKeys = {
+      auth: await importAuthKey("jwk", this.contact.keys.auth, [
+        "verify",
+      ]),
+      dh: await importDHKey("jwk", this.contact.keys.dh, []),
+    }
+    this.myPubKeyHashBytes = fromBase64(this.myKeys.pubKeyHash)
+  }
+
+  clearContact() {
+    this.setContact(undefined)
+    this.dispatchEvent(new CustomEvent("contactCleared"))
   }
 
   async handleSubmit(e) {
@@ -167,8 +217,32 @@ export class Chat extends LitElement {
       in: false, // outgoing
       sent: resp.status === 200
     }
-    this.db.put("messages", toStore, toStore.h)
-    this.messages.push(toStore)
-    this.update()
+    this.db.put("messages", toStore, msg.t)
+    this.reactiveMsgs.push(toStore)
+    this.requestUpdate()
+  }
+
+  async fetchMessages(pubKeyHash, position, limit) {
+    if (!pubKeyHash) return []
+    const tx = this.db.transaction("messages", "readonly")
+    const index = tx.store.index("with")
+    const cursor = await index.openKeyCursor(pubKeyHash, "prev")
+    if (!cursor) return []
+
+    if (position > 0) await cursor.advance(position)
+
+    const keys = []
+    if (cursor) for await (const c of cursor) {
+      if (keys.length >= limit) {
+        break;
+      }
+      keys.push(c.primaryKey)
+    }
+    
+    const msgs = []
+    for await (const k of keys) {
+     msgs.push(await this.db.get("messages", k))
+    }
+    return msgs
   }
 }

@@ -73,7 +73,7 @@ export class Preferences extends LitElement {
               for guidance.
             </p>
           </label>
-          <button type="submit">Submit</button>
+          <button type="submit" class="normal">Submit</button>
         </form>
       </npchat-modal>
     `

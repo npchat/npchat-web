@@ -67,7 +67,7 @@ export class Shareable extends LitElement {
         <div class="container">
           <div class="text">
             <div class="monospace">${this.shareableURL}</div>
-            <button @click=${this.handleCopy} class="button copy">Copy</button>
+            <button @click=${this.handleCopy} class="normal copy">Copy</button>
           </div>
           <div ?hidden=${!this.showQR}>
             <img alt="QR code" src=${this.shareableQR} />
@@ -77,7 +77,7 @@ export class Shareable extends LitElement {
             other's shareable, you can chat. This process is necessary to
             securely trade keys.
           </p>
-          <button @click=${this.handleClose}>Done</button>
+          <button @click=${this.handleClose} class="normal">Done</button>
         </div>
       </npchat-modal>
     `

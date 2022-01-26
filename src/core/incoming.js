@@ -1,4 +1,5 @@
 import { unpack } from "msgpackr"
+import { toBase64 } from "../util/base64"
 import { decrypt } from "../util/privacy"
 import { deriveDHSecret, importAuthKey, importDHKey } from "./keys"
 import { verifyMessage } from "./message"
@@ -15,8 +16,7 @@ export async function handleIncomingMessage(msg, db, myKeys) {
   if (!contact) return
 
   // check does not already exist
-  const hashB64 = toBase64(data.h)
-  const stored = await db.get("messages", hashB64)
+  const stored = await db.get("messages", data.t)
   if (stored) return
 
   // verify signature
@@ -36,12 +36,12 @@ export async function handleIncomingMessage(msg, db, myKeys) {
   // store
   const toStore = {
     t: data.t,
-    h: hashB64,
+    h: toBase64(data.h),
     m: msgPlainText,
     with: fromPubKeyHash,
     in: true
   }
-  await db.put("messages", toStore, hashB64)
+  await db.put("messages", toStore, data.t)
 
   const eventDetail = {
     displayName: contact.displayName

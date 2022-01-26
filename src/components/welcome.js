@@ -67,7 +67,7 @@ export class Welcome extends LitElement {
                 <span>Your avatar URL</span>
                 <input type="text" name="avatarURL" placeholder="" />
               </label>
-              <button type="button" @click=${() => (this.slideNumber += 1)}>
+              <button type="button" class="normal" @click=${() => (this.slideNumber += 1)}>
                 Continue
               </button>
             </div>
@@ -76,7 +76,7 @@ export class Welcome extends LitElement {
             <h2>Generated fresh crypto keys</h2>
             <div class="flex">
               <img alt="fingerprint" src="assets/fingerprint.svg" />
-              <button type="submit">OK</button>
+              <button type="submit" class="normal">OK</button>
             </div>
           </div>
         </form>
