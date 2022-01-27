@@ -1,5 +1,6 @@
 import { LitElement, html, css } from "lit"
 import { formStyles } from "../styles/form.js"
+import { generalStyles } from "../styles/general.js"
 import {
   buildShareableURL,
 } from "../core/shareable.js"
@@ -30,15 +31,9 @@ export class Shareable extends LitElement {
           align-items: center;
           margin: 10px 0;
         }
-
-        .monospace {
-          font-family: monospace;
-          font-size: 1.2rem;
-          overflow-wrap: anywhere;
-          word-break: break-all;
-        }
       `,
       formStyles,
+      generalStyles,
     ]
   }
 

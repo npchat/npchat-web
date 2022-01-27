@@ -37,4 +37,11 @@ export const generalStyles = css`
     text-decoration: none;
     color: inherit;
   }
+
+  .monospace {
+    font-family: monospace;
+    font-size: 1.2rem;
+    overflow-wrap: anywhere;
+    word-break: break-all;
+  }
 `

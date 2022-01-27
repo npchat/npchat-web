@@ -33,6 +33,34 @@ export const formStyles = css`
     border-color: var(--color-secondary);
   }
 
+  button.secondary {
+    padding: 5px 10px;
+    font-size: 1.2rem;
+    border-color: var(--color-lightgrey)
+  }
+
+  button.icon {
+    border: 0;
+    outline: 0;
+    background: transparent;
+    border: 2px solid var(--color-lightgrey);
+    border-radius: 50%;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  button.icon img {
+    width: 30px;
+    height: 30px;
+  }
+
+  button.icon:hover, button.icon:focus {
+    border: 2px solid var(--color-primary)
+  }
+
   input {
     padding: 10px;
     font-size: 1.4rem;
@@ -48,5 +76,9 @@ export const formStyles = css`
 
   button.normal.success, input.success {
     background-color: var(--color-green);
+  }
+
+  p.error {
+    color: var(--color-red);
   }
 `

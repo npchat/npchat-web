@@ -1,7 +1,9 @@
+import { toBase64 } from "../util/base64.js"
+import { hash } from "../util/hash.js"
 import { importAuthKey, importDHKey } from "./keys.js"
 
-export async function loadPreferences() {
-  const pref = {
+export async function loadUser() {
+  const user = {
     showWelcome:
       !localStorage.showWelcome || localStorage.showWelcome === "true",
     displayName: localStorage.displayName,
@@ -9,40 +11,41 @@ export async function loadPreferences() {
     originURL: localStorage.originURL,
     keys: localStorage.keys && JSON.parse(localStorage.keys),
   }
-  if (!pref.keys) {
-    return pref
+  if (!user.keys) {
+    return user
   }
-  Object.assign(pref.keys.auth, {
+  Object.assign(user.keys.auth, {
     keyPair: {
-      publicKey: await importAuthKey("jwk", pref.keys.auth.jwk.publicKey, [
+      publicKey: await importAuthKey("jwk", user.keys.auth.jwk.publicKey, [
         "verify",
       ]),
-      privateKey: await importAuthKey("jwk", pref.keys.auth.jwk.privateKey, [
+      privateKey: await importAuthKey("jwk", user.keys.auth.jwk.privateKey, [
         "sign",
       ]),
     },
   })
-  pref.keys.auth.publicKeyRaw = new Uint8Array(
-    await crypto.subtle.exportKey("raw", pref.keys.auth.keyPair.publicKey)
+  user.keys.auth.publicKeyRaw = new Uint8Array(
+    await crypto.subtle.exportKey("raw", user.keys.auth.keyPair.publicKey)
   )
-  Object.assign(pref.keys.dh, {
+  user.keys.pubKeyHash = toBase64(new Uint8Array(await hash(user.keys.auth.publicKeyRaw)))
+  Object.assign(user.keys.dh, {
     keyPair: {
-      publicKey: await importDHKey("jwk", pref.keys.dh.jwk.publicKey, []),
-      privateKey: await importDHKey("jwk", pref.keys.dh.jwk.privateKey, [
+      publicKey: await importDHKey("jwk", user.keys.dh.jwk.publicKey, []),
+      privateKey: await importDHKey("jwk", user.keys.dh.jwk.privateKey, [
         "deriveKey",
         "deriveBits",
       ]),
     },
   })
-  return pref
+  return user
 }
 
-export function storePreferences(preferencesObject) {
-  Object.entries(preferencesObject).forEach(pref => {
-    if (typeof pref[1] === "object") {
-      localStorage.setItem(pref[0], JSON.stringify(pref[1]))
+export function storeUser(userObject) {
+  Object.entries(userObject).forEach(kv => {
+    if (typeof kv[1] === "object") {
+      localStorage.setItem(kv[0], JSON.stringify(kv[1]))
     } else {
-      localStorage.setItem(pref[0], pref[1])
+      localStorage.setItem(kv[0], kv[1])
     }
   })
 }

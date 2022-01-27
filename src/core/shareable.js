@@ -10,7 +10,7 @@ export function registerProtocolHandler() {
 }
 
 export function getDataFromURL() {
-  if (!window.location.hash) return
+  if (!window.location.hash.startsWith(protocolScheme)) return
   return decodeURIComponent(window.location.hash).slice(
     protocolScheme.length + 2
   )
@@ -20,7 +20,7 @@ export function buildShareableURL(originURL, pubKeyHash) {
   return `${protocolScheme}:${originURL}/${pubKeyHash}/shareable`
 }
 
-export async function fetchUsingURLData() {
+export async function fetchShareableUsingURLData() {
   const urlData = getDataFromURL()
   if (urlData) {
     try {

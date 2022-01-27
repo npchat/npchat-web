@@ -10,15 +10,7 @@ import { openDBConn } from "../core/db.js"
 import { avatarFallbackURL } from "./app.js"
 
 export class Chat extends LitElement {
-
-  /* task = new Task(
-    this,
-    async ([pubKeyHash]) => {
-      
-    },
-    () => [this.contact?.keys.pubKeyHash],
-  ) */
-
+  
   static get properties() {
     return {
       myKeys: { type: Object },
@@ -104,28 +96,6 @@ export class Chat extends LitElement {
           margin-left: 10px;
           font-size: 1.4rem;
           user-select: none;
-        }
-
-        .icon {
-          border: 0;
-          outline: 0;
-          background: transparent;
-          border: 2px solid var(--color-lightgrey);
-          border-radius: 50%;
-          width: 44px;
-          height: 44px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .icon img {
-          width: 30px;
-          height: 30px;
-        }
-
-        .icon:hover, .icon:focus {
-          border: 2px solid var(--color-primary)
         }
       `,
     ]

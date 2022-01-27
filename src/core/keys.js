@@ -1,6 +1,5 @@
 import { aesKeyParams } from "../util/privacy.js"
-import { hash } from "../util/hash.js"
-import { toBase64 } from "../util/base64.js"
+import { fromBase64, toBase64 } from "../util/base64.js"
 
 const authKeyParams = {
   name: "ECDSA",
@@ -49,35 +48,52 @@ export async function deriveDHSecret(publicKey, privateKey) {
   ])
 }
 
+export function getValuesFromJwk(jwk) {
+  const values = {
+    x: fromBase64(jwk.x),
+    y: fromBase64(jwk.y)
+  }
+  if (jwk.d) values.d = fromBase64(jwk.d)
+  return values
+}
+
+export function getJwkFromValues(values, keyOps) {
+  const jwk = {
+    crv: "P-256",
+    ext: true,
+    key_ops: keyOps,
+    kty: "EC",
+    x: toBase64(values.x),
+    y: toBase64(values.y)
+  }
+  if (values.d) jwk.d = toBase64(values.d)
+  return jwk
+}
+
 export async function generateKeys() {
-  const keys = {
+  authKeyPair = await genAuthKeyPair()
+  dhKeyPair = await genDHKeyPair()
+  return {
     auth: {
-      keyPair: await genAuthKeyPair(),
+      jwk: {
+        publicKey: await crypto.subtle.exportKey(
+          "jwk",
+          authKeyPair.publicKey
+        ),
+        privateKey: await crypto.subtle.exportKey(
+          "jwk",
+          authKeyPair.privateKey
+        ),
+      }
     },
     dh: {
-      keyPair: await genDHKeyPair(),
-    },
+      jwk: {
+        publicKey: await crypto.subtle.exportKey("jwk", dhKeyPair.publicKey),
+        privateKey: await crypto.subtle.exportKey(
+          "jwk",
+          dhKeyPair.privateKey
+        ),
+      }
+    }
   }
-  keys.auth.publicKeyRaw = new Uint8Array(
-    await crypto.subtle.exportKey("raw", keys.auth.keyPair.publicKey)
-  )
-  keys.auth.jwk = {
-    publicKey: await crypto.subtle.exportKey(
-      "jwk",
-      keys.auth.keyPair.publicKey
-    ),
-    privateKey: await crypto.subtle.exportKey(
-      "jwk",
-      keys.auth.keyPair.privateKey
-    ),
-  }
-  keys.pubKeyHash = toBase64(new Uint8Array(await hash(keys.auth.publicKeyRaw)))
-  keys.dh.jwk = {
-    publicKey: await crypto.subtle.exportKey("jwk", keys.dh.keyPair.publicKey),
-    privateKey: await crypto.subtle.exportKey(
-      "jwk",
-      keys.dh.keyPair.privateKey
-    ),
-  }
-  return keys
 }

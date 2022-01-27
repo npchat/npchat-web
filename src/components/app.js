@@ -1,8 +1,8 @@
 import { LitElement, html, css } from "lit"
 import { classMap } from "lit/directives/class-map.js"
 import { styleMap } from "lit/directives/style-map.js"
-import { pack } from "msgpackr"
-import { loadPreferences, storePreferences } from "../core/storage.js"
+import { pack, unpack } from "msgpackr"
+import { loadUser, storeUser } from "../core/storage.js"
 import { getWebSocket, authenticateSocket } from "../core/websocket.js"
 import { subscribeToPushNotifications } from "../core/webpush.js"
 import { generateQR } from "../util/qrcode.js"
@@ -10,9 +10,9 @@ import {
   registerProtocolHandler,
   buildShareableURL,
 } from "../core/shareable.js"
-import { fromBase64, toBase64 } from "../util/base64.js"
 import { openDBConn } from "../core/db.js"
 import { handleIncomingMessage } from "../core/incoming.js"
+import { importUserDataFromURL } from "../core/export.js"
 
 export const logoURL = "assets/npchat-logo.svg"
 export const avatarFallbackURL = "assets/avatar.svg"
@@ -90,24 +90,39 @@ export class App extends LitElement {
     `
   }
 
+  get toast() {
+    return this.renderRoot?.querySelector("npchat-toast") ?? null
+  }
+
   constructor() {
     super()
     this.init()
+
+    window.addEventListener("focus", () => this.init())
   }
 
   async init() {
+    if (this.isWebSocketConnected && this.socket?.readyState === WebSocket.OPEN) return
+    const wasImported = await importUserDataFromURL()
+    if (wasImported) {
+      this.toast.show("Your keys were imported")
+      this.hideWelcome()
+    }
+
     registerProtocolHandler()
-    const pref = await loadPreferences()
-    Object.assign(this, pref)
+    this.db = await openDBConn()
+    const user = await loadUser()
+    Object.assign(this, user)
     if (!this.originURL || !this.keys) {
       return 
     }
-    this.db = await openDBConn()
     const shaereableURL = buildShareableURL(
       this.originURL,
       this.keys.pubKeyHash
-    )
-    this.shareableQR = await generateQR(shaereableURL)
+      )
+    this.shareableQR = await generateQR(shaereableURL, {
+      errorCorrectionLevel: "L"
+    })
     return this.connectWebSocket()
   }
 
@@ -143,6 +158,8 @@ export class App extends LitElement {
         <npchat-contacts .keys=${this.keys}></npchat-contacts>
       </main>
 
+      <npchat-toast></npchat-toast>
+
       <npchat-welcome
         @formSubmit=${this.handlePreferencesSubmit}
         ?hidden=${!this.showWelcome}
@@ -170,30 +187,25 @@ export class App extends LitElement {
   }
 
   async handlePreferencesSubmit(e) {
-    let changedOriginURL
-    if (e.detail.originURL !== this.originURL) {
-      changedOriginURL = true
-    }
-    Object.assign(this, e.detail)
-    storePreferences(e.detail)
-    this.shareableQR = await generateQR(
-      buildShareableURL(this.originURL, this.keys.pubKeyHash)
-    )
+    storeUser(e.detail)
     this.hideWelcome()
     this.hidePreferences()
     // push new shareableData to current origin
+    Object.assign(this, e.detail)
     this.push({
+      data: pack({
+        displayName: this.displayName,
+        avatarURL: this.avatarURL,
+        contacts: await this.db.getAll("contacts")
+      }),
       shareableData: this.buildShareableData(),
     })
-    if (changedOriginURL) {
-      // connect to new origin
-      await this.connectWebSocket()
-    }
+    return this.init()
   }
 
   hideWelcome() {
     this.showWelcome = false
-    storePreferences({
+    storeUser({
       showWelcome: this.showWelcome,
     })
   }
@@ -266,16 +278,25 @@ export class App extends LitElement {
       this.isWebSocketConnected = true
       // handle data
       if (authResp.data) {
-        // TODO: HANDLE DATA
-        // const data = unpack(authResp.data)
-        // console.log("unpacked", data)
-        // smart merge with stored data (adding new contacts)
+        const unpacked = unpack(authResp.data)
+        const { displayName, avatarURL, contacts } = unpacked
+        if (displayName) {
+          storeUser({ displayName, avatarURL })
+          Object.assign(this, { displayName, avatarURL });
+        }
+        (contacts || []).map(c => {
+          this.db.put("contacts", c, c.keys.pubKeyHash)
+        })
       }
       const sub = await subscribeToPushNotifications(authResp.vapidKey)
       socket.send(
         pack({
           // double-pack to prevent unmarshalling by server
-          data: pack({ contacts: [] }),
+          data: pack({
+            displayName: this.displayName,
+            avatarURL: this.avatarURL,
+            contacts: []
+          }),
           shareableData: this.buildShareableData(),
           sub: sub || "",
         })
