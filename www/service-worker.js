@@ -1,6 +1,11 @@
+/* eslint-disable no-undef */
+
 self.addEventListener("push", event => {
-    self.registration.showNotification("Received message", {
-      tag: "got-message"
+    const message = event.data.text()
+    self.registration.showNotification(message, {
+      tag: "got-message",
+      renotify: true,
+      icon: "assets/npchat-logo.png"
   });
 })
 
@@ -11,9 +16,9 @@ self.addEventListener("notificationclick", event => {
   event.waitUntil(clients.matchAll({
     type: "window"
   }).then(clientList => {
-    for (let i = 0; i < clientList.length; i++) {
+    for (let i = 0; i < clientList.length; i += 1) {
       const client = clientList[i]
-      if (client.url == '/' && 'focus' in client) {
+      if (client.url === '/' && 'focus' in client) {
         return client.focus()
       }
     }
@@ -21,7 +26,4 @@ self.addEventListener("notificationclick", event => {
       return clients.openWindow('/')
     }
   }))
-
-    
-  
 })

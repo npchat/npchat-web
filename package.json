@@ -1,27 +1,56 @@
 {
   "name": "npchat-web",
-  "description": "A little front-end for the npchat protocol.",
-  "author": "dr-useless",
+  "description": "PWA client for the npchat protocol",
   "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/dr-useless/npchat-web.git"
-  },
+  "author": "github.com/dr-useless",
+  "version": "0.2.0",
   "type": "module",
-  "main": "src/index.mjs",
-  "dependencies": {
-    "esbuild": "^0.13.4",
-    "lit": "^2.0.2",
-    "qrcode": "^1.4.4"
-  },
-  "devDependencies": {
-    "npm-run-all": "^4.1.5"
-  },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "build": "node ./esbuild.js",
     "start": "run-p start:**",
-    "start:watch": "node ./esbuild.js --dev --watch",
-    "start:server": "node ./dev-server.js"
+    "start:server": "web-dev-server",
+    "start:esbuild": "node ./esbuild.js --dev",
+    "lint": "eslint \"src/**/*.js\" --ignore-path .gitignore && prettier \"src/**/*.js\" --check --ignore-path .gitignore",
+    "format": "eslint \"src/**/*.js\" --fix --ignore-path .gitignore && prettier \"src/**/*.js\" --write --ignore-path .gitignore"
+  },
+  "dependencies": {
+    "esbuild": "^0.14.13",
+    "lit": "^2.1.1",
+    "@lit-labs/task": "^1.1.1",
+    "msgpackr": "^1.5.2",
+    "idb": "^7.0.0",
+    "qrcode": "^1.5.0"
+  },
+  "devDependencies": {
+    "@open-wc/eslint-config": "^4.3.0",
+    "@web/dev-server": "^0.1.28",
+    "@web/dev-server-esbuild": "^0.2.16",
+    "eslint": "^7.32.0",
+    "eslint-config-prettier": "^8.3.0",
+    "prettier": "^2.4.1",
+    "npm-run-all": "^4.1.5"
+  },
+  "eslintConfig": {
+    "extends": [
+      "@open-wc",
+      "prettier"
+    ],
+    "rules": {
+      "no-console": "off",
+      "class-methods-use-this": "off",
+      "no-restricted-globals": "off",
+      "consistent-return": "off",
+      "no-plusplus": [
+        "error",
+        {
+          "allowForLoopAfterthoughts": true
+        }
+      ],
+      "no-return-assign": "off"
+    }
+  },
+  "prettier": {
+    "semi": false,
+    "arrowParens": "avoid"
   }
 }

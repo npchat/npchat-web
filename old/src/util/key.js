@@ -1,4 +1,4 @@
-import { aesKeyParams } from "./privacy"
+import { aesKeyParams } from "./privacy.js"
 
 export const authKeyParams = {
 	name: "ECDSA",
@@ -10,7 +10,9 @@ export const dhKeyParams = {
 	namedCurve: "P-256"
 }
 
-export const dhDeriveKeyParams = publicKey => { return { name: "ECDH", public: publicKey } }
+export const dhDeriveKeyParams = publicKey => {
+	return { name: "ECDH", public: publicKey }
+}
 
 export async function genAuthKeyPair() {
 	return crypto.subtle.generateKey(authKeyParams, true, ["sign", "verify"])

@@ -1,37 +1,32 @@
 import { build } from "esbuild"
 
-export const buildOptions = {
-	platform: "neutral",
-	format: "esm",
-	bundle: true,
-	minify: !isDev(),
-	watch: watch(),
-	entryPoints: ["src/index.js", "src/service-worker.js"],
-	outdir: "www/dist"
-}
-
-build(buildOptions).then(() => console.log(`ESBuild: ${isDev()?"dev":"prod"} build done.`))
-
-function watch() {
-	if (shouldWatch()) {
-		return {
-			onRebuild(e) {
-				if (e) {
-					console.error("ESBuild: watch build failed", e)
-				} else {
-					console.log("ESBuild: watch build succeeded")
-				}
-			}
-		}
-	}
-	return false
-}
-
-function shouldWatch() {
-	return isDev() && process.argv.indexOf("--watch") >= 0
-}
-
 function isDev() {
 	return process.argv.indexOf("--dev") >= 0
 }
+
+const builds = []
+
+// main
+builds.push(build({
+	platform: "neutral",
+	bundle: true,
+	minify: !isDev(),
+	watch: isDev(),
+	entryPoints: ["src/main.js"],
+	outdir: "www/dist"
+}))
+
+// qrcode lib
+builds.push(build({
+	platform: "neutral",
+	bundle: false,
+	minify: true,
+	minifyIdentifiers: false,
+	entryPoints: ["node_modules/qrcode/build/qrcode.js"],
+	outfile: "www/dist/qrlib.js"
+}))
+
+
+Promise.all(builds)
+	.then(() => console.log(`esbuild ${isDev() ? "dev" : "prod"} done`))
 
