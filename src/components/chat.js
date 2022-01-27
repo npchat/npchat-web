@@ -68,7 +68,7 @@ export class Chat extends LitElement {
         }
 
         .messageContainer.in .message {
-          background-color: var(--color-offwhite);
+          background-color: var(--color-darkwhite);
         }
 
         .compose {
@@ -146,7 +146,7 @@ export class Chat extends LitElement {
       <div class="container">
         ${this.headerTemplate()}
         <div class="list">
-          <button ?hidden=${this.allLoaded} @click=${() => this.loadMoreMessages()} class="normal">Load more</div>
+          <button ?hidden=${this.allLoaded} @click=${() => this.loadMoreMessages()} class="normal">Load more</button>
           ${this.storedMsgs?.map(m => this.messageTemplate(m))}
           ${this.reactiveMsgs?.map(m => this.messageTemplate(m))}
         </div>
