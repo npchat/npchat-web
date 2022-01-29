@@ -13,3 +13,4 @@
 /.tmp/
 
 /www/dist/
+*.pem
