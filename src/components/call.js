@@ -54,21 +54,27 @@ export class Call extends LitElement {
     return this.renderRoot.getElementById("local-video")
   }
 
+  get remoteVideoElement() {
+    return this.renderRoot.getElementById("remote-video")
+  }
+
   constructor() {
     super()
 
     window.addEventListener("packedMessageReceived", async event => {
       try {
         const msg = JSON.parse(event.detail.unpacked)
-        console.log("packed data", msg)
 
-        if (msg.offer) {
-          if (!this.peerConnection) {
-            this.peerConnection = new RTCPeerConnection(iceConfig)
-            this.setupCall()
-            this.contact = event.detail.from
-            await this.initKeys()
-          }
+        if (msg.offer && !this.peerConnection) {
+          this.localStream = await getMediaStream()
+          this.setVideoStream(this.localVideoElement, this.localStream)
+          
+          console.log("creating RTCPeerConnection")
+          this.inCall = true
+          this.peerConnection = new RTCPeerConnection(iceConfig)
+          this.setupCall()
+          this.contact = event.detail.contact
+          await this.initKeys()
           await this.peerConnection.setRemoteDescription(new RTCSessionDescription(msg.offer))
           const answer = await this.peerConnection.createAnswer()
           await this.peerConnection.setLocalDescription(answer)
@@ -102,6 +108,7 @@ export class Call extends LitElement {
       <div class="call">
         <h1>${this.contact?.displayName}</h1>
         <video id="local-video" class="local" ?hidden=${!this.videoEnabled} playsinline autoplay></video>
+        <video id="remote-video" class="remote" ?hidden=${!this.videoEnabled} playsinline autoplay></video>
         <button class="icon endCall" @click=${this.endCall}>
           <img alt="end call" src="assets/icons/end_call.svg" />
         </button>
@@ -137,39 +144,60 @@ export class Call extends LitElement {
   }
 
   setupCall() {
+    this.localStream.getTracks().forEach(track => {
+      this.peerConnection.addTrack(track, this.localStream)
+    })
+
+    // add ICE event listeners
     this.peerConnection.addEventListener("icegatheringstatechange", event => {
-      console.log("ice gathering", event)
+      console.log("ICE gathering", event)
     })
     this.peerConnection.addEventListener("icecandidate", event => {
-      console.log("got ice candidate", event)
+      console.log("got ICE candidate", event)
       if (event.candidate) {
         this.sendData({iceCandidate: event.candidate})
       }
     })
-    this.peerConnection.addEventListener('connectionstatechange', event => {
+    this.peerConnection.addEventListener('connectionstatechange', async event => {
       console.log(event)
       if (this.peerConnection.connectionState === 'connected') {
         console.log("PEERS CONNECTED!")
       }
     })
+    this.peerConnection.addEventListener("iceconnectionstatechange", event => {
+      console.log("ICE connection state change", event)
+    })
+    this.peerConnection.addEventListener("track", event => {
+      console.log("got remote stream")
+      if (this.remoteStream !== event.streams[0]) {
+        this.remoteStream = event.streams[0]
+        this.setVideoStream(this.remoteVideoElement, this.remoteStream)
+      }
+    })
+  }
+
+  setVideoStream(videoElement, stream) {
+    //if (this.videoEnabled) {
+      videoElement.srcObject = stream
+      videoElement.play()
+    //}
   }
 
   async startCall(e) {
     this.inCall = true;
     Object.assign(this, e.detail)
     await this.initKeys()
-    
-    if (this.videoEnabled) {
-      this.localStream = await getMediaStream(720, 720)
-      this.localVideoElement.srcObject = this.localStream
-      this.localVideoElement.play()
-    }
+    this.localStream = await getMediaStream()
+    this.setVideoStream(this.localVideoElement, this.localStream)
 
     this.peerConnection = new RTCPeerConnection(iceConfig);
 
     this.setupCall()
 
-    const offer = await this.peerConnection.createOffer()
+    const offer = await this.peerConnection.createOffer({
+      offerToReceiveAudio: true,
+      offerToReceiveVideo: this.videoEnabled
+    })
     await this.peerConnection.setLocalDescription(offer)
     await this.sendData({offer})
   }
@@ -178,8 +206,8 @@ export class Call extends LitElement {
     this.inCall = false
     this.peerConnection?.close()
     this.peerConnection = null
-    this.localStream.getTracks()
-    .forEach(t => t.stop())
+    this.localStream?.getTracks().forEach(t => t.stop())
+    this.remoteStream?.getTracks().forEach(t => t.stop())
     this.dispatchEvent(new CustomEvent("callEnded", {
       composed: true,
       bubbles: true

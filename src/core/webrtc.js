@@ -16,15 +16,15 @@ async function getConnectedDevices(type) {
   return devices.filter(device => device.kind === type)
 }
 
-async function openCamera(cameraId, minWidth, minHeight) {
+async function openCamera(deviceId, minWidth, minHeight) {
   const constraints = {
-      //'audio': {'echoCancellation': true},
-      'video': {
-          'deviceId': cameraId,
-          'width': {'min': minWidth},
-          'height': {'min': minHeight}
-          }
-      }
+    audio: { echoCancellation: true },
+    video: {
+      deviceId,
+      width: { min: minWidth },
+      height: { min: minHeight }
+    }
+  }
 
   return navigator.mediaDevices.getUserMedia(constraints);
 }
