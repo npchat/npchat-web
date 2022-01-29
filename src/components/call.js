@@ -25,7 +25,8 @@ export class Call extends LitElement {
         .call {
           width: 100vw;
           height: 100vh;
-          position: absolute;
+          height: -webkit-fill-available;
+          position: fixed;
           top: 0;
           left: 0;
           background-color: var(--color-darkgrey);
@@ -41,10 +42,15 @@ export class Call extends LitElement {
 
         video {
           max-width: 100%;
+          flex-grow: 1;
         }
 
         video.local {
-          max-height: 30vh;
+          max-height: 20vh;
+        }
+
+        video.remote {
+          max-height: 60vh;
         }
       `,
     ]
@@ -60,12 +66,11 @@ export class Call extends LitElement {
 
   constructor() {
     super()
-
     window.addEventListener("packedMessageReceived", async event => {
       try {
         const msg = JSON.parse(event.detail.unpacked)
 
-        if (msg.offer && !this.peerConnection) {
+        if (msg.offer && !this.inCall) {
           this.localStream = await getMediaStream()
           this.setVideoStream(this.localVideoElement, this.localStream)
           
@@ -73,12 +78,18 @@ export class Call extends LitElement {
           this.inCall = true
           this.peerConnection = new RTCPeerConnection(iceConfig)
           this.setupCall()
+
           this.contact = event.detail.contact
           await this.initKeys()
           await this.peerConnection.setRemoteDescription(new RTCSessionDescription(msg.offer))
           const answer = await this.peerConnection.createAnswer()
           await this.peerConnection.setLocalDescription(answer)
-          await this.sendData({answer})
+          await this.sendData({ answer })
+
+          // send stored ICE candidates
+          await Promise.allSettled((this.iceCandidates || [])
+            .map(c => this.sendData({ iceCandidate: c })))
+          this.iceCandidates = []
           return
         }
 
@@ -92,8 +103,14 @@ export class Call extends LitElement {
           try {
             await this.peerConnection.addIceCandidate(msg.iceCandidate)
           } catch (e) {
-            console.error("failed to add ice candidate from peer", e)
+            this.iceCandidates = this.iceCandidates || []
+            this.iceCandidates.push(msg.iceCandidate)
           }
+          return
+        }
+
+        if (msg.call === "end") {
+          await this.endCall(false)
         }
 
       } catch (error) {
@@ -109,7 +126,7 @@ export class Call extends LitElement {
         <h1>${this.contact?.displayName}</h1>
         <video id="local-video" class="local" ?hidden=${!this.videoEnabled} playsinline autoplay></video>
         <video id="remote-video" class="remote" ?hidden=${!this.videoEnabled} playsinline autoplay></video>
-        <button class="icon endCall" @click=${this.endCall}>
+        <button class="icon endCall" @click=${() => this.endCall(true)}>
           <img alt="end call" src="assets/icons/end_call.svg" />
         </button>
       </div>
@@ -144,31 +161,31 @@ export class Call extends LitElement {
   }
 
   setupCall() {
+    // add local stream to peer connection
     this.localStream.getTracks().forEach(track => {
       this.peerConnection.addTrack(track, this.localStream)
     })
 
-    // add ICE event listeners
-    this.peerConnection.addEventListener("icegatheringstatechange", event => {
-      console.log("ICE gathering", event)
-    })
+    // listen for ICE candidates & send them to peer
     this.peerConnection.addEventListener("icecandidate", event => {
-      console.log("got ICE candidate", event)
       if (event.candidate) {
         this.sendData({iceCandidate: event.candidate})
       }
     })
-    this.peerConnection.addEventListener('connectionstatechange', async event => {
-      console.log(event)
-      if (this.peerConnection.connectionState === 'connected') {
-        console.log("PEERS CONNECTED!")
+
+    // listen for connection state changes
+    this.peerConnection.addEventListener("connectionstatechange", () => {
+      const pcs = this.peerConnection.connectionState
+      if (pcs === "connected") {
+        console.log("PEERS CONNECTED")
+        this.update()
+      } else if (pcs === "disconnected" || pcs === "failed") {
+        this.endCall(false)
       }
     })
-    this.peerConnection.addEventListener("iceconnectionstatechange", event => {
-      console.log("ICE connection state change", event)
-    })
+
+    // listen for remote stream
     this.peerConnection.addEventListener("track", event => {
-      console.log("got remote stream")
       if (this.remoteStream !== event.streams[0]) {
         this.remoteStream = event.streams[0]
         this.setVideoStream(this.remoteVideoElement, this.remoteStream)
@@ -191,7 +208,6 @@ export class Call extends LitElement {
     this.setVideoStream(this.localVideoElement, this.localStream)
 
     this.peerConnection = new RTCPeerConnection(iceConfig);
-
     this.setupCall()
 
     const offer = await this.peerConnection.createOffer({
@@ -199,11 +215,16 @@ export class Call extends LitElement {
       offerToReceiveVideo: this.videoEnabled
     })
     await this.peerConnection.setLocalDescription(offer)
-    await this.sendData({offer})
+    await this.sendData({ offer })
   }
 
-  endCall() {
+  async endCall(notifyPeer) {
     this.inCall = false
+
+    if (notifyPeer) {
+      await this.sendData({ call: "end" })
+    }
+
     this.peerConnection?.close()
     this.peerConnection = null
     this.localStream?.getTracks().forEach(t => t.stop())

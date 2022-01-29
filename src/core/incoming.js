@@ -37,9 +37,7 @@ export async function handleIncomingMessage(msg, db, myKeys) {
     window.dispatchEvent(new CustomEvent("packedMessageReceived", {
       detail: { unpacked, contact }
     }))
-  } catch (e) {
-    console.log("failed to unpack", e)
-    
+  } catch {
     const msgPlainText = new TextDecoder().decode(decrypted)
     // store
     const toStore = {

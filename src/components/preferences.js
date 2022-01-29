@@ -77,6 +77,7 @@ export class Preferences extends LitElement {
           <option value="https://axl.npchat.org"></option>
           <option value="https://frosty-meadow-296.fly.dev"></option>
           <option value="https://wispy-feather-9047.fly.dev"></option>
+          <option value="https://dev.npchat.org:8000"></option>
         </datalist>
         <p>
           Optionally point to your own self-hosted instance. Check the

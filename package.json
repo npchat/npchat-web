@@ -10,6 +10,9 @@
     "start": "run-p start:**",
     "start:server": "web-dev-server",
     "start:esbuild": "node ./esbuild.js --dev",
+    "https": "run-p https:**",
+    "https:server": "go run ./main.go",
+    "https:esbuild": "node ./esbuild.js --dev",
     "lint": "eslint \"src/**/*.js\" --ignore-path .gitignore && prettier \"src/**/*.js\" --check --ignore-path .gitignore",
     "format": "eslint \"src/**/*.js\" --fix --ignore-path .gitignore && prettier \"src/**/*.js\" --write --ignore-path .gitignore"
   },

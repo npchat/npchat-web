@@ -48,6 +48,8 @@ export class Chat extends LitElement {
           display: flex;
           flex-direction: column;
           align-items: center;
+          flex-grow: 1;
+          min-height: 100px;
         }
 
         .message {
@@ -117,6 +119,13 @@ export class Chat extends LitElement {
       this.reactiveMsgs.push(event.detail)
       this.requestUpdate()
     })
+  }
+
+  updated() {
+    this.renderRoot.querySelector(".messageContainer:last-of-type")
+      ?.scrollIntoView({
+        block: "center"
+      })
   }
 
   messageTemplate(msg) {
