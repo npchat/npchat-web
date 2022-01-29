@@ -101,7 +101,7 @@ export class Preferences extends LitElement {
     return html`
     <div ?hidden=${!this.showExport}>
       <button class="icon" @click=${() => this.showExport = false}>
-        <img alt="back" src="assets/arrow_back.svg" />
+        <img alt="back" src="assets/icons/arrow_back.svg" />
       </button>
       <div class="exportData">
         <p class="monospace">

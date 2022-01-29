@@ -20,6 +20,7 @@ export const avatarFallbackURL = "assets/avatar.svg"
 export class App extends LitElement {
   static get properties() {
     return {
+      showHeader: { type: Boolean },
       showWelcome: { type: Boolean },
       showPreferences: { type: Boolean },
       showShareable: { type: Boolean },
@@ -90,22 +91,29 @@ export class App extends LitElement {
     `
   }
 
-  get toast() {
+  get toastComponent() {
     return this.renderRoot?.querySelector("npchat-toast") ?? null
+  }
+
+  get callComponent() {
+    return this.renderRoot?.querySelector("npchat-call") ?? null
   }
 
   constructor() {
     super()
+    this.showHeader = true
     this.init()
 
     window.addEventListener("focus", () => this.init())
+    window.addEventListener("callStart", e => this.handleCallStart(e))
   }
 
   async init() {
     if (this.isWebSocketConnected && this.socket?.readyState === WebSocket.OPEN) return
+
     const wasImported = await importUserDataFromURL()
     if (wasImported) {
-      this.toast.show("Your keys were imported")
+      this.toastComponent.show("Your keys were imported")
       this.hideWelcome()
     }
 
@@ -123,38 +131,49 @@ export class App extends LitElement {
     this.shareableQR = await generateQR(shaereableURL, {
       errorCorrectionLevel: "L"
     })
+
+    // TEST
+    //this.callComponent.startCall({detail: JSON.parse(localStorage.testCall)})
+
     return this.connectWebSocket()
   }
 
-  render() {
+  headerTemplate() {
+    if (!this.showHeader) return
     const qrImgUrl = this.shareableQR && `url(${this.shareableQR})`
+    return html`
+    <header>
+      <img alt="npchat logo" src=${logoURL} class="logo" />
+      <npchat-status
+        ?isWebSocketConnected=${this.isWebSocketConnected}
+      ></npchat-status>
+      <button
+        href="#"
+        @click=${this.handleShowShareable}
+        class="buttonRound"
+      >
+        <div
+          class="avatar"
+          style=${styleMap({ backgroundImage: qrImgUrl })}
+        ></div>
+      </button>
+      <button @click=${this.handleShowPreferences} class="buttonRound">
+        <img
+          alt="avatar"
+          src=${this.avatarURL || avatarFallbackURL}
+          class="avatar"
+        />
+      </button>
+    </header>
+    `
+  }
+
+  render() {
     const shouldBlur =
       this.showWelcome || this.showPreferences || this.showShareable
     return html`
       <main class="${classMap({ blur: shouldBlur })}">
-        <header>
-          <img alt="npchat logo" src=${logoURL} class="logo" />
-          <npchat-status
-            ?isWebSocketConnected=${this.isWebSocketConnected}
-          ></npchat-status>
-          <button
-            href="#"
-            @click=${this.handleShowShareable}
-            class="buttonRound"
-          >
-            <div
-              class="avatar"
-              style=${styleMap({ backgroundImage: qrImgUrl })}
-            ></div>
-          </button>
-          <button @click=${this.handleShowPreferences} class="buttonRound">
-            <img
-              alt="avatar"
-              src=${this.avatarURL || avatarFallbackURL}
-              class="avatar"
-            />
-          </button>
-        </header>
+        ${this.headerTemplate()}
         <npchat-contacts .keys=${this.keys}></npchat-contacts>
       </main>
 
@@ -183,6 +202,8 @@ export class App extends LitElement {
         ?showQR=${true}
         ?hidden=${!this.showShareable}
       ></npchat-shareable>
+
+      <npchat-call .myKeys=${this.keys}></npchat-call>
     `
   }
 
@@ -252,6 +273,10 @@ export class App extends LitElement {
       this.selectedContact.keys.pubKeyHash,
       JSON.stringify(this.selectedContactMessages)
     )
+  }
+
+  handleCallStart(e) {
+    this.callComponent.startCall(e)
   }
 
   async connectWebSocket() {

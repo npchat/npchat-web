@@ -6,6 +6,7 @@ import { Status } from "./components/status.js"
 import { Shareable } from "./components/shareable.js"
 import { Contacts } from "./components/contacts.js"
 import { Chat } from "./components/chat.js"
+import { Call } from "./components/call.js"
 import { Toast } from "./components/toast.js"
 
 customElements.define("npchat-app", App)
@@ -16,4 +17,5 @@ customElements.define("npchat-status", Status)
 customElements.define("npchat-shareable", Shareable)
 customElements.define("npchat-contacts", Contacts)
 customElements.define("npchat-chat", Chat)
+customElements.define("npchat-call", Call)
 customElements.define("npchat-toast", Toast)

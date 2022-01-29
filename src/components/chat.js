@@ -96,6 +96,11 @@ export class Chat extends LitElement {
           margin-left: 10px;
           font-size: 1.4rem;
           user-select: none;
+          flex-grow: 1;
+        }
+
+        .call:not(:last-of-type) {
+          margin-right: 10px;
         }
       `,
     ]
@@ -108,7 +113,7 @@ export class Chat extends LitElement {
     this.storedMsgs = []
 
     window.addEventListener("messageReceived", event => {
-      if (event.detail.with !== this.contact.keys.pubKeyHash) return
+      if (event.detail.with !== this.contact?.keys.pubKeyHash) return
       this.reactiveMsgs.push(event.detail)
       this.requestUpdate()
     })
@@ -129,15 +134,38 @@ export class Chat extends LitElement {
     return html`
     <div class="header">
       <button @click=${this.clearContact} class="icon">
-        <img alt="back" src="assets/arrow_back.svg" />
+        <img alt="back" src="assets/icons/arrow_back.svg" />
       </button>
       <img
           alt="${this.contact.displayName}"
           src=${this.contact.avatarURL || avatarFallbackURL}
           class="avatar"
         />
-        <span class="name">${this.contact.displayName}</span>
+      <span class="name">${this.contact.displayName}</span>
+      ${this.callButtonsTemplate()}
     </div>
+    `
+  }
+
+  callButtonsTemplate() {
+    return html`
+    <button class="icon call" @click=${this.startAudioCall}>
+      <img alt="audio call" src="assets/icons/phone.svg" />
+    </button>
+    <button class="icon call" @click=${this.startVideoCall}>
+      <img alt="video call" src="assets/icons/video_call.svg" />
+    </button>
+    `
+  }
+
+  composeTemplate() {
+    return this.inCall ? undefined : html`
+    <form
+      class="compose"
+      @submit=${this.handleSubmit}
+    >
+      <input type="text" placeholder="write a message" name="messageText" />
+    </form>
     `
   }
 
@@ -150,13 +178,7 @@ export class Chat extends LitElement {
           ${this.storedMsgs?.map(m => this.messageTemplate(m))}
           ${this.reactiveMsgs?.map(m => this.messageTemplate(m))}
         </div>
-        <form
-          class="compose"
-          ?hidden=${!this.contact}
-          @submit=${this.handleSubmit}
-        >
-          <input type="text" placeholder="write a message" name="messageText" />
-        </form>
+        ${this.composeTemplate()}
       </div>
     `
   }
@@ -197,7 +219,7 @@ export class Chat extends LitElement {
     const msg = await buildMessage(
       this.myKeys.auth.keyPair.privateKey,
       this.myKeys.dh.keyPair.privateKey,
-      messageText,
+      new TextEncoder().encode(messageText),
       this.myPubKeyHashBytes,
       this.theirKeys.dh
     )
@@ -255,5 +277,29 @@ export class Chat extends LitElement {
      msgs.push(await this.db.get("messages", k))
     }
     return msgs
+  }
+
+  startAudioCall() {
+    this.dispatchEvent(new CustomEvent("callStart", {
+      detail: {
+        audioEnabled: true,
+        videoEnabled: false,
+        contact: this.contact
+      },
+      composed: true,
+      bubbles: true
+    }))
+  }
+
+  startVideoCall() {
+    this.dispatchEvent(new CustomEvent("callStart", {
+      detail: {
+        audioEnabled: true,
+        videoEnabled: true,
+        contact: this.contact
+      },
+      composed: true,
+      bubbles: true
+    }))
   }
 }

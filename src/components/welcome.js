@@ -90,7 +90,7 @@ export class Welcome extends LitElement {
     return html`
     <form ?hidden=${!this.showImportForm} @submit=${this.handleImportSubmit}>
       <button type="button" @click=${() => this.showImportForm = false} class="icon">
-        <img alt="back" src="assets/arrow_back.svg" />
+        <img alt="back" src="assets/icons/arrow_back.svg" />
       </button>
       <h2>Import</h2>
       <p>Import your keys from another browser or device. This will allow you to connect to the same inbox.</p>
