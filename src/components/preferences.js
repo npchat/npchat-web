@@ -30,6 +30,10 @@ export class Preferences extends LitElement {
           display: flex;
           align-items: center;
         }
+
+        img {
+          max-width: 100%;
+        }
       `
     ]
   }

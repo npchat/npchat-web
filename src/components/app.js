@@ -24,7 +24,7 @@ export class App extends LitElement {
       showWelcome: { type: Boolean },
       showPreferences: { type: Boolean },
       showShareable: { type: Boolean },
-      isWebSocketConnected: { type: Boolean },
+      isSocketConnected: { type: Boolean },
       displayName: {},
       avatarURL: {},
       originURL: {},
@@ -103,12 +103,12 @@ export class App extends LitElement {
     this.showHeader = true
     this.init()
 
-    window.addEventListener("focus", () => this.init())
+    //window.addEventListener("focus", () => this.init())
     window.addEventListener("callStart", e => this.handleCallStart(e))
   }
 
   async init() {
-    if (this.isWebSocketConnected && this.socket?.readyState === WebSocket.OPEN) return
+    if (this.isSocketConnected && this.socket?.readyState === WebSocket.OPEN) return
 
     const wasImported = await importUserDataFromURL()
     if (wasImported) {
@@ -131,10 +131,7 @@ export class App extends LitElement {
       errorCorrectionLevel: "L"
     })
 
-    // TEST
-    //this.callComponent.startCall({detail: JSON.parse(localStorage.testCall)})
-
-    return this.connectWebSocket()
+    return this.connectSocket()
   }
 
   headerTemplate() {
@@ -144,7 +141,7 @@ export class App extends LitElement {
     <header>
       <img alt="npchat logo" src=${logoURL} class="logo" />
       <npchat-status
-        ?isWebSocketConnected=${this.isWebSocketConnected}
+        ?isSocketConnected=${this.isSocketConnected}
       ></npchat-status>
       <button
         href="#"
@@ -262,7 +259,7 @@ export class App extends LitElement {
   }
 
   push(object) {
-    if (!this.isWebSocketConnected) return
+    if (!this.isSocketConnected) return
     this.socket.send(pack(object))
   }
 
@@ -278,28 +275,38 @@ export class App extends LitElement {
     this.callComponent.startCall(e)
   }
 
-  async connectWebSocket() {
+  reconnectSocket() {
+    this.reconnectInterval = setInterval(async () => {
+      if (this.socket?.readyState === WebSocket.OPEN) {
+        this.isSocketConnected = true
+        clearInterval(this.reconnectInterval)
+        return
+      }
+      try {
+        await this.connectSocket()
+      } catch {
+      }
+    }, 2000)
+  }
+
+  async connectSocket() {
     try {
       const url = new URL(this.keys.pubKeyHash, this.originURL)
-      const tStart = performance.now()
-      const socket = await getWebSocket(url.toString())
-      socket.addEventListener(
-        "close",
-        () => (this.isWebSocketConnected = false)
-      )
-      socket.addEventListener("message", e => handleIncomingMessage(e, this.db, this.keys))
+      this.socket = await getWebSocket(url.toString())
+      this.socket.onclose = () => {
+        this.isSocketConnected = false
+        this.reconnectSocket()
+      }
+      this.socket.onmessage = event => handleIncomingMessage(event, this.db, this.keys)
       const authResp = await authenticateSocket(
-        socket,
+        this.socket,
         this.keys.auth.keyPair.privateKey,
         this.keys.auth.publicKeyRaw
       )
-      const tEnd = performance.now()
-      console.log("connected in", (tEnd - tStart).toPrecision(2), "ms")
       if (authResp.error) {
-        this.isWebSocketConnected = false
-        return Promise.reject(authResp.error)
+        throw new Error(authResp.error)
       }
-      this.isWebSocketConnected = true
+      this.isSocketConnected = true
       // handle data
       if (authResp.data) {
         const unpacked = unpack(authResp.data)
@@ -313,7 +320,7 @@ export class App extends LitElement {
         })
       }
       const sub = await subscribeToPushNotifications(authResp.vapidKey)
-      socket.send(
+      this.socket.send(
         pack({
           // double-pack to prevent unmarshalling by server
           data: pack({
@@ -325,10 +332,9 @@ export class App extends LitElement {
           sub: sub || "",
         })
       )
-      this.socket = socket
-      return Promise.resolve(socket)
+      return Promise.resolve(true)
     } catch (e) {
-      this.isWebSocketConnected = false
+      this.isSocketConnected = false
       return Promise.reject(e)
     }
   }

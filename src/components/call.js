@@ -227,6 +227,7 @@ export class Call extends LitElement {
 
     this.peerConnection?.close()
     this.peerConnection = null
+    this.iceCandidates = []
     this.localStream?.getTracks().forEach(t => t.stop())
     this.remoteStream?.getTracks().forEach(t => t.stop())
     this.dispatchEvent(new CustomEvent("callEnded", {
