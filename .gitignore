@@ -6,11 +6,12 @@
 .DS_Store
 
 ## npm
-/node_modules/
-/npm-debug.log
+node_modules
+npm-debug.log
 
 ## temp folders
 /.tmp/
 
-/www/dist/
+dist
 *.pem
+wrangler.toml

@@ -5,6 +5,10 @@ import { generateKeys } from "../core/keys.js"
 import { fromBase64 } from "../util/base64.js"
 import { unpack } from "msgpackr"
 import { importUserData } from "../core/export.js"
+import { resizeImageFile } from "../util/image.js"
+
+const defaultOriginURL = "https://axl.npchat.org"
+const defaultDisplayName = "Anonymous"
 
 export class Welcome extends LitElement {
   static get properties() {
@@ -39,6 +43,10 @@ export class Welcome extends LitElement {
     ]
   }
 
+  get avatarFileInput() {
+    return this.renderRoot.getElementById("avatar-file")
+  }
+
   constructor() {
     super()
     this.slideNumber = 0
@@ -61,12 +69,16 @@ export class Welcome extends LitElement {
         <div class="flex">
           <label>
             <span>Your display name</span>
-            <input type="text" name="displayName" placeholder="Anonymous" />
+            <input type="text" name="displayName" placeholder=${defaultDisplayName} />
           </label>
           <p class="color-light">Optional</p>
           <label>
-            <span>Your avatar URL</span>
-            <input type="text" name="avatarURL" placeholder="" />
+            <span>Your avatar</span>
+            <input type="file" id="avatar-file" name="avatarFile" accept="image/png, image/jpeg">
+          </label>
+          <label>
+            <span>Your origin URL</span>
+            <input type="text" name="originURL" placeholder=${defaultOriginURL} />
           </label>
           <button type="button" class="normal" @click=${() => (this.slideNumber += 1)}>
             Continue
@@ -119,10 +131,20 @@ export class Welcome extends LitElement {
     e.preventDefault()
     const detail = Object.fromEntries(new FormData(e.target))
     if (detail.displayName === "") {
-      detail.displayName = "Anonymous"
+      detail.displayName = defaultDisplayName
     }
     // set default origin
-    detail.originURL = "https://axl.npchat.org"
+    detail.originURL = defaultOriginURL
+
+    if (detail.avatarFile.size > 0) {
+      const resizedBlob = await resizeImageFile(detail.avatarFile, 44, 44)
+      detail.avatarURL = await putMedia(resizedBlob, "image/jpeg")
+    } else {
+      detail.avatarURL = this.preferences.avatarURL
+    }
+    detail.avatarFile = undefined
+    this.avatarFileInput.value = ""
+
     // generate keys
     detail.keys = await generateKeys()
     this.dispatchEvent(new CustomEvent("formSubmit", { detail }))

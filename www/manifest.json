@@ -1,0 +1,26 @@
+{
+	"name": "npchat",
+	"short_name": "npchat",
+	"icons": [
+		{
+			"src": "assets/npchat-logo-180.png",
+			"sizes": "180x180",
+			"type": "image/png"
+		},
+		{
+			"src": "assets/npchat-logo-192.png",
+			"sizes": "192x192",
+			"type": "image/png"
+		},
+		{
+			"src": "assets/npchat-logo-400.png",
+			"sizes": "400x400",
+			"type": "image/png"
+		}
+	],
+	"start_url": "/",
+	"scope": "/",
+	"display": "standalone",
+  "theme_color": "#0077FF",
+	"background_color": "#FAFAFA"
+}

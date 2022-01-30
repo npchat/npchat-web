@@ -209,14 +209,16 @@ export class App extends LitElement {
     this.hidePreferences()
     // push new shareableData to current origin
     Object.assign(this, e.detail)
-    this.push({
-      data: pack({
-        displayName: this.displayName,
-        avatarURL: this.avatarURL,
-        contacts: await this.db.getAll("contacts")
-      }),
-      shareableData: this.buildShareableData(),
-    })
+    if (this.socket?.readyState === WebSocket.OPEN) {
+      this.push({
+        data: pack({
+          displayName: this.displayName,
+          avatarURL: this.avatarURL,
+          contacts: await this.db.getAll("contacts")
+        }),
+        shareableData: this.buildShareableData(),
+      })
+    }
     return this.init()
   }
 
@@ -259,7 +261,6 @@ export class App extends LitElement {
   }
 
   push(object) {
-    if (!this.isSocketConnected) return
     this.socket.send(pack(object))
   }
 
@@ -320,18 +321,15 @@ export class App extends LitElement {
         })
       }
       const sub = await subscribeToPushNotifications(authResp.vapidKey)
-      this.socket.send(
-        pack({
-          // double-pack to prevent unmarshalling by server
-          data: pack({
-            displayName: this.displayName,
-            avatarURL: this.avatarURL,
-            contacts: []
-          }),
-          shareableData: this.buildShareableData(),
-          sub: sub || "",
-        })
-      )
+      this.push({
+        data: pack({
+          displayName: this.displayName,
+          avatarURL: this.avatarURL,
+          contacts: await this.db.getAll("contacts")
+        }),
+        shareableData: this.buildShareableData(),
+        sub: sub || "",
+      })
       return Promise.resolve(true)
     } catch (e) {
       this.isSocketConnected = false

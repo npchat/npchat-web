@@ -1,0 +1,16 @@
+name = "npchat-media-store"
+type = "javascript"
+account_id = "[CF_ACCOUNT_ID]"
+workers_dev = true
+# route = ""
+# zone_id = ""
+kv_namespaces = [
+  { binding = "NPCHAT_MEDIA", id = "[KV_NAMESPACE_ID]", preview_id = "[KV_NAMESPACE_ID]" }
+]
+vars = { AUTH = "[APP_API_KEY]" }
+
+[build]
+command = "npm install && npm run build"
+
+[build.upload]
+format = "service-worker"

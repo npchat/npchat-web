@@ -69,7 +69,7 @@ export class Shareable extends LitElement {
           </div>
           <p>
             Share this with others, and scan/copy theirs. When you both have the
-            other's shareable, you can chat. This process is necessary to
+            other's shareable, you can chat. This is necessary to
             securely trade keys.
           </p>
           <button @click=${this.handleClose} class="normal">Done</button>

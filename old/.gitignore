@@ -1,6 +1,0 @@
-*.DS_STORE
-.vscode/
-wrangler.toml
-node_modules
-www/dist
-worker/dist

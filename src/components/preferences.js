@@ -1,9 +1,11 @@
 import { LitElement, html, css } from "lit"
 import { pack } from "msgpackr"
 import { getUserExportData } from "../core/export.js"
+import { putMedia } from "../core/media.js"
 import { formStyles } from "../styles/form.js"
 import { generalStyles } from "../styles/general.js"
 import { toBase64 } from "../util/base64.js"
+import { resizeImageFile } from "../util/image.js"
 import { generateQR } from "../util/qrcode.js"
 
 export class Preferences extends LitElement {
@@ -37,6 +39,10 @@ export class Preferences extends LitElement {
       `
     ]
   }
+
+  get avatarFileInput() {
+    return this.renderRoot.getElementById("avatar-file")
+  }
   
   constructor() {
     super()
@@ -61,13 +67,9 @@ export class Preferences extends LitElement {
         />
       </label>
       <label>
-        <span>Avatar URL</span>
-        <input
-          type="text"
-          name="avatarURL"
-          placeholder=""
-          .value=${this.preferences.avatarURL}
-        />
+        <span>Avatar</span>
+        <img id="avatar-preview" class="avatar"/>
+        <input type="file" id="avatar-file" name="avatarFile" accept="image/png, image/jpeg">
       </label>
       <label>
         <span>Origin URL</span>
@@ -138,17 +140,26 @@ export class Preferences extends LitElement {
     })
   }
 
-  handleSubmit(e) {
-    e.preventDefault()
-    const detail = Object.fromEntries(new FormData(e.target))
+  async handleSubmit(event) {
+    event.preventDefault()
+    const detail = Object.fromEntries(new FormData(event.target))
     if (detail.displayName === "") {
       detail.displayName = "Anonymous"
     }
+    if (detail.avatarFile.size > 0) {
+      // resize image
+      const resizedBlob = await resizeImageFile(detail.avatarFile, 44, 44)
+      detail.avatarURL = await putMedia(resizedBlob, "image/jpeg")
+    } else {
+      detail.avatarURL = this.preferences.avatarURL
+    }
+    detail.avatarFile = undefined
+    this.avatarFileInput.value = ""
     this.dispatchEvent(new CustomEvent("formSubmit", { detail }))
   }
 
-  async handleExportCopy(e) {
-    const button = e.target
+  async handleExportCopy(event) {
+    const button = event.target
     button.classList.add("success")
     setTimeout(() => {
       button.classList.remove("success")

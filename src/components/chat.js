@@ -55,6 +55,7 @@ export class Chat extends LitElement {
         .message {
           background-color: rgba(0, 119, 255, 0.3);
           padding: 5px 10px;
+          font-size: 1.1rem;
         }
 
         .messageContainer {
