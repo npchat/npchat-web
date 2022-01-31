@@ -12,7 +12,7 @@ export class Preferences extends LitElement {
   static get properties() {
     return {
       preferences: { type: Object },
-      showExport: { type: Boolean }
+      showExport: { type: Boolean },
     }
   }
 
@@ -52,7 +52,7 @@ export class Preferences extends LitElement {
           margin-left: 5px;
           max-width: calc(100vw - 100px);
         }
-      `
+      `,
     ]
   }
 
@@ -63,83 +63,99 @@ export class Preferences extends LitElement {
   get avatarPreview() {
     return this.renderRoot.getElementById("avatar-preview")
   }
-  
+
   constructor() {
     super()
     this.showExport = false
   }
 
   willUpdate() {
-    this.buildExportData()
-      .then(() => this.update())
+    this.buildExportData().then(() => this.update())
   }
 
   mainFormTemplate() {
     return html`
-    <form @submit=${this.handleSubmit}>
-      <label>
-        <span>Display name</span>
-        <input
-          type="text"
-          name="displayName"
-          placeholder="Anonymous"
-          .value=${this.preferences.displayName}
-        />
-      </label>
-      <label>
-        <span>Avatar</span>
-        <div class="row">
-          <img id="avatar-preview" class="avatar" src=${this.preferences.avatarURL}/>
-          <input type="file" id="avatar-file" name="avatarFile" accept="image/png, image/jpeg" @change=${this.handleAvatarChange}>
-        </div>
-      </label>
-      <label>
-        <span>Origin URL</span>
-        <input
-          list="origins"
-          name="originURL"
-          placeholder="https://axl.npchat.org"
-          .value=${this.preferences.originURL}
-        />
-        <datalist id="origins">
-          <option value="https://axl.npchat.org"></option>
-          <option value="https://frosty-meadow-296.fly.dev"></option>
-          <option value="https://wispy-feather-9047.fly.dev"></option>
-          <option value="https://dev.npchat.org:8000"></option>
-        </datalist>
-        <p>
-          Optionally point to your own self-hosted instance. Check the
-          <a
-            href="https://npchat.org/docs"
-            target="_blank"
-            class="link"
-            tabindex="-1"
-            >docs</a
-          >
-          for guidance.
-        </p>
-      </label>
-      <button type="submit" class="normal">Submit</button>
-      <p>Export data for another device</p>
-      <button type="button" class="normal secondary" @click=${() => this.showExport = true}>Export</button>
-    </form>
+      <form @submit=${this.handleSubmit}>
+        <label>
+          <span>Display name</span>
+          <input
+            type="text"
+            name="displayName"
+            placeholder="Anonymous"
+            .value=${this.preferences.displayName}
+          />
+        </label>
+        <label>
+          <span>Avatar</span>
+          <div class="row">
+            <img
+              alt="avatar"
+              id="avatar-preview"
+              class="avatar"
+              src=${this.preferences.avatarURL}
+            />
+            <input
+              type="file"
+              id="avatar-file"
+              name="avatarFile"
+              accept="image/png, image/jpeg"
+              @change=${this.handleAvatarChange}
+            />
+          </div>
+        </label>
+        <label>
+          <span>Origin URL</span>
+          <input
+            list="origins"
+            name="originURL"
+            placeholder="https://axl.npchat.org"
+            .value=${this.preferences.originURL}
+          />
+          <datalist id="origins">
+            <option value="https://axl.npchat.org"></option>
+            <option value="https://frosty-meadow-296.fly.dev"></option>
+            <option value="https://wispy-feather-9047.fly.dev"></option>
+            <option value="https://dev.npchat.org:8000"></option>
+          </datalist>
+          <p>
+            Optionally point to your own self-hosted instance. Check the
+            <a
+              href="https://npchat.org/docs"
+              target="_blank"
+              class="link"
+              tabindex="-1"
+              >docs</a
+            >
+            for guidance.
+          </p>
+        </label>
+        <button type="submit" class="normal">Submit</button>
+        <p>Export data for another device</p>
+        <button
+          type="button"
+          class="normal secondary"
+          @click=${() => (this.showExport = true)}
+        >
+          Export
+        </button>
+      </form>
     `
   }
 
   exportTemplate() {
     return html`
-    <div ?hidden=${!this.showExport}>
-      <button class="icon" @click=${() => this.showExport = false}>
-        <img alt="back" src="assets/icons/arrow_back.svg" />
-      </button>
-      <div class="exportData">
-        <p class="monospace">
-          ${this.exportData}
-        </p>
-        <button @click=${this.handleExportCopy} class="normal copy">Copy</button>
+      <div ?hidden=${!this.showExport}>
+        <button class="icon" @click=${() => (this.showExport = false)}>
+          <img alt="back" src="assets/icons/arrow_back.svg" />
+        </button>
+        <div class="exportData">
+          <p class="monospace">${this.exportData}</p>
+          <button @click=${this.handleExportCopy} class="normal copy">
+            Copy
+          </button>
+        </div>
+        <img alt="export QR" src=${this.exportQR} />
       </div>
-      <img alt="export QR" src=${this.exportQR} />
-    </div>
     `
   }
 
@@ -157,9 +173,12 @@ export class Preferences extends LitElement {
     const data = await getUserExportData()
     const packed = toBase64(pack(data))
     this.exportData = packed
-    this.exportQR = await generateQR(`${window.location.origin}#import:${packed}`, {
-      errorCorrectionLevel: "L"
-    })
+    this.exportQR = await generateQR(
+      `${window.location.origin}#import:${packed}`,
+      {
+        errorCorrectionLevel: "L",
+      }
+    )
   }
 
   async handleSubmit(event) {
@@ -169,7 +188,11 @@ export class Preferences extends LitElement {
       detail.displayName = "Anonymous"
     }
     if (detail.avatarFile.size > 0) {
-      const resizedBlob = await resizeImageFile(detail.avatarFile, avatarSize, avatarSize)
+      const resizedBlob = await resizeImageFile(
+        detail.avatarFile,
+        avatarSize,
+        avatarSize
+      )
       detail.avatarURL = await putMedia(resizedBlob, "image/jpeg")
     } else {
       detail.avatarURL = this.preferences.avatarURL

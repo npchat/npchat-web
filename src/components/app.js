@@ -28,7 +28,7 @@ export class App extends LitElement {
       displayName: {},
       avatarURL: {},
       originURL: {},
-      shareableQR: {}
+      shareableQR: {},
     }
   }
 
@@ -103,12 +103,13 @@ export class App extends LitElement {
     this.showHeader = true
     this.init()
 
-    //window.addEventListener("focus", () => this.init())
+    // window.addEventListener("focus", () => this.init())
     window.addEventListener("callStart", e => this.handleCallStart(e))
   }
 
   async init() {
-    if (this.isSocketConnected && this.socket?.readyState === WebSocket.OPEN) return
+    if (this.isSocketConnected && this.socket?.readyState === WebSocket.OPEN)
+      return
 
     const wasImported = await importUserDataFromURL()
     if (wasImported) {
@@ -121,14 +122,14 @@ export class App extends LitElement {
     const user = await loadUser()
     Object.assign(this, user)
     if (!this.originURL || !this.keys) {
-      return 
+      return
     }
     const shaereableURL = buildShareableURL(
       this.originURL,
       this.keys.pubKeyHash
-      )
+    )
     this.shareableQR = await generateQR(shaereableURL, {
-      errorCorrectionLevel: "L"
+      errorCorrectionLevel: "L",
     })
 
     return this.connectSocket()
@@ -138,29 +139,25 @@ export class App extends LitElement {
     if (!this.showHeader) return
     const qrImgUrl = this.shareableQR && `url(${this.shareableQR})`
     return html`
-    <header>
-      <img alt="npchat logo" src=${logoURL} class="logo" />
-      <npchat-status
-        ?isSocketConnected=${this.isSocketConnected}
-      ></npchat-status>
-      <button
-        href="#"
-        @click=${this.handleShowShareable}
-        class="buttonRound"
-      >
-        <div
-          class="avatar"
-          style=${styleMap({ backgroundImage: qrImgUrl })}
-        ></div>
-      </button>
-      <button @click=${this.handleShowPreferences} class="buttonRound">
-        <img
-          alt="avatar"
-          src=${this.avatarURL || avatarFallbackURL}
-          class="avatar"
-        />
-      </button>
-    </header>
+      <header>
+        <img alt="npchat logo" src=${logoURL} class="logo" />
+        <npchat-status
+          ?isSocketConnected=${this.isSocketConnected}
+        ></npchat-status>
+        <button href="#" @click=${this.handleShowShareable} class="buttonRound">
+          <div
+            class="avatar"
+            style=${styleMap({ backgroundImage: qrImgUrl })}
+          ></div>
+        </button>
+        <button @click=${this.handleShowPreferences} class="buttonRound">
+          <img
+            alt="avatar"
+            src=${this.avatarURL || avatarFallbackURL}
+            class="avatar"
+          />
+        </button>
+      </header>
     `
   }
 
@@ -209,17 +206,15 @@ export class App extends LitElement {
     this.hidePreferences()
     Object.assign(this, e.detail)
     if (this.socket?.readyState === WebSocket.OPEN) {
-      const contacts = (await this.db.getAll("contacts")).map(c => {
-        return {
-          originURL: c.originURL,
-          pubKeyHash: c.keys.pubKeyHash
-        }
-      })
+      const contacts = (await this.db.getAll("contacts")).map(c => ({
+        originURL: c.originURL,
+        pubKeyHash: c.keys.pubKeyHash,
+      }))
       this.push({
         data: pack({
           displayName: this.displayName,
           avatarURL: this.avatarURL,
-          contacts
+          contacts,
         }),
         shareableData: this.buildShareableData(),
       })
@@ -288,10 +283,7 @@ export class App extends LitElement {
         clearInterval(this.reconnectInterval)
         return
       }
-      try {
-        await this.connectSocket()
-      } catch {
-      }
+      await this.connectSocket()
     }, 2000)
   }
 
@@ -303,7 +295,8 @@ export class App extends LitElement {
         this.isSocketConnected = false
         this.reconnectSocket()
       }
-      this.socket.onmessage = event => handleIncomingMessage(event, this.db, this.keys)
+      this.socket.onmessage = event =>
+        handleIncomingMessage(event, this.db, this.keys)
       const authResp = await authenticateSocket(
         this.socket,
         this.keys.auth.keyPair.privateKey,
@@ -319,42 +312,46 @@ export class App extends LitElement {
         const { displayName, avatarURL, contacts } = unpacked
         if (displayName) {
           storeUser({ displayName, avatarURL })
-          Object.assign(this, { displayName, avatarURL });
+          Object.assign(this, { displayName, avatarURL })
         }
-        await Promise.all(contacts.map(async c => {
-          if (!await this.db.get("contacts", c.pubKeyHash)) {
-            return this.db.put("contacts", {
-              originURL: c.originURL,
-              keys: {
-                pubKeyHash: c.pubKeyHash
-              }
-            }, c.pubKeyHash)
-          }
-        }))
+        await Promise.all(
+          contacts.map(async c => {
+            if (!(await this.db.get("contacts", c.pubKeyHash))) {
+              return this.db.put(
+                "contacts",
+                {
+                  originURL: c.originURL,
+                  keys: {
+                    pubKeyHash: c.pubKeyHash,
+                  },
+                },
+                c.pubKeyHash
+              )
+            }
+          })
+        )
       }
       // push merged data
       // TODO: also push when contacts are added & deleted
       const sub = await subscribeToPushNotifications(authResp.vapidKey)
-      const contactsToPush = (await this.db.getAll("contacts")).map(c => {
-        return {
-          originURL: c.originURL,
-          pubKeyHash: c.keys.pubKeyHash
-        }
-      })
+      const contactsToPush = (await this.db.getAll("contacts")).map(c => ({
+        originURL: c.originURL,
+        pubKeyHash: c.keys.pubKeyHash,
+      }))
       this.push({
         data: pack({
           displayName: this.displayName,
           avatarURL: this.avatarURL,
-          contacts: contactsToPush
+          contacts: contactsToPush,
         }),
         shareableData: this.buildShareableData(),
         sub: sub || "",
       })
       window.dispatchEvent(new CustomEvent("socketConnected"))
       return Promise.resolve(true)
-    } catch (e) {
+    } catch (err) {
       this.isSocketConnected = false
-      return Promise.reject(e)
+      return Promise.resolve(err)
     }
   }
 }

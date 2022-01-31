@@ -1,9 +1,9 @@
 import { LitElement, html, css } from "lit"
+import { unpack } from "msgpackr"
 import { formStyles } from "../styles/form.js"
 import { generalStyles } from "../styles/general.js"
 import { generateKeys } from "../core/keys.js"
 import { fromBase64 } from "../util/base64.js"
-import { unpack } from "msgpackr"
 import { importUserData } from "../core/export.js"
 import { resizeImageFile } from "../util/image.js"
 import { avatarSize, putMedia } from "../core/media.js"
@@ -16,7 +16,7 @@ export class Welcome extends LitElement {
     return {
       slideNumber: { type: Number },
       showImportForm: { type: Boolean },
-      importErrorMessage: {}
+      importErrorMessage: {},
     }
   }
 
@@ -56,102 +56,133 @@ export class Welcome extends LitElement {
 
   welcomeFormTemplate() {
     return html`
-    <form ?hidden=${this.showImportForm} @submit=${this.handleWelcomeSubmit}>
-      <div ?hidden=${this.slideNumber !== 0}>
-        <h1>Welcome to npchat</h1>
-        <h2>Let's get you set up</h2>
-        <p ?hidden=${this.browserSupportsProtocolHandlers()}>
-          It looks like your browser doesn't support some modern web APIs. For
-          the best experience,
-          ${this.browserUsesChromium()
-            ? "update your browser"
-            : "switch to Brave or Google Chrome"}.
-        </p>
-        <div class="flex">
-          <label>
-            <span>Your display name</span>
-            <input type="text" name="displayName" placeholder=${defaultDisplayName} />
-          </label>
-          <p class="color-light">Optional</p>
-          <label>
-            <span>Your avatar</span>
-            <input type="file" id="avatar-file" name="avatarFile" accept="image/png, image/jpeg">
-          </label>
-          <label>
-            <span>Your origin URL</span>
-            <input
-              list="origins"
-              name="originURL"
-              .placeholder=${defaultOriginURL}
-            />
-            <datalist id="origins">
-              <option value="https://axl.npchat.org"></option>
-              <option value="https://frosty-meadow-296.fly.dev"></option>
-              <option value="https://wispy-feather-9047.fly.dev"></option>
-              <option value="https://dev.npchat.org:8000"></option>
-            </datalist>
-            <p>
-              Optionally point to your own self-hosted instance. Check the
-              <a
-                href="https://npchat.org/docs"
-                target="_blank"
-                class="link"
-                tabindex="-1"
-                >docs</a
-              >
-              for guidance.
-            </p>
-          </label>
-          <button type="button" class="normal" @click=${() => (this.slideNumber += 1)}>
-            Continue
-          </button>
-          <p class="color-light">Alternatively</p>
-          <button type="button" @click=${() => this.showImportForm = true} class="normal">Import</button>
+      <form ?hidden=${this.showImportForm} @submit=${this.handleWelcomeSubmit}>
+        <div ?hidden=${this.slideNumber !== 0}>
+          <h1>Welcome to npchat</h1>
+          <h2>Let's get you set up</h2>
+          <p ?hidden=${this.browserSupportsProtocolHandlers()}>
+            It looks like your browser doesn't support some modern web APIs. For
+            the best experience,
+            ${this.browserUsesChromium()
+              ? "update your browser"
+              : "switch to Brave or Google Chrome"}.
+          </p>
+          <div class="flex">
+            <label>
+              <span>Your display name</span>
+              <input
+                type="text"
+                name="displayName"
+                placeholder=${defaultDisplayName}
+              />
+            </label>
+            <p class="color-light">Optional</p>
+            <label>
+              <span>Your avatar</span>
+              <input
+                type="file"
+                id="avatar-file"
+                name="avatarFile"
+                accept="image/png, image/jpeg"
+              />
+            </label>
+            <label>
+              <span>Your origin URL</span>
+              <input
+                list="origins"
+                name="originURL"
+                .placeholder=${defaultOriginURL}
+              />
+              <datalist id="origins">
+                <option value="https://axl.npchat.org"></option>
+                <option value="https://frosty-meadow-296.fly.dev"></option>
+                <option value="https://wispy-feather-9047.fly.dev"></option>
+                <option value="https://dev.npchat.org:8000"></option>
+              </datalist>
+              <p>
+                Optionally point to your own self-hosted instance. Check the
+                <a
+                  href="https://npchat.org/docs"
+                  target="_blank"
+                  class="link"
+                  tabindex="-1"
+                  >docs</a
+                >
+                for guidance.
+              </p>
+            </label>
+            <button
+              type="button"
+              class="normal"
+              @click=${() => (this.slideNumber += 1)}
+            >
+              Continue
+            </button>
+            <p class="color-light">Alternatively</p>
+            <button
+              type="button"
+              @click=${() => (this.showImportForm = true)}
+              class="normal"
+            >
+              Import
+            </button>
+          </div>
         </div>
-      </div>
-      <div ?hidden=${this.slideNumber !== 1}>
-        <h2>Generated fresh crypto keys</h2>
-        <div class="flex">
-          <img alt="fingerprint" src="assets/fingerprint.svg" />
-          <button type="submit" class="normal">OK</button>
+        <div ?hidden=${this.slideNumber !== 1}>
+          <h2>Generated fresh crypto keys</h2>
+          <div class="flex">
+            <img alt="fingerprint" src="assets/fingerprint.svg" />
+            <button type="submit" class="normal">OK</button>
+          </div>
         </div>
-      </div>
-    </form>
+      </form>
     `
   }
 
   importFormTemplate() {
     return html`
-    <form ?hidden=${!this.showImportForm} @submit=${this.handleImportSubmit}>
-      <button type="button" @click=${() => this.showImportForm = false} class="icon">
-        <img alt="back" src="assets/icons/arrow_back.svg" />
-      </button>
-      <h2>Import</h2>
-      <p>Import your keys from another browser or device. This will allow you to connect to the same inbox.</p>
-      <div class="flex">
-        <label>
-          <span>Import data</span>
-          <input type="text" name="importData" placeholder="Paste import data" />
-        </label>
-        <p ?hidden=${!this.importErrorMessage} class="error">${this.importErrorMessage}</p>
-        <button type="submit" class="normal">Submit</button>
-      </div>
-    </form>
+      <form ?hidden=${!this.showImportForm} @submit=${this.handleImportSubmit}>
+        <button
+          type="button"
+          @click=${() => (this.showImportForm = false)}
+          class="icon"
+        >
+          <img alt="back" src="assets/icons/arrow_back.svg" />
+        </button>
+        <h2>Import</h2>
+        <p>
+          Import your keys from another browser or device. This will allow you
+          to connect to the same inbox.
+        </p>
+        <div class="flex">
+          <label>
+            <span>Import data</span>
+            <input
+              type="text"
+              name="importData"
+              placeholder="Paste import data"
+            />
+          </label>
+          <p ?hidden=${!this.importErrorMessage} class="error">
+            ${this.importErrorMessage}
+          </p>
+          <button type="submit" class="normal">Submit</button>
+        </div>
+      </form>
     `
   }
 
   render() {
     return html`
       <npchat-modal ?canClose=${false}>
-        ${this.welcomeFormTemplate()}
-        ${this.importFormTemplate()}
+        ${this.welcomeFormTemplate()} ${this.importFormTemplate()}
       </npchat-modal>
     `
   }
 
-  async handleWelcomeSubmit(e) {
-    e.preventDefault()
-    const detail = Object.fromEntries(new FormData(e.target))
+  async handleWelcomeSubmit(event) {
+    event.preventDefault()
+    const detail = Object.fromEntries(new FormData(event.target))
     if (detail.displayName === "") {
       detail.displayName = defaultDisplayName
     }
@@ -159,7 +190,11 @@ export class Welcome extends LitElement {
     detail.originURL = detail.originURL || defaultOriginURL
 
     if (detail.avatarFile.size > 0) {
-      const resizedBlob = await resizeImageFile(detail.avatarFile, avatarSize, avatarSize)
+      const resizedBlob = await resizeImageFile(
+        detail.avatarFile,
+        avatarSize,
+        avatarSize
+      )
       detail.avatarURL = await putMedia(resizedBlob, "image/jpeg")
     }
     detail.avatarFile = undefined
@@ -169,9 +204,9 @@ export class Welcome extends LitElement {
     this.dispatchEvent(new CustomEvent("formSubmit", { detail }))
   }
 
-  async handleImportSubmit(e) {
-    e.preventDefault()
-    const {importData} = Object.fromEntries(new FormData(e.target))
+  async handleImportSubmit(event) {
+    event.preventDefault()
+    const { importData } = Object.fromEntries(new FormData(event.target))
 
     if (importData === "") {
       this.importErrorMessage = "Missing import data"
@@ -181,11 +216,13 @@ export class Welcome extends LitElement {
       const bytes = fromBase64(importData)
       const unpacked = unpack(bytes)
       const userData = await importUserData(unpacked)
-      this.dispatchEvent(new CustomEvent("formSubmit", {
-        detail: userData
-      }))
-    } catch (e) {
-      console.log(e)
+      this.dispatchEvent(
+        new CustomEvent("formSubmit", {
+          detail: userData,
+        })
+      )
+    } catch (err) {
+      console.log(err)
       this.importErrorMessage = "Failed to import data"
     }
   }

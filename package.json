@@ -49,7 +49,9 @@
           "allowForLoopAfterthoughts": true
         }
       ],
-      "no-return-assign": "off"
+      "no-return-assign": "off",
+      "no-param-reassign": "off",
+      "import/extensions": "off"
     }
   },
   "prettier": {

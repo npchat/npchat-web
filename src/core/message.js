@@ -17,11 +17,7 @@ export async function buildMessage(
   const iv = await getIV(toBase64(from) + t)
   const ivBytes = new Uint8Array(iv)
   const derivedKey = await deriveDHSecret(dhPublicKey, dhPrivateKey)
-  const encrypted = await encrypt(
-    iv,
-    derivedKey,
-    msgBytes
-  )
+  const encrypted = await encrypt(iv, derivedKey, msgBytes)
   const encryptedBytes = new Uint8Array(encrypted)
   const associatedBytes = pack({ t, f: from })
   const bytesToHash = new Uint8Array([

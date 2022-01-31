@@ -9,9 +9,6 @@ export async function openDBConn() {
       db.createObjectStore("contacts")
       const messages = db.createObjectStore("messages")
       messages.createIndex("with", "with")
-    }
+    },
   })
 }
-
-
-

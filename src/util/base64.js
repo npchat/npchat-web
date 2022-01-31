@@ -1,6 +1,6 @@
 /**
  * Convert a base64 string to a Uint8Array
- * @param {String} base64String 
+ * @param {String} base64String
  * @returns {Uint8Array}
  */
 export function fromBase64(base64String) {
@@ -16,7 +16,7 @@ export function fromBase64(base64String) {
 
 /**
  * Convert a Uint8Array to a String
- * @param {Uint8Array} uint8Array 
+ * @param {Uint8Array} uint8Array
  * @returns {String}
  */
 export function toBase64(uint8Array) {

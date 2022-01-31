@@ -31,12 +31,14 @@ export async function handleIncomingMessage(msg, db, myKeys) {
     myKeys.dh.keyPair.privateKey
   )
   const decrypted = await decrypt(data.iv, dhSecret, data.m)
-  
+
   try {
     const unpacked = unpack(new Uint8Array(decrypted))
-    window.dispatchEvent(new CustomEvent("packedMessageReceived", {
-      detail: { unpacked, contact }
-    }))
+    window.dispatchEvent(
+      new CustomEvent("packedMessageReceived", {
+        detail: { unpacked, contact },
+      })
+    )
   } catch {
     const msgPlainText = new TextDecoder().decode(decrypted)
     // store
@@ -45,16 +47,18 @@ export async function handleIncomingMessage(msg, db, myKeys) {
       h: toBase64(data.h),
       m: msgPlainText,
       with: fromPubKeyHash,
-      in: true
+      in: true,
     }
     await db.put("messages", toStore, data.t)
-  
+
     const eventDetail = {
-      displayName: contact.displayName
+      displayName: contact.displayName,
     }
     Object.assign(eventDetail, toStore)
-    window.dispatchEvent(new CustomEvent("messageReceived", {
-      detail: eventDetail
-    }))
+    window.dispatchEvent(
+      new CustomEvent("messageReceived", {
+        detail: eventDetail,
+      })
+    )
   }
 }

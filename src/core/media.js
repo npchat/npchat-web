@@ -7,8 +7,8 @@ export async function putMedia(data, mimeType) {
     method: "PUT",
     body: data,
     headers: {
-      authorization: apiKey
-    }
+      authorization: apiKey,
+    },
   })
   if (resp.status !== 200) return
   return resp.text()

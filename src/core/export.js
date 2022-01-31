@@ -5,14 +5,14 @@ import { loadUser, storeUser } from "./storage"
 
 export async function getUserExportData() {
   const user = await loadUser()
-  const keys = user.keys
+  const { keys } = user
   if (!keys) return
   const toExport = {
     originURL: user.originURL,
     authPub: getValuesFromJwk(keys.auth.jwk.publicKey),
     authPriv: getValuesFromJwk(keys.auth.jwk.privateKey),
     dhPub: getValuesFromJwk(keys.dh.jwk.publicKey),
-    dhPriv: getValuesFromJwk(keys.dh.jwk.privateKey)
+    dhPriv: getValuesFromJwk(keys.dh.jwk.privateKey),
   }
   return toExport
 }
@@ -34,16 +34,19 @@ export async function importUserData(data) {
       auth: {
         jwk: {
           publicKey: getJwkFromValues(data.authPub, ["verify"]),
-          privateKey: getJwkFromValues(data.authPriv, ["sign"])
-        }
+          privateKey: getJwkFromValues(data.authPriv, ["sign"]),
+        },
       },
       dh: {
         jwk: {
           publicKey: getJwkFromValues(data.dhPub, []),
-          privateKey: getJwkFromValues(data.dhPriv, ["deriveKey", "deriveBits"])
-        }
-      }
-    }
+          privateKey: getJwkFromValues(data.dhPriv, [
+            "deriveKey",
+            "deriveBits",
+          ]),
+        },
+      },
+    },
   }
   // store & load to import keys
   storeUser(user)

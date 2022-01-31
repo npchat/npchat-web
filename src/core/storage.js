@@ -27,7 +27,9 @@ export async function loadUser() {
   user.keys.auth.publicKeyRaw = new Uint8Array(
     await crypto.subtle.exportKey("raw", user.keys.auth.keyPair.publicKey)
   )
-  user.keys.pubKeyHash = toBase64(new Uint8Array(await hash(user.keys.auth.publicKeyRaw)))
+  user.keys.pubKeyHash = toBase64(
+    new Uint8Array(await hash(user.keys.auth.publicKeyRaw))
+  )
   Object.assign(user.keys.dh, {
     keyPair: {
       publicKey: await importDHKey("jwk", user.keys.dh.jwk.publicKey, []),

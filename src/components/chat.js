@@ -9,7 +9,6 @@ import { openDBConn } from "../core/db.js"
 import { avatarFallbackURL } from "./app.js"
 
 export class Chat extends LitElement {
-  
   static get properties() {
     return {
       myKeys: { type: Object },
@@ -18,7 +17,7 @@ export class Chat extends LitElement {
       limit: { type: Number },
       reactiveMsgs: { type: Array },
       storedMsgs: { type: Array },
-      allLoaded: {type: Boolean }
+      allLoaded: { type: Boolean },
     }
   }
 
@@ -119,7 +118,6 @@ export class Chat extends LitElement {
 
         .avatarNameGroup:hover {
           background-color: var(--color-darkwhite);
-          
         }
 
         .call:not(:last-of-type) {
@@ -143,59 +141,66 @@ export class Chat extends LitElement {
   }
 
   updated() {
-    this.renderRoot.querySelector(".messageContainer:last-of-type")
+    this.renderRoot
+      .querySelector(".messageContainer:last-of-type")
       ?.scrollIntoView({
-        block: "center"
+        block: "center",
       })
   }
 
   messageTemplate(msg) {
     return html`
-    <div id="${msg.t}" class="messageContainer ${classMap({in: msg.in})}">
-      <div class="message">
-        <p>${msg.m}</p>
+      <div id="${msg.t}" class="messageContainer ${classMap({ in: msg.in })}">
+        <div class="message">
+          <p>${msg.m}</p>
+        </div>
       </div>
-    </div>
     `
   }
 
   headerTemplate() {
     if (!this.contact) return
     return html`
-    <div class="header">
-      <button @click=${this.clearContact} class="icon">
-        <img alt="back" src="assets/icons/arrow_back.svg" />
-      </button>
-      <div class="avatarNameGroup" @click=${() => this.showDetails = true}>
-        <img
+      <div class="header">
+        <button @click=${this.clearContact} class="icon">
+          <img alt="back" src="assets/icons/arrow_back.svg" />
+        </button>
+        <button
+          class="avatarNameGroup"
+          @click=${() => (this.showDetails = true)}
+        >
+          <img
             alt="${this.contact.displayName}"
             src=${this.contact.avatarURL || avatarFallbackURL}
             class="avatar"
           />
-        <span class="name">${this.contact.displayName}</span>
+          <span class="name">${this.contact.displayName}</span>
+        </button>
+        ${this.callButtonsTemplate()}
       </div>
-      ${this.callButtonsTemplate()}
-    </div>
     `
   }
 
   callButtonsTemplate() {
     return html`
-    <button class="icon call" @click=${this.startAudioCall}>
-      <img alt="audio call" src="assets/icons/phone.svg" />
-    </button>
+      <button class="icon call" @click=${this.startAudioCall}>
+        <img alt="audio call" src="assets/icons/phone.svg" />
+      </button>
     `
   }
 
   composeTemplate() {
-    return this.inCall ? undefined : html`
-    <form
-      class="compose"
-      @submit=${this.handleSubmit}
-    >
-      <input type="text" placeholder="write a message" name="messageText" />
-    </form>
-    `
+    return this.inCall
+      ? undefined
+      : html`
+          <form class="compose" @submit=${this.handleSubmit}>
+            <input
+              type="text"
+              placeholder="write a message"
+              name="messageText"
+            />
+          </form>
+        `
   }
 
   render() {
@@ -203,7 +208,13 @@ export class Chat extends LitElement {
       <div class="container">
         ${this.headerTemplate()}
         <div class="list">
-          <button ?hidden=${this.allLoaded} @click=${() => this.loadMoreMessages()} class="normal">Load more</button>
+          <button
+            ?hidden=${this.allLoaded}
+            @click=${() => this.loadMoreMessages()}
+            class="normal"
+          >
+            Load more
+          </button>
           ${this.storedMsgs?.map(m => this.messageTemplate(m))}
           ${this.reactiveMsgs?.map(m => this.messageTemplate(m))}
         </div>
@@ -228,9 +239,7 @@ export class Chat extends LitElement {
     this.allLoaded = this.limit > this.storedMsgs.length
 
     this.theirKeys = {
-      auth: await importAuthKey("jwk", this.contact.keys.auth, [
-        "verify",
-      ]),
+      auth: await importAuthKey("jwk", this.contact.keys.auth, ["verify"]),
       dh: await importDHKey("jwk", this.contact.keys.dh, []),
     }
     this.myPubKeyHashBytes = fromBase64(this.myKeys.pubKeyHash)
@@ -263,7 +272,7 @@ export class Chat extends LitElement {
       m: messageText,
       with: this.contact.keys.pubKeyHash,
       in: false, // outgoing
-      sent: resp.status === 200
+      sent: resp.status === 200,
     }
     this.db.put("messages", toStore, msg.t)
     this.reactiveMsgs.push(toStore)
@@ -275,7 +284,7 @@ export class Chat extends LitElement {
     this.reactiveMsgs = []
     const msgs = await this.fetchMessagesFromDB()
     if (msgs.length > 0) {
-    this.storedMsgs = [...msgs.reverse(), ...this.storedMsgs]
+      this.storedMsgs = [...msgs.reverse(), ...this.storedMsgs]
     } else {
       this.allLoaded = true
     }
@@ -284,7 +293,10 @@ export class Chat extends LitElement {
   async fetchMessagesFromDB() {
     const tx = this.db.transaction("messages", "readonly")
     const index = tx.store.index("with")
-    const cursor = await index.openKeyCursor(this.contact.keys.pubKeyHash, "prev")
+    const cursor = await index.openKeyCursor(
+      this.contact.keys.pubKeyHash,
+      "prev"
+    )
     if (!cursor) return []
 
     if (this.cursorPos > 0) {
@@ -296,26 +308,28 @@ export class Chat extends LitElement {
     for await (const c of cursor) {
       keys.push(c.primaryKey)
       if (keys.length >= this.limit) {
-        break;
+        break
       }
     }
     this.cursorPos += keys.length
-    
+
     const msgs = []
     for await (const k of keys) {
-     msgs.push(await this.db.get("messages", k))
+      msgs.push(await this.db.get("messages", k))
     }
     return msgs
   }
 
   startAudioCall() {
-    this.dispatchEvent(new CustomEvent("callStart", {
-      detail: {
-        videoEnabled: true,
-        contact: this.contact
-      },
-      composed: true,
-      bubbles: true
-    }))
+    this.dispatchEvent(
+      new CustomEvent("callStart", {
+        detail: {
+          videoEnabled: true,
+          contact: this.contact,
+        },
+        composed: true,
+        bubbles: true,
+      })
+    )
   }
 }

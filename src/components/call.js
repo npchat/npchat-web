@@ -12,7 +12,7 @@ export class Call extends LitElement {
     return {
       inCall: { type: Boolean },
       contact: { type: Object },
-      videoEnabled: { type: Boolean }
+      videoEnabled: { type: Boolean },
     }
   }
 
@@ -32,7 +32,7 @@ export class Call extends LitElement {
           display: flex;
           flex-direction: column;
           align-items: center;
-          color: var(--color-offwhite)
+          color: var(--color-offwhite);
         }
 
         .buttonGroup {
@@ -83,13 +83,13 @@ export class Call extends LitElement {
 
       try {
         const msg = JSON.parse(event.detail.unpacked)
-        const {offer, answer, candidate, call} = msg
+        const { offer, answer, candidate, call } = msg
         if (offer) {
           this.initPeerConnection()
-          await this.startLocalStream({width: 300, height: 300})
+          await this.startLocalStream({ width: 300, height: 300 })
           await this.pc.setRemoteDescription(new RTCSessionDescription(offer))
           await this.pc.setLocalDescription(await this.pc.createAnswer())
-          await this.sendData({answer: this.pc.localDescription})
+          await this.sendData({ answer: this.pc.localDescription })
         } else if (answer) {
           await this.pc.setRemoteDescription(new RTCSessionDescription(answer))
         } else if (candidate) {
@@ -106,22 +106,34 @@ export class Call extends LitElement {
       }
     })
   }
-  
+
   render() {
     return html`
-    <div ?hidden=${!this.inCall}>
-      <div class="call">
-        <h1>${this.contact?.displayName}</h1>
-        <video id="local-video" class="local" ?hidden=${!this.videoEnabled} playsinline autoplay muted></video>
-        <img src=${this.contact?.avatarURL} ?hidden=${this.videoEnabled || !this.contact?.avatarURL} class="avatar"/>
-        <video id="remote-video" class="remote" playsinline autoplay></video>
-        <div class="buttonGroup">
-          <button class="icon endCall" @click=${() => this.endCall(true)}>
-            <img alt="end call" src="assets/icons/end_call.svg" />
-          </button>
+      <div ?hidden=${!this.inCall}>
+        <div class="call">
+          <h1>${this.contact?.displayName}</h1>
+          <video
+            id="local-video"
+            class="local"
+            ?hidden=${!this.videoEnabled}
+            playsinline
+            autoplay
+            muted
+          ></video>
+          <img
+            alt="avatar"
+            src=${this.contact?.avatarURL}
+            ?hidden=${this.videoEnabled || !this.contact?.avatarURL}
+            class="avatar"
+          />
+          <video id="remote-video" class="remote" playsinline autoplay></video>
+          <div class="buttonGroup">
+            <button class="icon endCall" @click=${() => this.endCall(true)}>
+              <img alt="end call" src="assets/icons/end_call.svg" />
+            </button>
+          </div>
         </div>
       </div>
-    </div>
     `
   }
 
@@ -129,11 +141,11 @@ export class Call extends LitElement {
     const videoConstraints = {
       facingMode: "user",
       width: { ideal: videoOptions?.width },
-      height: { ideal: videoOptions?.height }
+      height: { ideal: videoOptions?.height },
     }
     this.localStream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: true },
-      video: videoOptions ? videoConstraints : false
+      video: videoOptions ? videoConstraints : false,
     })
     for (const track of this.localStream.getTracks()) {
       this.pc.addTrack(track, this.localStream)
@@ -143,12 +155,12 @@ export class Call extends LitElement {
       this.localView.play()
     }
   }
-  
+
   async startCall(event) {
     Object.assign(this, event.detail)
     await this.initKeys()
     this.initPeerConnection()
-    await this.startLocalStream({width: 300, height: 300})
+    await this.startLocalStream({ width: 300, height: 300 })
     await this.pc.setLocalDescription(await this.pc.createOffer())
     await this.sendData({ offer: this.pc.localDescription })
   }
@@ -163,11 +175,13 @@ export class Call extends LitElement {
     this.localView.srcObject = null
     this.pc.close()
     this.localStream?.getTracks().forEach(t => t.stop())
-    
-    this.dispatchEvent(new CustomEvent("callEnded", {
-      composed: true,
-      bubbles: true
-    }))
+
+    this.dispatchEvent(
+      new CustomEvent("callEnded", {
+        composed: true,
+        bubbles: true,
+      })
+    )
     console.log("call ended")
   }
 
@@ -176,7 +190,7 @@ export class Call extends LitElement {
     this.pc = new RTCPeerConnection(iceConfig)
 
     // listen for remote stream
-    this.pc.ontrack = ({track, streams}) => {
+    this.pc.ontrack = ({ track }) => {
       track.onunmute = () => {
         if (!this.remoteView.srcObject) {
           this.remoteView.srcObject = new MediaStream()
@@ -212,16 +226,14 @@ export class Call extends LitElement {
     const url = `${this.contact.originURL}/${this.contact.keys.pubKeyHash}?store=false`
     return fetch(url, {
       method: "POST",
-      body: pack(msg)
+      body: pack(msg),
     })
   }
 
   async initKeys() {
     this.myPubKeyHashBytes = fromBase64(this.myKeys.pubKeyHash)
     this.peerKeys = {
-      auth: await importAuthKey("jwk", this.contact.keys.auth, [
-        "verify",
-      ]),
+      auth: await importAuthKey("jwk", this.contact.keys.auth, ["verify"]),
       dh: await importDHKey("jwk", this.contact.keys.dh, []),
     }
   }

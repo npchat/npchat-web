@@ -1,16 +1,14 @@
-import { fromBase64 } from "../util/base64";
-
 export const iceConfig = {
   iceServers: [
     {
-      urls: "stun:stun.l.google.com:19302"
+      urls: "stun:stun.l.google.com:19302",
     },
     {
-        urls: "turn:dev.npchat.org:3478",
-        username: "npchat",
-        credential: "npchatturn"
-    }
-  ]
+      urls: "turn:dev.npchat.org:3478",
+      username: "npchat",
+      credential: "npchatturn",
+    },
+  ],
 }
 
 /*

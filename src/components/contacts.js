@@ -2,8 +2,11 @@ import { LitElement, html, css } from "lit"
 import { classMap } from "lit/directives/class-map.js"
 import { avatarFallbackURL } from "./app.js"
 import { formStyles } from "../styles/form.js"
-import { fetchShareableUsingURLData, protocolScheme } from "../core/shareable.js"
-import { openDBConn } from "../core/db.js";
+import {
+  fetchShareableUsingURLData,
+  protocolScheme,
+} from "../core/shareable.js"
+import { openDBConn } from "../core/db.js"
 
 export class Contacts extends LitElement {
   static get properties() {
@@ -11,7 +14,7 @@ export class Contacts extends LitElement {
       contacts: { type: Array },
       selected: { type: Object },
       filter: {},
-      keys: {type: Object}
+      keys: { type: Object },
     }
   }
 
@@ -93,9 +96,7 @@ export class Contacts extends LitElement {
       const msg = event.detail
       if (this.selected?.keys.pubKeyHash === event.detail.with) return
       // notify if contact not selected
-      const preview = `${msg.m.slice(0, 25)}${
-        msg.m.length > 25 ? "..." : ""
-      }`
+      const preview = `${msg.m.slice(0, 25)}${msg.m.length > 25 ? "..." : ""}`
       this.toast.show(`${msg.displayName}: ${preview}`)
     })
     window.addEventListener("socketConnected", () => this.init())
@@ -133,17 +134,17 @@ export class Contacts extends LitElement {
 
   contactListTemplate() {
     return html`
-    <div class="import">
-      <input
-        type="text"
-        placeholder="search or import"
-        @input=${this.handleInput}
-        @change=${this.handleChange}
-      />
-    </div>
-    <div class="list">
-      ${this.filterContacts().map(c => this.contactTemplate(c))}
-    </div>
+      <div class="import">
+        <input
+          type="text"
+          placeholder="search or import"
+          @input=${this.handleInput}
+          @change=${this.handleChange}
+        />
+      </div>
+      <div class="list">
+        ${this.filterContacts().map(c => this.contactTemplate(c))}
+      </div>
     `
   }
 
@@ -167,24 +168,28 @@ export class Contacts extends LitElement {
 
   async updateContacts() {
     const contacts = await this.db.getAll("contacts")
-    await Promise.all(contacts.map(async c => {
-      try {
-        const resp = await fetch(`${c.originURL}/${c.keys.pubKeyHash}/shareable`)
-        if (resp.status !== 200) return
-        const { displayName, avatarURL, originURL, keys } = await resp.json()
-        const updated = {}
-        Object.assign(updated, c) // assign old values
-        Object.assign(updated, {displayName, avatarURL, originURL})
-        if (!updated.keys.auth) {
-          // only add keys we don't already have them
-          // this only happens when contacts are synced
-          Object.assign(updated, {keys})
+    await Promise.all(
+      contacts.map(async c => {
+        try {
+          const resp = await fetch(
+            `${c.originURL}/${c.keys.pubKeyHash}/shareable`
+          )
+          if (resp.status !== 200) return
+          const { displayName, avatarURL, originURL, keys } = await resp.json()
+          const updated = {}
+          Object.assign(updated, c) // assign old values
+          Object.assign(updated, { displayName, avatarURL, originURL })
+          if (!updated.keys.auth) {
+            // only add keys we don't already have them
+            // this only happens when contacts are synced
+            Object.assign(updated, { keys })
+          }
+          return this.db.put("contacts", updated, c.keys.pubKeyHash)
+        } catch {
+          return Promise.resolve()
         }
-        return this.db.put("contacts", updated, c.keys.pubKeyHash)
-      } catch {
-        return Promise.resolve()
-      }
-    }))
+      })
+    )
   }
 
   select(contact) {
@@ -194,7 +199,7 @@ export class Contacts extends LitElement {
 
   handleInput(e) {
     const input = e.target
-    let { value } = input
+    const { value } = input
     if (!value.startsWith(protocolScheme)) {
       this.filter = value.toLowerCase()
     }
@@ -207,8 +212,7 @@ export class Contacts extends LitElement {
       return
     }
     this.filter = ""
-    value = value
-      .replace(`${protocolScheme}:`, "")
+    value = value.replace(`${protocolScheme}:`, "")
     try {
       const resp = await fetch(value)
       if (resp.status !== 200) return

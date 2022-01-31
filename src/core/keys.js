@@ -51,7 +51,7 @@ export async function deriveDHSecret(publicKey, privateKey) {
 export function getValuesFromJwk(jwk) {
   const values = {
     x: fromBase64(jwk.x),
-    y: fromBase64(jwk.y)
+    y: fromBase64(jwk.y),
   }
   if (jwk.d) values.d = fromBase64(jwk.d)
   return values
@@ -64,36 +64,30 @@ export function getJwkFromValues(values, keyOps) {
     key_ops: keyOps,
     kty: "EC",
     x: toBase64(values.x),
-    y: toBase64(values.y)
+    y: toBase64(values.y),
   }
   if (values.d) jwk.d = toBase64(values.d)
   return jwk
 }
 
 export async function generateKeys() {
-  authKeyPair = await genAuthKeyPair()
-  dhKeyPair = await genDHKeyPair()
+  const authKeyPair = await genAuthKeyPair()
+  const dhKeyPair = await genDHKeyPair()
   return {
     auth: {
       jwk: {
-        publicKey: await crypto.subtle.exportKey(
-          "jwk",
-          authKeyPair.publicKey
-        ),
+        publicKey: await crypto.subtle.exportKey("jwk", authKeyPair.publicKey),
         privateKey: await crypto.subtle.exportKey(
           "jwk",
           authKeyPair.privateKey
         ),
-      }
+      },
     },
     dh: {
       jwk: {
         publicKey: await crypto.subtle.exportKey("jwk", dhKeyPair.publicKey),
-        privateKey: await crypto.subtle.exportKey(
-          "jwk",
-          dhKeyPair.privateKey
-        ),
-      }
-    }
+        privateKey: await crypto.subtle.exportKey("jwk", dhKeyPair.privateKey),
+      },
+    },
   }
 }

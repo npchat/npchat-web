@@ -1,9 +1,7 @@
 import { LitElement, html, css } from "lit"
 import { formStyles } from "../styles/form.js"
 import { generalStyles } from "../styles/general.js"
-import {
-  buildShareableURL,
-} from "../core/shareable.js"
+import { buildShareableURL } from "../core/shareable.js"
 import { generateQR } from "../util/qrcode.js"
 
 export class Shareable extends LitElement {
@@ -44,16 +42,12 @@ export class Shareable extends LitElement {
   }
 
   willUpdate() {
-    this.shareableURL = buildShareableURL(
-      this.originURL,
-      this.pubKeyHash
-    )
+    this.shareableURL = buildShareableURL(this.originURL, this.pubKeyHash)
 
-    generateQR(this.shareableURL)
-      .then(qr => {
-        this.shareableQR = qr
-        this.update()
-      })
+    generateQR(this.shareableURL).then(qr => {
+      this.shareableQR = qr
+      this.update()
+    })
   }
 
   render() {
@@ -69,8 +63,8 @@ export class Shareable extends LitElement {
           </div>
           <p>
             Share this with others, and scan/copy theirs. When you both have the
-            other's shareable, you can chat. This is necessary to
-            securely trade keys.
+            other's shareable, you can chat. This is necessary to securely trade
+            keys.
           </p>
           <button @click=${this.handleClose} class="normal">Done</button>
         </div>

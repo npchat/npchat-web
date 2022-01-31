@@ -17,14 +17,19 @@ export const formStyles = css`
     font-size: 1.4rem;
   }
 
+  button {
+    border: 0;
+    outline: 0;
+    background-color: transparent;
+    transition: all 300ms;
+  }
+
   button.normal {
     font-size: 1.4rem;
     padding: 10px 20px;
     margin: 10px;
     cursor: pointer;
     border: 2px solid var(--color-primary);
-    transition: all 300ms;
-    outline: none;
   }
 
   button.normal:hover,
@@ -36,12 +41,10 @@ export const formStyles = css`
   button.secondary {
     padding: 5px 10px;
     font-size: 1.2rem;
-    border-color: var(--color-lightgrey)
+    border-color: var(--color-lightgrey);
   }
 
   button.icon {
-    border: 0;
-    outline: 0;
     background: transparent;
     border: 2px solid var(--color-lightgrey);
     border-radius: 50%;
@@ -58,8 +61,9 @@ export const formStyles = css`
     height: 30px;
   }
 
-  button.icon:hover, button.icon:focus {
-    border: 2px solid var(--color-primary)
+  button.icon:hover,
+  button.icon:focus {
+    border: 2px solid var(--color-primary);
   }
 
   input {
@@ -75,7 +79,8 @@ export const formStyles = css`
     border: 2px solid var(--color-secondary);
   }
 
-  button.normal.success, input.success {
+  button.normal.success,
+  input.success {
     background-color: var(--color-green);
   }
 

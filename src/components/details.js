@@ -4,7 +4,6 @@ import { openDBConn } from "../core/db.js"
 import { avatarFallbackURL } from "./app.js"
 
 export class Details extends LitElement {
-  
   static get properties() {
     return {
       contact: { type: Object },
@@ -65,19 +64,19 @@ export class Details extends LitElement {
   headerTemplate() {
     if (!this.contact) return
     return html`
-    <div class="header">
-      <button @click=${this.clearContact} class="icon">
-        <img alt="back" src="assets/icons/arrow_back.svg" />
-      </button>
-      <div class="avatarNameGroup">
-        <img
+      <div class="header">
+        <button @click=${this.clearContact} class="icon">
+          <img alt="back" src="assets/icons/arrow_back.svg" />
+        </button>
+        <div class="avatarNameGroup">
+          <img
             alt="${this.contact.displayName}"
             src=${this.contact.avatarURL || avatarFallbackURL}
             class="avatar"
           />
-        <span class="name">${this.contact.displayName}</span>
+          <span class="name">${this.contact.displayName}</span>
+        </div>
       </div>
-    </div>
     `
   }
 
@@ -93,5 +92,4 @@ export class Details extends LitElement {
   async init() {
     this.db = await openDBConn()
   }
-
 }
