@@ -8,10 +8,10 @@
   "scripts": {
     "build": "node ./esbuild.js",
     "start": "run-p start:**",
-    "start:server": "./dev-server/main",
+    "start:server": "./devserver",
     "start:esbuild": "node ./esbuild.js --dev",
     "https": "run-p https:**",
-    "https:server": "./dev-server/main --cert=dev-server/cert.pem --key=dev-server/key.pem",
+    "https:server": "./devserver --cert=cert.pem --key=key.pem",
     "https:esbuild": "node ./esbuild.js --dev",
     "lint": "run-p lint:**",
     "lint:src": "eslint \"src/**/*.js\" --ignore-path .gitignore && prettier \"src/**/*.js\" --check --ignore-path .gitignore",
