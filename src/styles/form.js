@@ -21,6 +21,9 @@ export const formStyles = css`
     border: 0;
     outline: 0;
     background-color: transparent;
+    color: var(--color-black);
+    cursor: pointer;
+    user-select: none;
     transition: all 300ms;
   }
 
@@ -28,7 +31,6 @@ export const formStyles = css`
     font-size: 1.4rem;
     padding: 10px 20px;
     margin: 10px;
-    cursor: pointer;
     border: 2px solid var(--color-primary);
   }
 
@@ -53,7 +55,6 @@ export const formStyles = css`
     display: flex;
     align-items: center;
     justify-content: center;
-    user-select: none;
   }
 
   button.icon img {
@@ -71,7 +72,7 @@ export const formStyles = css`
     font-size: 1.4rem;
     border: 2px solid var(--color-lightgrey);
     color: var(--color-darkgrey);
-    transition: background-color 300ms;
+    transition: all 300ms;
   }
 
   input:focus {
