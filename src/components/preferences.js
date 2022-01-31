@@ -130,14 +130,17 @@ export class Preferences extends LitElement {
           </p>
         </label>
         <button type="submit" class="normal">Submit</button>
-        <p>Export data for another device</p>
-        <button
-          type="button"
-          class="normal secondary"
-          @click=${() => (this.showExport = true)}
-        >
-          Export
-        </button>
+        
+        <div class="row">
+          <button
+            type="button"
+            class="normal secondary"
+            @click=${() => (this.showExport = true)}
+          >
+            Export
+          </button>
+          <p>Export data for another device</p>
+        </div>
       </form>
     `
   }
