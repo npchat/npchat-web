@@ -2,7 +2,7 @@ import { LitElement, html, css } from "lit"
 import { pack } from "msgpackr"
 import { importAuthKey, importDHKey } from "../core/keys.js"
 import { buildMessage } from "../core/message.js"
-import { amIPolitePeer, iceConfig } from "../core/webrtc.js"
+import { iceConfig } from "../core/webrtc.js"
 import { formStyles } from "../styles/form.js"
 import { generalStyles } from "../styles/general.js"
 import { fromBase64 } from "../util/base64.js"
@@ -84,28 +84,19 @@ export class Call extends LitElement {
       try {
         const msg = JSON.parse(event.detail.unpacked)
         const {offer, answer, candidate, call} = msg
-
         if (offer) {
-          console.log("got offer", offer)
-          this.inCall = true
           this.initPeerConnection()
-
           await this.startLocalStream({width: 300, height: 300})
-          
           await this.pc.setRemoteDescription(new RTCSessionDescription(offer))
           await this.pc.setLocalDescription(await this.pc.createAnswer())
-          
           await this.sendData({answer: this.pc.localDescription})
-          
         } else if (answer) {
-          console.log("got answer", answer)
           await this.pc.setRemoteDescription(new RTCSessionDescription(answer))
         } else if (candidate) {
-          console.log("got ICE", candidate)
           try {
             await this.pc.addIceCandidate(candidate)
           } catch (err) {
-            console.log("failed adding ICE candidate", err)
+            // console.log("failed adding ICE candidate", err)
           }
         } else if (call === "end") {
           await this.endCall(false)
@@ -144,7 +135,6 @@ export class Call extends LitElement {
       audio: { echoCancellation: true },
       video: videoOptions ? videoConstraints : false
     })
-    // add local stream to peer connection
     for (const track of this.localStream.getTracks()) {
       this.pc.addTrack(track, this.localStream)
     }
@@ -155,35 +145,24 @@ export class Call extends LitElement {
   }
   
   async startCall(event) {
-    this.inCall = true;
     Object.assign(this, event.detail)
-
     await this.initKeys()
-
     this.initPeerConnection()
-
     await this.startLocalStream({width: 300, height: 300})
-
     await this.pc.setLocalDescription(await this.pc.createOffer())
     await this.sendData({ offer: this.pc.localDescription })
-
   }
 
   async endCall(notifyPeer) {
     this.inCall = false
-
     if (notifyPeer) {
       await this.sendData({ call: "end" })
     }
-
     this.theirKeys = null
-
     this.remoteView.srcObject = null
     this.localView.srcObject = null
     this.pc.close()
     this.localStream?.getTracks().forEach(t => t.stop())
-
-    //this.initPeerConnection()
     
     this.dispatchEvent(new CustomEvent("callEnded", {
       composed: true,
@@ -193,13 +172,11 @@ export class Call extends LitElement {
   }
 
   initPeerConnection() {
-    //this.theirKeys = null
-
+    this.inCall = true
     this.pc = new RTCPeerConnection(iceConfig)
 
     // listen for remote stream
     this.pc.ontrack = ({track, streams}) => {
-      console.log("got remote stream")
       track.onunmute = () => {
         if (!this.remoteView.srcObject) {
           this.remoteView.srcObject = new MediaStream()
@@ -210,7 +187,6 @@ export class Call extends LitElement {
 
     // listen for ICE candidates & send them to peer
     this.pc.onicecandidate = ({ candidate }) => {
-      console.log("onicecandidate")
       this.sendData({ candidate })
     }
 
@@ -233,7 +209,6 @@ export class Call extends LitElement {
       this.myPubKeyHashBytes,
       this.peerKeys.dh
     )
-    // set query param store=false
     const url = `${this.contact.originURL}/${this.contact.keys.pubKeyHash}?store=false`
     return fetch(url, {
       method: "POST",
