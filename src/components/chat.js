@@ -1,6 +1,5 @@
 import { LitElement, html, css } from "lit"
 import { classMap } from "lit/directives/class-map.js"
-import {Task} from "@lit-labs/task"
 import { pack } from "msgpackr"
 import { formStyles } from "../styles/form.js"
 import { buildMessage } from "../core/message.js"
@@ -35,7 +34,7 @@ export class Chat extends LitElement {
         .header {
           display: flex;
           align-items: center;
-          padding: 5px;
+          padding: 3px;
           position: sticky;
           top: 0;
           min-height: 50px;
@@ -48,11 +47,20 @@ export class Chat extends LitElement {
           display: flex;
           flex-direction: column;
           align-items: center;
+          flex-grow: 1;
+          min-height: 100px;
         }
 
         .message {
-          background-color: rgba(0, 119, 255, 0.3);
-          padding: 5px 10px;
+          background-color: var(--color-primary);
+          color: var(--color-offwhite);
+          padding: 10px;
+          font-size: 1.1rem;
+          border-radius: 10px;
+        }
+
+        .message p {
+          margin: 0;
         }
 
         .messageContainer {
@@ -69,6 +77,7 @@ export class Chat extends LitElement {
 
         .messageContainer.in .message {
           background-color: var(--color-darkwhite);
+          color: var(--color-black);
         }
 
         .compose {
@@ -87,7 +96,7 @@ export class Chat extends LitElement {
         .avatar {
           width: 40px;
           height: 40px;
-          margin-left: 10px;
+          margin-left: 5px;
           border-radius: 50%;
           border: 2px solid var(--color-secondary);
         }
@@ -96,6 +105,25 @@ export class Chat extends LitElement {
           margin-left: 10px;
           font-size: 1.4rem;
           user-select: none;
+        }
+
+        .avatarNameGroup {
+          flex-grow: 1;
+          display: flex;
+          align-items: center;
+          border-radius: 5px;
+          margin: 0 5px;
+          padding: 3px 0;
+          cursor: pointer;
+        }
+
+        .avatarNameGroup:hover {
+          background-color: var(--color-darkwhite);
+          
+        }
+
+        .call:not(:last-of-type) {
+          margin-right: 10px;
         }
       `,
     ]
@@ -108,10 +136,17 @@ export class Chat extends LitElement {
     this.storedMsgs = []
 
     window.addEventListener("messageReceived", event => {
-      if (event.detail.with !== this.contact.keys.pubKeyHash) return
+      if (event.detail.with !== this.contact?.keys.pubKeyHash) return
       this.reactiveMsgs.push(event.detail)
       this.requestUpdate()
     })
+  }
+
+  updated() {
+    this.renderRoot.querySelector(".messageContainer:last-of-type")
+      ?.scrollIntoView({
+        block: "center"
+      })
   }
 
   messageTemplate(msg) {
@@ -129,15 +164,37 @@ export class Chat extends LitElement {
     return html`
     <div class="header">
       <button @click=${this.clearContact} class="icon">
-        <img alt="back" src="assets/arrow_back.svg" />
+        <img alt="back" src="assets/icons/arrow_back.svg" />
       </button>
-      <img
-          alt="${this.contact.displayName}"
-          src=${this.contact.avatarURL || avatarFallbackURL}
-          class="avatar"
-        />
+      <div class="avatarNameGroup" @click=${() => this.showDetails = true}>
+        <img
+            alt="${this.contact.displayName}"
+            src=${this.contact.avatarURL || avatarFallbackURL}
+            class="avatar"
+          />
         <span class="name">${this.contact.displayName}</span>
+      </div>
+      ${this.callButtonsTemplate()}
     </div>
+    `
+  }
+
+  callButtonsTemplate() {
+    return html`
+    <button class="icon call" @click=${this.startAudioCall}>
+      <img alt="audio call" src="assets/icons/phone.svg" />
+    </button>
+    `
+  }
+
+  composeTemplate() {
+    return this.inCall ? undefined : html`
+    <form
+      class="compose"
+      @submit=${this.handleSubmit}
+    >
+      <input type="text" placeholder="write a message" name="messageText" />
+    </form>
     `
   }
 
@@ -150,13 +207,7 @@ export class Chat extends LitElement {
           ${this.storedMsgs?.map(m => this.messageTemplate(m))}
           ${this.reactiveMsgs?.map(m => this.messageTemplate(m))}
         </div>
-        <form
-          class="compose"
-          ?hidden=${!this.contact}
-          @submit=${this.handleSubmit}
-        >
-          <input type="text" placeholder="write a message" name="messageText" />
-        </form>
+        ${this.composeTemplate()}
       </div>
     `
   }
@@ -197,7 +248,7 @@ export class Chat extends LitElement {
     const msg = await buildMessage(
       this.myKeys.auth.keyPair.privateKey,
       this.myKeys.dh.keyPair.privateKey,
-      messageText,
+      new TextEncoder().encode(messageText),
       this.myPubKeyHashBytes,
       this.theirKeys.dh
     )
@@ -255,5 +306,16 @@ export class Chat extends LitElement {
      msgs.push(await this.db.get("messages", k))
     }
     return msgs
+  }
+
+  startAudioCall() {
+    this.dispatchEvent(new CustomEvent("callStart", {
+      detail: {
+        videoEnabled: true,
+        contact: this.contact
+      },
+      composed: true,
+      bubbles: true
+    }))
   }
 }

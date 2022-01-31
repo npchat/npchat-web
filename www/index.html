@@ -1,12 +1,14 @@
 <!doctype html>
 <html lang="en">
-
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="Description" content="Put your description here.">
+  <meta name="description" content="Communicate privately & anonymously">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="assets/npchat-logo.svg" type="image/svg+xml">
+  <link rel=”mask-icon” href=”assets/logo.svg” color="#fff">
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/icon-180.png">
   <base href="/">
-
   <style>
     html,
     body {
@@ -18,7 +20,6 @@
       overscroll-behavior: none;
       touch-action: pan-y;
     }
-
     :root {
       --color-primary: #0077FF;
       --color-secondary: #9B00FF;
@@ -31,14 +32,11 @@
       --color-red: #FF3E41;
     }
   </style>
-  <title>npchat-web</title>
+  <title>npchat</title>
 </head>
-
 <body>
   <npchat-app></npchat-app>
-
-  <script src="./dist/qrlib.js"></script>
-  <script src="./dist/main.js"></script>
+  <script src="dist/qrlib.js"></script>
+  <script src="dist/main.js"></script>
 </body>
-
 </html>

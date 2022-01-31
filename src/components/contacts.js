@@ -98,7 +98,7 @@ export class Contacts extends LitElement {
       }`
       this.toast.show(`${msg.displayName}: ${preview}`)
     })
-    this.init()
+    window.addEventListener("socketConnected", () => this.init())
   }
 
   async init() {
@@ -171,11 +171,15 @@ export class Contacts extends LitElement {
       try {
         const resp = await fetch(`${c.originURL}/${c.keys.pubKeyHash}/shareable`)
         if (resp.status !== 200) return
-        // don't update keys
-        const { displayName, avatarURL, originURL } = await resp.json()
+        const { displayName, avatarURL, originURL, keys } = await resp.json()
         const updated = {}
         Object.assign(updated, c) // assign old values
         Object.assign(updated, {displayName, avatarURL, originURL})
+        if (!updated.keys.auth) {
+          // only add keys we don't already have them
+          // this only happens when contacts are synced
+          Object.assign(updated, {keys})
+        }
         return this.db.put("contacts", updated, c.keys.pubKeyHash)
       } catch {
         return Promise.resolve()
@@ -197,7 +201,6 @@ export class Contacts extends LitElement {
   }
 
   async handleChange(e) {
-    //this.handleInput(e)
     const input = e.target
     let { value } = input
     if (!value.startsWith(protocolScheme)) {
@@ -229,13 +232,8 @@ export class Contacts extends LitElement {
   }
 
   async addContact(data) {
-    const current = await this.db.get("contacts", data.keys.pubKeyHash)
-    console.log("add", current)
     await this.db.put("contacts", data, data.keys.pubKeyHash)
-    const name = current?.displayName || data.displayName
-    this.toast.show(
-      `${current?.displayName ? "Updated data for" : "Imported contact:"} ${name}`
-    )
+    this.toast.show(`Imported contact: ${data.displayName}`)
   }
 
   filterContacts() {

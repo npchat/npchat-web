@@ -1,18 +1,15 @@
-/* eslint-disable no-undef */
-
 self.addEventListener("push", event => {
     const message = event.data.text()
     self.registration.showNotification(message, {
       tag: "got-message",
       renotify: true,
-      icon: "assets/npchat-logo.png"
+      icon: "assets/npchat-logo-400.png"
   });
 })
 
 self.addEventListener("notificationclick", event => {
   event.notification.close()
-  // This looks to see if the current is already open and
-  // focuses if it is
+  // Focus window if already open
   event.waitUntil(clients.matchAll({
     type: "window"
   }).then(clientList => {

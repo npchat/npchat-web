@@ -4,7 +4,7 @@ import { classMap } from "lit/directives/class-map.js"
 export class Status extends LitElement {
   static get properties() {
     return {
-      isWebSocketConnected: { type: Boolean },
+      isSocketConnected: { type: Boolean },
     }
   }
 
@@ -49,8 +49,8 @@ export class Status extends LitElement {
 
   render() {
     return html`
-      <div class=${classMap({ connected: this.isWebSocketConnected })}></div>
-      <span class=${classMap({ connected: this.isWebSocketConnected })}
+      <div class=${classMap({ connected: this.isSocketConnected })}></div>
+      <span class=${classMap({ connected: this.isSocketConnected })}
         >Not connected</span
       >
     `

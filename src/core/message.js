@@ -9,7 +9,7 @@ import { toBase64 } from "../util/base64.js"
 export async function buildMessage(
   authPriv,
   dhPrivateKey,
-  msgText,
+  msgBytes,
   from,
   dhPublicKey
 ) {
@@ -20,7 +20,7 @@ export async function buildMessage(
   const encrypted = await encrypt(
     iv,
     derivedKey,
-    new TextEncoder().encode(msgText)
+    msgBytes
   )
   const encryptedBytes = new Uint8Array(encrypted)
   const associatedBytes = pack({ t, f: from })

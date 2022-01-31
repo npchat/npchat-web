@@ -26,7 +26,5 @@ builds.push(build({
 	outfile: "www/dist/qrlib.js"
 }))
 
-
 Promise.all(builds)
-	.then(() => console.log(`esbuild ${isDev() ? "dev" : "prod"} done`))
-
+	.then(() => console.log(`esbuild: ${isDev() ? "dev" : "prod"} build done`))

@@ -50,6 +50,7 @@ export const formStyles = css`
     display: flex;
     align-items: center;
     justify-content: center;
+    user-select: none;
   }
 
   button.icon img {

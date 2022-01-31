@@ -5,6 +5,11 @@ import { generateKeys } from "../core/keys.js"
 import { fromBase64 } from "../util/base64.js"
 import { unpack } from "msgpackr"
 import { importUserData } from "../core/export.js"
+import { resizeImageFile } from "../util/image.js"
+import { avatarSize, putMedia } from "../core/media.js"
+
+const defaultOriginURL = "https://axl.npchat.org"
+const defaultDisplayName = "Anonymous"
 
 export class Welcome extends LitElement {
   static get properties() {
@@ -39,6 +44,10 @@ export class Welcome extends LitElement {
     ]
   }
 
+  get avatarFileInput() {
+    return this.renderRoot.getElementById("avatar-file")
+  }
+
   constructor() {
     super()
     this.slideNumber = 0
@@ -61,12 +70,37 @@ export class Welcome extends LitElement {
         <div class="flex">
           <label>
             <span>Your display name</span>
-            <input type="text" name="displayName" placeholder="Anonymous" />
+            <input type="text" name="displayName" placeholder=${defaultDisplayName} />
           </label>
           <p class="color-light">Optional</p>
           <label>
-            <span>Your avatar URL</span>
-            <input type="text" name="avatarURL" placeholder="" />
+            <span>Your avatar</span>
+            <input type="file" id="avatar-file" name="avatarFile" accept="image/png, image/jpeg">
+          </label>
+          <label>
+            <span>Your origin URL</span>
+            <input
+              list="origins"
+              name="originURL"
+              .placeholder=${defaultOriginURL}
+            />
+            <datalist id="origins">
+              <option value="https://axl.npchat.org"></option>
+              <option value="https://frosty-meadow-296.fly.dev"></option>
+              <option value="https://wispy-feather-9047.fly.dev"></option>
+              <option value="https://dev.npchat.org:8000"></option>
+            </datalist>
+            <p>
+              Optionally point to your own self-hosted instance. Check the
+              <a
+                href="https://npchat.org/docs"
+                target="_blank"
+                class="link"
+                tabindex="-1"
+                >docs</a
+              >
+              for guidance.
+            </p>
           </label>
           <button type="button" class="normal" @click=${() => (this.slideNumber += 1)}>
             Continue
@@ -90,7 +124,7 @@ export class Welcome extends LitElement {
     return html`
     <form ?hidden=${!this.showImportForm} @submit=${this.handleImportSubmit}>
       <button type="button" @click=${() => this.showImportForm = false} class="icon">
-        <img alt="back" src="assets/arrow_back.svg" />
+        <img alt="back" src="assets/icons/arrow_back.svg" />
       </button>
       <h2>Import</h2>
       <p>Import your keys from another browser or device. This will allow you to connect to the same inbox.</p>
@@ -119,11 +153,18 @@ export class Welcome extends LitElement {
     e.preventDefault()
     const detail = Object.fromEntries(new FormData(e.target))
     if (detail.displayName === "") {
-      detail.displayName = "Anonymous"
+      detail.displayName = defaultDisplayName
     }
-    // set default origin
-    detail.originURL = "https://axl.npchat.org"
-    // generate keys
+
+    detail.originURL = detail.originURL || defaultOriginURL
+
+    if (detail.avatarFile.size > 0) {
+      const resizedBlob = await resizeImageFile(detail.avatarFile, avatarSize, avatarSize)
+      detail.avatarURL = await putMedia(resizedBlob, "image/jpeg")
+    }
+    detail.avatarFile = undefined
+    this.avatarFileInput.value = ""
+
     detail.keys = await generateKeys()
     this.dispatchEvent(new CustomEvent("formSubmit", { detail }))
   }

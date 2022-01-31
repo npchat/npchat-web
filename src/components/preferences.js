@@ -1,9 +1,11 @@
 import { LitElement, html, css } from "lit"
 import { pack } from "msgpackr"
 import { getUserExportData } from "../core/export.js"
+import { avatarSize, putMedia } from "../core/media.js"
 import { formStyles } from "../styles/form.js"
 import { generalStyles } from "../styles/general.js"
 import { toBase64 } from "../util/base64.js"
+import { resizeImageFile } from "../util/image.js"
 import { generateQR } from "../util/qrcode.js"
 
 export class Preferences extends LitElement {
@@ -30,8 +32,36 @@ export class Preferences extends LitElement {
           display: flex;
           align-items: center;
         }
+
+        img {
+          max-width: 100%;
+        }
+
+        .avatar {
+          width: 50px;
+          height: 50px;
+          border-radius: 50%;
+        }
+
+        .row {
+          display: flex;
+          align-items: center;
+        }
+
+        #avatar-file {
+          margin-left: 5px;
+          max-width: calc(100vw - 100px);
+        }
       `
     ]
+  }
+
+  get avatarFileInput() {
+    return this.renderRoot.getElementById("avatar-file")
+  }
+
+  get avatarPreview() {
+    return this.renderRoot.getElementById("avatar-preview")
   }
   
   constructor() {
@@ -57,13 +87,11 @@ export class Preferences extends LitElement {
         />
       </label>
       <label>
-        <span>Avatar URL</span>
-        <input
-          type="text"
-          name="avatarURL"
-          placeholder=""
-          .value=${this.preferences.avatarURL}
-        />
+        <span>Avatar</span>
+        <div class="row">
+          <img id="avatar-preview" class="avatar" src=${this.preferences.avatarURL}/>
+          <input type="file" id="avatar-file" name="avatarFile" accept="image/png, image/jpeg" @change=${this.handleAvatarChange}>
+        </div>
       </label>
       <label>
         <span>Origin URL</span>
@@ -77,6 +105,7 @@ export class Preferences extends LitElement {
           <option value="https://axl.npchat.org"></option>
           <option value="https://frosty-meadow-296.fly.dev"></option>
           <option value="https://wispy-feather-9047.fly.dev"></option>
+          <option value="https://dev.npchat.org:8000"></option>
         </datalist>
         <p>
           Optionally point to your own self-hosted instance. Check the
@@ -101,7 +130,7 @@ export class Preferences extends LitElement {
     return html`
     <div ?hidden=${!this.showExport}>
       <button class="icon" @click=${() => this.showExport = false}>
-        <img alt="back" src="assets/arrow_back.svg" />
+        <img alt="back" src="assets/icons/arrow_back.svg" />
       </button>
       <div class="exportData">
         <p class="monospace">
@@ -133,21 +162,35 @@ export class Preferences extends LitElement {
     })
   }
 
-  handleSubmit(e) {
-    e.preventDefault()
-    const detail = Object.fromEntries(new FormData(e.target))
+  async handleSubmit(event) {
+    event.preventDefault()
+    const detail = Object.fromEntries(new FormData(event.target))
     if (detail.displayName === "") {
       detail.displayName = "Anonymous"
     }
+    if (detail.avatarFile.size > 0) {
+      const resizedBlob = await resizeImageFile(detail.avatarFile, avatarSize, avatarSize)
+      detail.avatarURL = await putMedia(resizedBlob, "image/jpeg")
+    } else {
+      detail.avatarURL = this.preferences.avatarURL
+    }
+    detail.avatarFile = undefined
+    this.avatarFileInput.value = ""
     this.dispatchEvent(new CustomEvent("formSubmit", { detail }))
   }
 
-  async handleExportCopy(e) {
-    const button = e.target
+  async handleExportCopy(event) {
+    const button = event.target
     button.classList.add("success")
     setTimeout(() => {
       button.classList.remove("success")
     }, 500)
     await navigator.clipboard.writeText(this.exportData)
+  }
+
+  async handleAvatarChange(event) {
+    const file = event.target.files[0]
+    const resizedBlob = await resizeImageFile(file, 50, 50)
+    this.avatarPreview.src = URL.createObjectURL(resizedBlob)
   }
 }
