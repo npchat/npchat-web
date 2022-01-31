@@ -1,6 +1,5 @@
 import { LitElement, html, css } from "lit"
 import { classMap } from "lit/directives/class-map.js"
-import {Task} from "@lit-labs/task"
 import { pack } from "msgpackr"
 import { formStyles } from "../styles/form.js"
 import { buildMessage } from "../core/message.js"
@@ -35,7 +34,7 @@ export class Chat extends LitElement {
         .header {
           display: flex;
           align-items: center;
-          padding: 5px;
+          padding: 3px;
           position: sticky;
           top: 0;
           min-height: 50px;
@@ -90,7 +89,7 @@ export class Chat extends LitElement {
         .avatar {
           width: 40px;
           height: 40px;
-          margin-left: 10px;
+          margin-left: 5px;
           border-radius: 50%;
           border: 2px solid var(--color-secondary);
         }
@@ -99,7 +98,21 @@ export class Chat extends LitElement {
           margin-left: 10px;
           font-size: 1.4rem;
           user-select: none;
+        }
+
+        .avatarNameGroup {
           flex-grow: 1;
+          display: flex;
+          align-items: center;
+          border-radius: 5px;
+          margin: 0 5px;
+          padding: 3px 0;
+          cursor: pointer;
+        }
+
+        .avatarNameGroup:hover {
+          background-color: var(--color-darkwhite);
+          
         }
 
         .call:not(:last-of-type) {
@@ -146,12 +159,14 @@ export class Chat extends LitElement {
       <button @click=${this.clearContact} class="icon">
         <img alt="back" src="assets/icons/arrow_back.svg" />
       </button>
-      <img
-          alt="${this.contact.displayName}"
-          src=${this.contact.avatarURL || avatarFallbackURL}
-          class="avatar"
-        />
-      <span class="name">${this.contact.displayName}</span>
+      <div class="avatarNameGroup" @click=${() => this.showDetails = true}>
+        <img
+            alt="${this.contact.displayName}"
+            src=${this.contact.avatarURL || avatarFallbackURL}
+            class="avatar"
+          />
+        <span class="name">${this.contact.displayName}</span>
+      </div>
       ${this.callButtonsTemplate()}
     </div>
     `

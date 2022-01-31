@@ -207,14 +207,19 @@ export class App extends LitElement {
     storeUser(e.detail)
     this.hideWelcome()
     this.hidePreferences()
-    // push new shareableData to current origin
     Object.assign(this, e.detail)
     if (this.socket?.readyState === WebSocket.OPEN) {
+      const contacts = (await this.db.getAll("contacts")).map(c => {
+        return {
+          originURL: c.originURL,
+          pubKeyHash: c.keys.pubKeyHash
+        }
+      })
       this.push({
         data: pack({
           displayName: this.displayName,
           avatarURL: this.avatarURL,
-          contacts: await this.db.getAll("contacts")
+          contacts
         }),
         shareableData: this.buildShareableData(),
       })
@@ -308,7 +313,7 @@ export class App extends LitElement {
         throw new Error(authResp.error)
       }
       this.isSocketConnected = true
-      // handle data
+      // handle received data
       if (authResp.data) {
         const unpacked = unpack(authResp.data)
         const { displayName, avatarURL, contacts } = unpacked
@@ -316,20 +321,37 @@ export class App extends LitElement {
           storeUser({ displayName, avatarURL })
           Object.assign(this, { displayName, avatarURL });
         }
-        (contacts || []).map(c => {
-          this.db.put("contacts", c, c.keys.pubKeyHash)
-        })
+        console.log("receivedContacts", contacts)
+        await Promise.all(contacts.map(async c => {
+          if (!await this.db.get("contacts", c.pubKeyHash)) {
+            return this.db.put("contacts", {
+              originURL: c.originURL,
+              keys: {
+                pubKeyHash: c.pubKeyHash
+              }
+            }, c.pubKeyHash)
+          }
+        }))
       }
+      // push merged data
+      // TODO: also push when contacts are added & deleted
       const sub = await subscribeToPushNotifications(authResp.vapidKey)
+      const contactsToPush = (await this.db.getAll("contacts")).map(c => {
+        return {
+          originURL: c.originURL,
+          pubKeyHash: c.keys.pubKeyHash
+        }
+      })
       this.push({
         data: pack({
           displayName: this.displayName,
           avatarURL: this.avatarURL,
-          contacts: await this.db.getAll("contacts")
+          contacts: contactsToPush
         }),
         shareableData: this.buildShareableData(),
         sub: sub || "",
       })
+      window.dispatchEvent(new CustomEvent("socketConnected"))
       return Promise.resolve(true)
     } catch (e) {
       this.isSocketConnected = false

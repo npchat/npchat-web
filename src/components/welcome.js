@@ -6,6 +6,7 @@ import { fromBase64 } from "../util/base64.js"
 import { unpack } from "msgpackr"
 import { importUserData } from "../core/export.js"
 import { resizeImageFile } from "../util/image.js"
+import { putMedia } from "../core/media.js"
 
 const defaultOriginURL = "https://axl.npchat.org"
 const defaultDisplayName = "Anonymous"
@@ -78,7 +79,28 @@ export class Welcome extends LitElement {
           </label>
           <label>
             <span>Your origin URL</span>
-            <input type="text" name="originURL" placeholder=${defaultOriginURL} />
+            <input
+              list="origins"
+              name="originURL"
+              .placeholder=${defaultOriginURL}
+            />
+            <datalist id="origins">
+              <option value="https://axl.npchat.org"></option>
+              <option value="https://frosty-meadow-296.fly.dev"></option>
+              <option value="https://wispy-feather-9047.fly.dev"></option>
+              <option value="https://dev.npchat.org:8000"></option>
+            </datalist>
+            <p>
+              Optionally point to your own self-hosted instance. Check the
+              <a
+                href="https://npchat.org/docs"
+                target="_blank"
+                class="link"
+                tabindex="-1"
+                >docs</a
+              >
+              for guidance.
+            </p>
           </label>
           <button type="button" class="normal" @click=${() => (this.slideNumber += 1)}>
             Continue
@@ -133,19 +155,16 @@ export class Welcome extends LitElement {
     if (detail.displayName === "") {
       detail.displayName = defaultDisplayName
     }
-    // set default origin
-    detail.originURL = defaultOriginURL
+
+    detail.originURL = detail.originURL || defaultOriginURL
 
     if (detail.avatarFile.size > 0) {
       const resizedBlob = await resizeImageFile(detail.avatarFile, 44, 44)
       detail.avatarURL = await putMedia(resizedBlob, "image/jpeg")
-    } else {
-      detail.avatarURL = this.preferences.avatarURL
     }
     detail.avatarFile = undefined
     this.avatarFileInput.value = ""
 
-    // generate keys
     detail.keys = await generateKeys()
     this.dispatchEvent(new CustomEvent("formSubmit", { detail }))
   }
