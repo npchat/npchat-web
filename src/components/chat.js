@@ -52,9 +52,15 @@ export class Chat extends LitElement {
         }
 
         .message {
-          background-color: rgba(0, 119, 255, 0.3);
-          padding: 5px 10px;
+          background-color: var(--color-primary);
+          color: var(--color-offwhite);
+          padding: 10px;
           font-size: 1.1rem;
+          border-radius: 10px;
+        }
+
+        .message p {
+          margin: 0;
         }
 
         .messageContainer {
@@ -71,6 +77,7 @@ export class Chat extends LitElement {
 
         .messageContainer.in .message {
           background-color: var(--color-darkwhite);
+          color: var(--color-black);
         }
 
         .compose {
@@ -307,8 +314,8 @@ export class Chat extends LitElement {
   startAudioCall() {
     this.dispatchEvent(new CustomEvent("callStart", {
       detail: {
-        audioEnabled: true,
-        videoEnabled: false,
+        sendAudio: true,
+        sendVideo: false,
         contact: this.contact
       },
       composed: true,
@@ -319,8 +326,8 @@ export class Chat extends LitElement {
   startVideoCall() {
     this.dispatchEvent(new CustomEvent("callStart", {
       detail: {
-        audioEnabled: true,
-        videoEnabled: true,
+        sendAudio: true,
+        sendVideo: true,
         contact: this.contact
       },
       composed: true,

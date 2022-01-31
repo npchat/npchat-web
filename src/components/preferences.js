@@ -36,12 +36,32 @@ export class Preferences extends LitElement {
         img {
           max-width: 100%;
         }
+
+        .avatar {
+          width: 50px;
+          height: 50px;
+          border-radius: 50%;
+        }
+
+        .row {
+          display: flex;
+          align-items: center;
+        }
+
+        #avatar-file {
+          margin-left: 5px;
+          max-width: calc(100vw - 100px);
+        }
       `
     ]
   }
 
   get avatarFileInput() {
     return this.renderRoot.getElementById("avatar-file")
+  }
+
+  get avatarPreview() {
+    return this.renderRoot.getElementById("avatar-preview")
   }
   
   constructor() {
@@ -68,8 +88,10 @@ export class Preferences extends LitElement {
       </label>
       <label>
         <span>Avatar</span>
-        <img id="avatar-preview" class="avatar"/>
-        <input type="file" id="avatar-file" name="avatarFile" accept="image/png, image/jpeg">
+        <div class="row">
+          <img id="avatar-preview" class="avatar" src=${this.preferences.avatarURL}/>
+          <input type="file" id="avatar-file" name="avatarFile" accept="image/png, image/jpeg" @change=${this.handleAvatarChange}>
+        </div>
       </label>
       <label>
         <span>Origin URL</span>
@@ -147,8 +169,7 @@ export class Preferences extends LitElement {
       detail.displayName = "Anonymous"
     }
     if (detail.avatarFile.size > 0) {
-      // resize image
-      const resizedBlob = await resizeImageFile(detail.avatarFile, 44, 44)
+      const resizedBlob = await resizeImageFile(detail.avatarFile, 100, 100)
       detail.avatarURL = await putMedia(resizedBlob, "image/jpeg")
     } else {
       detail.avatarURL = this.preferences.avatarURL
@@ -165,5 +186,11 @@ export class Preferences extends LitElement {
       button.classList.remove("success")
     }, 500)
     await navigator.clipboard.writeText(this.exportData)
+  }
+
+  async handleAvatarChange(event) {
+    const file = event.target.files[0]
+    const resizedBlob = await resizeImageFile(file, 50, 50)
+    this.avatarPreview.src = URL.createObjectURL(resizedBlob)
   }
 }
