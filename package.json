@@ -8,10 +8,10 @@
   "scripts": {
     "build": "node ./esbuild.js",
     "start": "run-p start:**",
-    "start:server": "web-dev-server",
+    "start:server": "./dev-server/main",
     "start:esbuild": "node ./esbuild.js --dev",
     "https": "run-p https:**",
-    "https:server": "go run ./main.go",
+    "https:server": "./dev-server/main --cert=dev-server/cert.pem --key=dev-server/key.pem",
     "https:esbuild": "node ./esbuild.js --dev",
     "lint": "run-p lint:**",
     "lint:src": "eslint \"src/**/*.js\" --ignore-path .gitignore && prettier \"src/**/*.js\" --check --ignore-path .gitignore",
@@ -29,7 +29,6 @@
   },
   "devDependencies": {
     "@open-wc/eslint-config": "^7.0.0",
-    "@web/dev-server": "^0.1.29",
     "eslint": "^8.8.0",
     "eslint-config-prettier": "^8.3.0",
     "prettier": "^2.5.1",
