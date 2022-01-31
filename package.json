@@ -13,49 +13,26 @@
     "https": "run-p https:**",
     "https:server": "go run ./main.go",
     "https:esbuild": "node ./esbuild.js --dev",
-    "lint": "eslint \"src/**/*.js\" --ignore-path .gitignore && prettier \"src/**/*.js\" --check --ignore-path .gitignore",
-    "format": "eslint \"src/**/*.js\" --fix --ignore-path .gitignore && prettier \"src/**/*.js\" --write --ignore-path .gitignore"
+    "lint": "run-p lint:**",
+    "lint:src": "eslint \"src/**/*.js\" --ignore-path .gitignore && prettier \"src/**/*.js\" --check --ignore-path .gitignore",
+    "lint:media-store": "eslint \"media-store/src/*.js\" --ignore-path .gitignore && prettier \"media-store/src/*.js\" --check --ignore-path .gitignore",
+    "format": "run-p format:**",
+    "format:src": "eslint \"src/**/*.js\" --fix --ignore-path .gitignore && prettier \"src/**/*.js\" --write --ignore-path .gitignore",
+    "format:media-store": "eslint \"media-store/src/*.js\" --fix --ignore-path .gitignore && prettier \"media-store/src/*.js\" --write --ignore-path .gitignore"
   },
   "dependencies": {
-    "esbuild": "^0.14.13",
-    "lit": "^2.1.1",
-    "@lit-labs/task": "^1.1.1",
+    "esbuild": "^0.14.14",
+    "lit": "^2.1.2",
     "msgpackr": "^1.5.2",
     "idb": "^7.0.0",
     "qrcode": "^1.5.0"
   },
   "devDependencies": {
-    "@open-wc/eslint-config": "^4.3.0",
-    "@web/dev-server": "^0.1.28",
-    "@web/dev-server-esbuild": "^0.2.16",
-    "eslint": "^7.32.0",
+    "@open-wc/eslint-config": "^7.0.0",
+    "@web/dev-server": "^0.1.29",
+    "eslint": "^8.8.0",
     "eslint-config-prettier": "^8.3.0",
-    "prettier": "^2.4.1",
+    "prettier": "^2.5.1",
     "npm-run-all": "^4.1.5"
-  },
-  "eslintConfig": {
-    "extends": [
-      "@open-wc",
-      "prettier"
-    ],
-    "rules": {
-      "no-console": "off",
-      "class-methods-use-this": "off",
-      "no-restricted-globals": "off",
-      "consistent-return": "off",
-      "no-plusplus": [
-        "error",
-        {
-          "allowForLoopAfterthoughts": true
-        }
-      ],
-      "no-return-assign": "off",
-      "no-param-reassign": "off",
-      "import/extensions": "off"
-    }
-  },
-  "prettier": {
-    "semi": false,
-    "arrowParens": "avoid"
   }
 }

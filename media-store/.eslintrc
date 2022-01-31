@@ -1,0 +1,6 @@
+{
+  "globals": {
+    "NPCHAT_MEDIA": "readonly",
+    "AUTH": "readonly"
+  }
+}

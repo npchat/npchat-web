@@ -1,0 +1,21 @@
+{
+  "extends": [
+    "@open-wc",
+    "prettier"
+  ],
+  "rules": {
+    "no-console": "off",
+    "class-methods-use-this": "off",
+    "no-restricted-globals": "off",
+    "consistent-return": "off",
+    "no-plusplus": [
+      "error",
+      {
+        "allowForLoopAfterthoughts": true
+      }
+    ],
+    "no-return-assign": "off",
+    "no-param-reassign": "off",
+    "no-use-before-define": "off"
+  }
+}

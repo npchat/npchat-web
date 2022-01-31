@@ -130,7 +130,7 @@ export class Preferences extends LitElement {
           </p>
         </label>
         <button type="submit" class="normal">Submit</button>
-        
+
         <div class="row">
           <button
             type="button"

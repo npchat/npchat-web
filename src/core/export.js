@@ -1,7 +1,7 @@
 import { unpack } from "msgpackr"
-import { fromBase64 } from "../util/base64"
-import { getJwkFromValues, getValuesFromJwk } from "./keys"
-import { loadUser, storeUser } from "./storage"
+import { fromBase64 } from "../util/base64.js"
+import { getJwkFromValues, getValuesFromJwk } from "./keys.js"
+import { loadUser, storeUser } from "./storage.js"
 
 export async function getUserExportData() {
   const user = await loadUser()

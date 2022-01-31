@@ -1,8 +1,8 @@
 import { unpack } from "msgpackr"
-import { toBase64 } from "../util/base64"
-import { decrypt } from "../util/privacy"
-import { deriveDHSecret, importAuthKey, importDHKey } from "./keys"
-import { verifyMessage } from "./message"
+import { toBase64 } from "../util/base64.js"
+import { decrypt } from "../util/privacy.js"
+import { deriveDHSecret, importAuthKey, importDHKey } from "./keys.js"
+import { verifyMessage } from "./message.js"
 
 export async function handleIncomingMessage(msg, db, myKeys) {
   if (!(msg.data instanceof Blob)) return

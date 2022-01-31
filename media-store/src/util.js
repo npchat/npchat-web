@@ -1,54 +1,54 @@
-import { toBase64 } from "../../src/util/base64"
-import { keyTtl } from "./index"
+import { toBase64 } from "../../src/util/base64.js"
+import { keyTtl } from "./constants.js"
 
 export function validateAuth(request) {
-	const authHeader = request.headers.get("authorization")
-	if (authHeader === AUTH) return true
+  const authHeader = request.headers.get("authorization")
+  if (authHeader === AUTH) return true
 }
 
 export async function store(data, mimeType, force = false) {
-	const hash = await digest(data)
-	const key = buildKey(hash, mimeType)
+  const hash = await digest(data)
+  const key = buildKey(hash, mimeType)
 
-	let getCurrentValuePromise
-	if (force) {
-		getCurrentValuePromise = Promise.resolve(null)
-	} else {
-		getCurrentValuePromise = NPCHAT_MEDIA.get(key, {type:"arrayBuffer"})
-	}
-	const currentValue = await getCurrentValuePromise
+  let getCurrentValuePromise
+  if (force) {
+    getCurrentValuePromise = Promise.resolve(null)
+  } else {
+    getCurrentValuePromise = NPCHAT_MEDIA.get(key, { type: "arrayBuffer" })
+  }
+  const currentValue = await getCurrentValuePromise
 
-	if (!currentValue) {
-		const options = {
-			expirationTtl: keyTtl,
-			metadata: {
-				expires: Date.now() + keyTtl * 1000
-			}
-		}
-		await NPCHAT_MEDIA.put(key, data, options)
-	}
+  if (!currentValue) {
+    const options = {
+      expirationTtl: keyTtl,
+      metadata: {
+        expires: Date.now() + keyTtl * 1000,
+      },
+    }
+    await NPCHAT_MEDIA.put(key, data, options)
+  }
 
-	return key
+  return key
 }
 
 export function getKeyFromRequestUrl(requestUrl) {
-	const [,type,subtype,hash] = new URL(requestUrl).pathname.split("/")
-	return `${type}/${subtype}/${hash}`
+  const [, type, subtype, hash] = new URL(requestUrl).pathname.split("/")
+  return `${type}/${subtype}/${hash}`
 }
 
 export function getMimeTypeFromKey(key) {
-	const [type, subtype,] = key.split("/")
-	return `${type}/${subtype}`
+  const [type, subtype] = key.split("/")
+  return `${type}/${subtype}`
 }
 
 export function getMimeTypeFromRequest(request) {
-	return request.headers.get("content-type")
+  return request.headers.get("content-type")
 }
 
 async function digest(arrayBuffer) {
-	return new Uint8Array(await crypto.subtle.digest("SHA-256", arrayBuffer))
+  return new Uint8Array(await crypto.subtle.digest("SHA-256", arrayBuffer))
 }
 
 function buildKey(hash, mimeType) {
-	return `${mimeType}/${toBase64(hash)}`
+  return `${mimeType}/${toBase64(hash)}`
 }
