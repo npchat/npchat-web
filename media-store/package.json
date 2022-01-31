@@ -6,7 +6,8 @@
 		"main": "dist/index.js",
 		"type": "module",
 		"scripts": {
-				"build": "node ./esbuild.js"
+				"build": "node ./esbuild.js",
+				"deploy": "wrangler publish"
 		},
 		"dependencies": {
 				"esbuild": "^0.13.3"
