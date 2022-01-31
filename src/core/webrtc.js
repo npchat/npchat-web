@@ -1,3 +1,5 @@
+import { fromBase64 } from "../util/base64";
+
 export const iceConfig = {
   iceServers: [
     {
@@ -8,30 +10,16 @@ export const iceConfig = {
         username: "npchat",
         credential: "npchatturn"
     }
-]
+  ]
 }
 
-async function getConnectedDevices(type) {
-  const devices = await navigator.mediaDevices.enumerateDevices();
-  return devices.filter(device => device.kind === type)
-}
-
-async function openCamera(deviceId, minWidth, minHeight) {
-  const constraints = {
-    audio: { echoCancellation: true },
-    video: {
-      deviceId,
-      width: { min: minWidth },
-      height: { min: minHeight }
-    }
-  }
-
-  return navigator.mediaDevices.getUserMedia(constraints);
-}
-
-export async function getMediaStream(minWidth, minHeight) {
-  const cameras = await getConnectedDevices('videoinput');
-  if (cameras && cameras.length > 0) {
-    return openCamera(cameras[0].deviceId, minWidth, minHeight);
+/*
+export function amIPolitePeer(myPubKeyHash, peerPubKeyHash) {
+  const myPkh = fromBase64(myPubKeyHash)
+  const peerPhk = fromBase64(peerPubKeyHash)
+  for (let i = 0; i < myPkh.length; i++) {
+    if (myPkh[i] > peerPhk[i]) return false
+    if (peerPhk[i] > myPkh[i]) return true
   }
 }
+*/

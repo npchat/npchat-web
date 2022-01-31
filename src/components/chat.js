@@ -184,9 +184,6 @@ export class Chat extends LitElement {
     <button class="icon call" @click=${this.startAudioCall}>
       <img alt="audio call" src="assets/icons/phone.svg" />
     </button>
-    <button class="icon call" @click=${this.startVideoCall}>
-      <img alt="video call" src="assets/icons/video_call.svg" />
-    </button>
     `
   }
 
@@ -314,20 +311,7 @@ export class Chat extends LitElement {
   startAudioCall() {
     this.dispatchEvent(new CustomEvent("callStart", {
       detail: {
-        sendAudio: true,
-        sendVideo: false,
-        contact: this.contact
-      },
-      composed: true,
-      bubbles: true
-    }))
-  }
-
-  startVideoCall() {
-    this.dispatchEvent(new CustomEvent("callStart", {
-      detail: {
-        sendAudio: true,
-        sendVideo: true,
+        videoEnabled: true,
         contact: this.contact
       },
       composed: true,

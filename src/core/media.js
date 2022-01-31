@@ -1,5 +1,5 @@
+export const avatarSize = 250
 const apiKey = "gXVqOrNeZvjx3OnVSjcXmvVcKNNY4SwLpOJpyTA"
-
 const endpoint = "https://npchat-media.dr-useless.workers.dev"
 
 export async function putMedia(data, mimeType) {

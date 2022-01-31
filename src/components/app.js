@@ -321,7 +321,6 @@ export class App extends LitElement {
           storeUser({ displayName, avatarURL })
           Object.assign(this, { displayName, avatarURL });
         }
-        console.log("receivedContacts", contacts)
         await Promise.all(contacts.map(async c => {
           if (!await this.db.get("contacts", c.pubKeyHash)) {
             return this.db.put("contacts", {

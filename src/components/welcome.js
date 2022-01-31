@@ -6,7 +6,7 @@ import { fromBase64 } from "../util/base64.js"
 import { unpack } from "msgpackr"
 import { importUserData } from "../core/export.js"
 import { resizeImageFile } from "../util/image.js"
-import { putMedia } from "../core/media.js"
+import { avatarSize, putMedia } from "../core/media.js"
 
 const defaultOriginURL = "https://axl.npchat.org"
 const defaultDisplayName = "Anonymous"
@@ -159,7 +159,7 @@ export class Welcome extends LitElement {
     detail.originURL = detail.originURL || defaultOriginURL
 
     if (detail.avatarFile.size > 0) {
-      const resizedBlob = await resizeImageFile(detail.avatarFile, 44, 44)
+      const resizedBlob = await resizeImageFile(detail.avatarFile, avatarSize, avatarSize)
       detail.avatarURL = await putMedia(resizedBlob, "image/jpeg")
     }
     detail.avatarFile = undefined

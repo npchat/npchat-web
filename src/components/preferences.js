@@ -1,7 +1,7 @@
 import { LitElement, html, css } from "lit"
 import { pack } from "msgpackr"
 import { getUserExportData } from "../core/export.js"
-import { putMedia } from "../core/media.js"
+import { avatarSize, putMedia } from "../core/media.js"
 import { formStyles } from "../styles/form.js"
 import { generalStyles } from "../styles/general.js"
 import { toBase64 } from "../util/base64.js"
@@ -169,7 +169,7 @@ export class Preferences extends LitElement {
       detail.displayName = "Anonymous"
     }
     if (detail.avatarFile.size > 0) {
-      const resizedBlob = await resizeImageFile(detail.avatarFile, 100, 100)
+      const resizedBlob = await resizeImageFile(detail.avatarFile, avatarSize, avatarSize)
       detail.avatarURL = await putMedia(resizedBlob, "image/jpeg")
     } else {
       detail.avatarURL = this.preferences.avatarURL
