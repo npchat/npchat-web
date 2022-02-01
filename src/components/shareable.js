@@ -7,7 +7,6 @@ import { generateQR } from "../util/qrcode.js"
 export class Shareable extends LitElement {
   static get properties() {
     return {
-      showQR: { type: Boolean },
       originURL: {},
       pubKeyHash: {},
     }
@@ -16,19 +15,19 @@ export class Shareable extends LitElement {
   static get styles() {
     return [
       css`
-        .container {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: flex-start;
-        }
+      .container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+      }
 
-        .text {
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          margin: 10px 0;
-        }
+      .text {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: 10px 0;
+      }
       `,
       formStyles,
       generalStyles,
@@ -58,9 +57,7 @@ export class Shareable extends LitElement {
             <div class="monospace">${this.shareableURL}</div>
             <button @click=${this.handleCopy} class="normal copy">Copy</button>
           </div>
-          <div ?hidden=${!this.showQR}>
-            <img alt="QR code" src=${this.shareableQR} />
-          </div>
+          <img alt="QR code" src=${this.shareableQR} />
           <p>
             Share this with others, and scan/copy theirs. When you both have the
             other's shareable, you can chat. This is necessary to securely trade

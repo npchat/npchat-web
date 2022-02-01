@@ -1,5 +1,8 @@
 import { css } from "lit"
 
+export const logoURL = "assets/npchat-logo.svg"
+export const avatarFallbackURL = "assets/avatar.svg"
+
 export const generalStyles = css`
   .border-gradient {
     border-image: linear-gradient(

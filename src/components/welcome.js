@@ -23,21 +23,25 @@ export class Welcome extends LitElement {
   static get styles() {
     return [
       css`
-        .flex {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: flex-start;
-        }
+      form {
+        margin: 10px;
+      }
+      
+      .flex {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+      }
 
-        p {
-          font-size: 1.2rem;
-        }
+      p {
+        font-size: 1.2rem;
+      }
 
-        img {
-          height: 200px;
-          margin: 10px 0;
-        }
+      img {
+        height: 200px;
+        margin: 10px 0;
+      }
       `,
       formStyles,
       generalStyles,
@@ -174,9 +178,8 @@ export class Welcome extends LitElement {
 
   render() {
     return html`
-      <npchat-modal ?canClose=${false}>
-        ${this.welcomeFormTemplate()} ${this.importFormTemplate()}
-      </npchat-modal>
+    ${this.welcomeFormTemplate()}
+    ${this.importFormTemplate()}
     `
   }
 
