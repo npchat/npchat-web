@@ -15,18 +15,14 @@ export class Welcome extends LitElement {
   static get properties() {
     return {
       slideNumber: { type: Number },
-      showImportForm: { type: Boolean },
       importErrorMessage: {},
+      route: {}
     }
   }
 
   static get styles() {
     return [
       css`
-      form {
-        margin: 10px;
-      }
-      
       .flex {
         display: flex;
         flex-direction: column;
@@ -34,13 +30,16 @@ export class Welcome extends LitElement {
         justify-content: flex-start;
       }
 
+      .flex.row {
+        flex-direction: row;
+      }
+
       p {
         font-size: 1.2rem;
       }
 
-      img {
-        height: 200px;
-        margin: 10px 0;
+      .fingerprint {
+        max-width: 200px;
       }
       `,
       formStyles,
@@ -51,6 +50,10 @@ export class Welcome extends LitElement {
   get avatarFileInput() {
     return this.renderRoot.getElementById("avatar-file")
   }
+  
+  get router() {
+    return this.renderRoot.querySelector("npchat-router")
+  }
 
   constructor() {
     super()
@@ -58,20 +61,29 @@ export class Welcome extends LitElement {
     this.showImportForm = false
   }
 
+  connectedCallback() {
+    super.connectedCallback()
+
+    this.addEventListener("routerNavigate", event => {
+      event.stopPropagation()
+      this.router.active = event.detail
+    })
+  }
+
   welcomeFormTemplate() {
     return html`
-      <form ?hidden=${this.showImportForm} @submit=${this.handleWelcomeSubmit}>
+      <form route=${`${this.route}/new`} @submit=${this.handleWelcomeSubmit} class="main">
         <div ?hidden=${this.slideNumber !== 0}>
-          <h1>Welcome to npchat</h1>
-          <h2>Let's get you set up</h2>
-          <p ?hidden=${this.browserSupportsProtocolHandlers()}>
-            It looks like your browser doesn't support some modern web APIs. For
-            the best experience,
-            ${this.browserUsesChromium()
-              ? "update your browser"
-              : "switch to Brave or Google Chrome"}.
-          </p>
           <div class="flex">
+            <h1>Welcome to npchat</h1>
+            <h2>Let's get you set up</h2>
+            <p ?hidden=${this.browserSupportsProtocolHandlers()}>
+              It looks like your browser doesn't support some modern web APIs. For
+              the best experience,
+              ${this.browserUsesChromium()
+                ? "update your browser"
+                : "switch to Brave or Google Chrome"}.
+            </p>
             <label>
               <span>Your display name</span>
               <input
@@ -104,7 +116,7 @@ export class Welcome extends LitElement {
                 <option value="https://dev.npchat.org:8000"></option>
               </datalist>
               <p>
-                Optionally point to your own self-hosted instance. Check the
+                Optionally point to your own self-hosted instance.<br>Check the
                 <a
                   href="https://npchat.org/docs"
                   target="_blank"
@@ -117,26 +129,24 @@ export class Welcome extends LitElement {
             </label>
             <button
               type="button"
-              class="normal"
+              class="button"
               @click=${() => (this.slideNumber += 1)}
             >
               Continue
             </button>
             <p class="color-light">Alternatively</p>
-            <button
-              type="button"
-              @click=${() => (this.showImportForm = true)}
-              class="normal"
-            >
-              Import
-            </button>
+            
+            
+            <npchat-route-link route="/welcome/import">
+              <div class="button small">Import</div>
+            </npchat-route-link>
           </div>
         </div>
         <div ?hidden=${this.slideNumber !== 1}>
-          <h2>Generated fresh crypto keys</h2>
           <div class="flex">
-            <img alt="fingerprint" src="assets/fingerprint.svg" />
-            <button type="submit" class="normal">OK</button>
+            <h2>Generated fresh crypto keys</h2>
+            <img class="fingerprint" alt="fingerprint" src="assets/fingerprint.svg" />
+            <button type="submit" class="button">OK</button>
           </div>
         </div>
       </form>
@@ -145,15 +155,13 @@ export class Welcome extends LitElement {
 
   importFormTemplate() {
     return html`
-      <form ?hidden=${!this.showImportForm} @submit=${this.handleImportSubmit}>
-        <button
-          type="button"
-          @click=${() => (this.showImportForm = false)}
-          class="icon"
-        >
-          <img alt="back" src="assets/icons/arrow_back.svg" />
-        </button>
-        <h2>Import</h2>
+      <form route=${`${this.route}/import`} @submit=${this.handleImportSubmit} class="main" >
+        <div class="flex row">
+          <npchat-route-link route="/welcome/new" class="button icon">
+            <img alt="back" src="assets/icons/arrow_back.svg" />
+          </npchat-route-link>
+          <h2>Import</h2>
+        </div>
         <p>
           Import your keys from another browser or device. This will allow you
           to connect to the same inbox.
@@ -170,7 +178,7 @@ export class Welcome extends LitElement {
           <p ?hidden=${!this.importErrorMessage} class="error">
             ${this.importErrorMessage}
           </p>
-          <button type="submit" class="normal">Submit</button>
+          <button type="submit" class="button">Submit</button>
         </div>
       </form>
     `
@@ -178,8 +186,10 @@ export class Welcome extends LitElement {
 
   render() {
     return html`
-    ${this.welcomeFormTemplate()}
-    ${this.importFormTemplate()}
+    <npchat-router default="/welcome/new">
+      ${this.welcomeFormTemplate()}
+      ${this.importFormTemplate()}
+    </npchat-router>
     `
   }
 
@@ -242,5 +252,10 @@ export class Welcome extends LitElement {
           b.brand.toLowerCase() === "chromium" && parseInt(b.version, 10) >= 97
       ).length > 0
     )
+  }
+
+  canAccess() {
+    // if originURL is already set, return false
+    return !localStorage.originURL
   }
 }

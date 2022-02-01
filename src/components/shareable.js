@@ -87,4 +87,8 @@ export class Shareable extends LitElement {
     }, 500)
     await navigator.clipboard.writeText(this.shareableURL)
   }
+
+  canAccess() {
+    return !!localStorage.originURL
+  }
 }

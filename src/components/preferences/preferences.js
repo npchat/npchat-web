@@ -44,7 +44,7 @@ export class Preferences extends LitElement {
 
   mainFormTemplate() {
     return html`
-      <form @submit=${this.handleSubmit}>
+      <form @submit=${this.handleSubmit} class="main">
         <label>
           <span>Display name</span>
           <input
@@ -98,12 +98,12 @@ export class Preferences extends LitElement {
             for guidance.
           </p>
         </label>
-        <button type="submit" class="normal">Submit</button>
+        <button type="submit" class="button">Submit</button>
 
         <div class="row">
           <button
             type="button"
-            class="normal secondary"
+            class="button small"
             @click=${() => (this.showExport = true)}
           >
             Export
@@ -185,5 +185,9 @@ export class Preferences extends LitElement {
     const file = event.target.files[0]
     const resizedBlob = await resizeImageFile(file, 50, 50)
     this.avatarPreview.src = URL.createObjectURL(resizedBlob)
+  }
+
+  canAccess() {
+    return !!localStorage.originURL
   }
 }

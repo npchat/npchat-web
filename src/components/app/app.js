@@ -1,5 +1,4 @@
 import { LitElement, html } from "lit"
-import { classMap } from "lit/directives/class-map.js"
 import { styleMap } from "lit/directives/style-map.js"
 import { pack, unpack } from "msgpackr"
 import { loadUser, storeUser } from "../../core/storage.js"
@@ -13,7 +12,7 @@ import {
 import { openDBConn } from "../../core/db.js"
 import { handleIncomingMessage } from "../../core/incoming.js"
 import { appStyles } from "./styles.js"
-import { avatarFallbackURL, logoURL } from "../../styles/general.js"
+import { avatarFallbackURL, generalStyles, logoURL } from "../../styles/general.js"
 
 export class App extends LitElement {
   static get properties() {
@@ -28,7 +27,10 @@ export class App extends LitElement {
   }
 
   static get styles() {
-    return appStyles
+    return [
+      appStyles,
+      generalStyles
+    ]
   }
 
   get toastComponent() {
@@ -48,32 +50,33 @@ export class App extends LitElement {
 
     registerProtocolHandler()
 
-    this.addEventListener("routerNavigate", event => {
-      const { route } = event.detail
-      this.router.active = route
-      this.currentRoute = route
+    this.addEventListener("routerNavigate", ({detail}) => {
+      this.router.active = detail
+      this.currentRoute = detail
+      const {active} = this.router
+      if (location.pathname !== active) {
+        history.pushState({route: active}, "", active)
+      }
     })
 
-    // window.addEventListener("focus", () => this.init())
     window.addEventListener("callStart", event => this.handleCallStart(event))
 
     this.init()
   }
 
-  async init() {
-    if (this.isSocketConnected && this.socket?.readyState === WebSocket.OPEN) {
+  async init(force) {
+    if (!force && this.isSocketConnected && this.socket?.readyState === WebSocket.OPEN) {
       return
     }
     const user = await loadUser()
     Object.assign(this, user)
-    if (!this.originURL || !this.keys) {
-      const route = "/welcome"
-      this.router.active = route
-      this.currentRoute = route
-      history.pushState({route}, "", route)
+    if (!this.originURL) {
+      await this.router.getUpdateComplete()
+      this.router.active = "/welcome/new"
+      this.currentRoute = this.router.active
       return
     }
-    
+
     const shaereableURL = buildShareableURL(
       this.originURL,
       this.keys.pubKeyHash
@@ -87,48 +90,49 @@ export class App extends LitElement {
     return this.connectSocket()
   }
 
+  logoTemplate() {
+    const atWelcome = this.currentRoute?.startsWith("/welcome")
+    if (atWelcome) {
+      return html`
+      <img alt="logo" src=${logoURL} class="logo" />
+      `
+    } else {
+      return html`
+      <npchat-route-link route="/">
+        <img alt="logo" src=${logoURL} class="logo" />
+      </npchat-route-link>
+      `
+    }
+  }
+
   headerTemplate() {
+    const atWelcome = this.currentRoute?.startsWith("/welcome")
     const qrImgUrl = this.shareableQR && `url(${this.shareableQR})`
+
     return html`
     <header>
-      <img alt="npchat logo" src=${logoURL} class="logo" />
-
+      ${this.logoTemplate()}
       <npchat-status
-        ?hidden=${this.currentRoute === "/welcome"}
+        ?hidden=${atWelcome}
         ?isSocketConnected=${this.isSocketConnected}
       ></npchat-status>
 
-      <div ?hidden=${this.currentRoute === "/welcome"}>
-        <npchat-route-link route="/">
-          <h1>Chats</h1>
-        </npchat-route-link>
-        <npchat-route-link route="/preferences">
-          <h1>Preferences</h1>
-        </npchat-route-link>
-        <npchat-route-link route="/shareable">
-          <h1>Shareable</h1>
-        </npchat-route-link>
-      </div>
-
-      <button 
-        ?hidden=${this.currentRoute === "/welcome"}
-        href="#" @click=${this.handleShowShareable}
-        class="buttonRound">
+      <npchat-route-link route="/" ?hidden=${atWelcome}>
+        <span>Chats</span>
+      </npchat-route-link>
+      <npchat-route-link route="/shareable" ?hidden=${atWelcome}>
         <div
           class="avatar"
           style=${styleMap({ backgroundImage: qrImgUrl })}
         ></div>
-      </button>
-      <button
-        ?hidden=${this.currentRoute === "/welcome"}
-        @click=${this.handleShowPreferences}
-        class="buttonRound">
+      </npchat-route-link>
+      <npchat-route-link route="/preferences" ?hidden=${atWelcome}>
         <img
           alt="avatar"
           src=${this.avatarURL || avatarFallbackURL}
           class="avatar"
         />
-      </button>
+      </npchat-route-link>
     </header>
     `
   }
@@ -136,14 +140,16 @@ export class App extends LitElement {
   render() {
     return html`
     ${this.headerTemplate()}
-    <npchat-router active=${this.route} default="/">
+    <npchat-router default="/"}>
 
-      <npchat-welcome route="/welcome"></npchat-welcome>
+      <npchat-welcome
+        route="/welcome"
+        @formSubmit=${this.handlePreferencesSubmit}
+      ></npchat-welcome>
 
       <npchat-preferences
         route="/preferences"
         @formSubmit=${this.handlePreferencesSubmit}
-        @close=${this.hidePreferences}
         .preferences=${{
           displayName: this.displayName,
           avatarURL: this.avatarURL,
@@ -159,44 +165,15 @@ export class App extends LitElement {
       ></npchat-shareable>
 
       <npchat-chats
-        route="/chats"
+        route="/"
         .keys=${this.keys}>
       </npchat-chats>
 
-
     </npchat-router>
-    `
-    /*
-    <npchat-welcome route="welcome"></npchat-welcome>
-    <npchat-preferences route="preferences"></npchat-preferences>
-    <npchat-contacts route="chats"></npchat-contacts>
-
-    <main class="${classMap({ blur: shouldBlur })}">
-      ${this.headerTemplate()}
-      <npchat-contacts .keys=${this.keys}></npchat-contacts>
-    </main>
 
     <npchat-toast></npchat-toast>
-
-    <npchat-welcome
-      @formSubmit=${this.handlePreferencesSubmit}
-      ?hidden=${!this.showWelcome}
-    ></npchat-welcome>
-
-    <npchat-preferences
-      @formSubmit=${this.handlePreferencesSubmit}
-      @close=${this.hidePreferences}
-      ?hidden=${!this.showPreferences}
-      .preferences=${{
-        displayName: this.displayName,
-        avatarURL: this.avatarURL,
-        originURL: this.originURL,
-      }}
-    ></npchat-preferences>
-
     <npchat-call .myKeys=${this.keys}></npchat-call>
     `
-    */
   }
 
   async handlePreferencesSubmit(e) {
@@ -218,7 +195,9 @@ export class App extends LitElement {
         shareableData: this.buildShareableData(),
       })
     }
-    return this.init()
+    this.router.active = "/"
+    this.currentRoute = this.router.active
+    return this.init(true)
   }
 
   hideWelcome() {

@@ -1,5 +1,3 @@
-import { unpack } from "msgpackr"
-import { fromBase64 } from "../util/base64.js"
 import { getJwkFromValues, getValuesFromJwk } from "./keys.js"
 import { loadUser, storeUser } from "./storage.js"
 
@@ -53,10 +51,10 @@ export async function importUserData(data) {
   return loadUser()
 }
 
-export async function importUserDataFromURL() {
+/*export async function importUserDataFromURL() {
   let data = window.location.hash
   if (!data.startsWith("#import:")) return false
-  history.pushState(null, "", "/")
+  history.pushState({}, "", "/")
   data = data.replace("#import:", "")
   const bytes = fromBase64(data)
   const unpacked = unpack(bytes)
@@ -64,4 +62,4 @@ export async function importUserDataFromURL() {
   if (!userData) return false
   storeUser(userData)
   return true
-}
+}*/

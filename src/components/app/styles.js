@@ -8,16 +8,6 @@ export const appStyles = css`
   justify-content: flex-start;
 }
 
-main {
-  transition: filter 300ms;
-}
-
-main.blur {
-  filter: blur(10px);
-  max-height: 100vh;
-  overflow: hidden;
-}
-
 header {
   width: 100vw;
   height: 60px;
@@ -29,10 +19,12 @@ header {
   background-color: var(--color-darkwhite);
 }
 
-.logo {
-  height: 100%;
-  width: auto;
+header > *{
   margin: 0 5px;
+}
+
+.logo {
+  width: 80px;
 }
 
 .avatar {
@@ -42,16 +34,5 @@ header {
   border-radius: 50%;
   border: 2px solid var(--color-grey);
   transition: border-color 300ms;
-}
-
-.buttonRound {
-  margin: 0 5px;
-  outline: none;
-  border: none;
-}
-
-.buttonRound:hover .avatar,
-.buttonRound:focus .avatar {
-  border-color: var(--color-primary);
 }
 `

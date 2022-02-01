@@ -3,7 +3,7 @@ import { LitElement, html } from "lit";
 export class Router extends LitElement {
   static get properties() {
     return {
-      active: {},
+      _active: {},
       default: {}
     }
   }
@@ -13,6 +13,21 @@ export class Router extends LitElement {
     return slot?.assignedElements({flatten: true})
   }
 
+  get active() {
+    return this._active
+  }
+
+  set active(route) {
+    const match = this.getMatch(route)
+    const canAccess = !match?.canAccess || match.canAccess && match.canAccess()
+    if (match && canAccess) {
+      this._active = route
+    } else {
+      this._active = this.default
+      console.log("invalid route", {route, match, canAccess})
+    }
+  }
+
   render() {
     return html`<slot></slot>`
   }
@@ -20,34 +35,56 @@ export class Router extends LitElement {
   connectedCallback() {
     super.connectedCallback()
 
-    window.onpopstate = event => {
+    window.addEventListener("popstate", event => {
       event.preventDefault()
-      this.active = event.state?.route || this.default
-    }
+      const route = event.state?.route
+      this.active = route
+    })
+
+    window.addEventListener("routerNavigate", () => {
+      this.requestUpdate()
+    })
   }
 
+  async getUpdateComplete() {
+    await super.getUpdateComplete()
+    return Promise.all(this._slottedChildren.map(c => c.getUpdateComplete()))
+  }
+
+  /*
+    TODO:
+    1. find best match (shortest matching path)
+    2. for each slot:
+        if is best match, remove attr hidden
+        else, set it
+  */
   updated() {
-    console.log(this._slottedChildren)
+    if (!this.active) this.active = this.default
     this._slottedChildren?.forEach(child => {
-      if (child.getAttribute("route") === this.active) {
+      const route = child.getAttribute("route")
+      if (this.matches(this.active, route)) {
         child.removeAttribute("hidden")
       } else {
         child.setAttribute("hidden", "")
       }
     })
-    if (!this.active) {
-      let { pathname } = location
-      if (this.isValidRoute(pathname)) {
-        this.active = pathname
-        return
-      }
-      //this.active = this.default
-    }
   }
 
-  isValidRoute(route) {
-    return !!this._slottedChildren.find(child => {
-      return child.getAttribute("route") === route
+  getMatch(pathname) {
+    if (!pathname) return
+    return this._slottedChildren?.find(child => {
+      const route = child.getAttribute("route")
+      return this.matches(pathname, route)
     })
+  }
+
+  matches(pathname, route) {
+    if (route === "/") {
+      // root path always starts with "/",
+      // so must match exactly
+      return route === pathname
+    } else {
+      return pathname.startsWith(route)
+    }
   }
 }

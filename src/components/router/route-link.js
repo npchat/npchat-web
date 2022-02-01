@@ -1,6 +1,15 @@
-import { LitElement, html } from "lit";
+import { LitElement, html, css } from "lit";
 
 export class RouteLink extends LitElement {
+  static get styles() {
+    return css`
+      a {
+        text-decoration: none;
+        color: inherit;
+      }
+    `
+  }
+
   static get properties() {
     return {
       route: {},
@@ -31,8 +40,5 @@ export class RouteLink extends LitElement {
       composed: true,
       bubbles: true
     }))
-    if (location.pathname !== route) {
-      history.pushState({route}, "", route)
-    } 
   }
 }
