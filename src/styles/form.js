@@ -29,9 +29,4 @@ input:focus {
   outline: 0;
   border: 2px solid var(--color-secondary);
 }
-
-#avatar-file {
-  margin-left: 5px;
-  max-width: calc(100vw - 100px);
-}
 `

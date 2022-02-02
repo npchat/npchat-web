@@ -48,7 +48,7 @@ export class App extends LitElement {
   constructor() {
     super()
 
-    this.defaultRoute = localStorage.originURL ? "/" : "/welcome/new"
+    this.defaultRoute = localStorage.originURL ? "/" : "/welcome"
     
     this.init()
   }
@@ -67,10 +67,6 @@ export class App extends LitElement {
 
   async init(force) {
     Object.assign(this, loadUser())
-
-    await super.getUpdateComplete()
-    await this.router.getUpdateComplete()
-    this.router.active = location.pathname
 
     if (!this.originURL) return
 
@@ -102,15 +98,16 @@ export class App extends LitElement {
         <img alt="logo" src="assets/npchat-logo.svg" class="logo" />
       </npchat-route-link>
       <npchat-status
+        ?hidden=${!this.originURL}
         ?isSocketConnected=${this.isSocketConnected}
       ></npchat-status>
-      <npchat-route-link route="/shareable">
+      <npchat-route-link route="/shareable" ?hidden=${!this.originURL}>
         <div
           class="buttonRound"
           style=${styleMap({ backgroundImage: qrImgUrl })}
         ></div>
       </npchat-route-link>
-      <npchat-route-link route="/preferences">
+      <npchat-route-link route="/preferences" ?hidden=${!this.originURL}>
         <div
         class="buttonRound"
         style=${styleMap({ backgroundImage: avatarURL })}

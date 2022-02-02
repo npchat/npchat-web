@@ -49,11 +49,17 @@ export class Router extends LitElement {
     window.addEventListener("route", () => {
       this.requestUpdate()
     })
+
+    this.getUpdateComplete().then(() => {
+      this.active = location.pathname
+    })
   }
 
   async getUpdateComplete() {
     await super.getUpdateComplete()
-    return Promise.all(this._slottedChildren.map(c => c.getUpdateComplete()))
+    return Promise.all(this._slottedChildren.map(c => {
+      return typeof c.getUpdateComplete === "function" && c.getUpdateComplete() || Promise.resolve()
+    }))
   }
 
   updated() {
