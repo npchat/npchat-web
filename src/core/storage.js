@@ -2,44 +2,45 @@ import { toBase64 } from "../util/base64.js"
 import { hash } from "../util/hash.js"
 import { importAuthKey, importDHKey } from "./keys.js"
 
-export async function loadUser() {
+export function loadUser() {
   const user = {
-    showWelcome:
-      !localStorage.showWelcome || localStorage.showWelcome === "true",
     displayName: localStorage.displayName,
     avatarURL: localStorage.avatarURL,
     originURL: localStorage.originURL,
     keys: localStorage.keys && JSON.parse(localStorage.keys),
   }
-  if (!user.keys) {
-    return user
-  }
-  Object.assign(user.keys.auth, {
+  return user
+}
+
+export async function importUserKeys(keys) {
+  const imported = {}
+  Object.assign(imported, keys)
+  Object.assign(imported.auth, {
     keyPair: {
-      publicKey: await importAuthKey("jwk", user.keys.auth.jwk.publicKey, [
+      publicKey: await importAuthKey("jwk", imported.auth.jwk.publicKey, [
         "verify",
       ]),
-      privateKey: await importAuthKey("jwk", user.keys.auth.jwk.privateKey, [
+      privateKey: await importAuthKey("jwk", imported.auth.jwk.privateKey, [
         "sign",
       ]),
     },
   })
-  user.keys.auth.publicKeyRaw = new Uint8Array(
-    await crypto.subtle.exportKey("raw", user.keys.auth.keyPair.publicKey)
+  imported.auth.publicKeyRaw = new Uint8Array(
+    await crypto.subtle.exportKey("raw", imported.auth.keyPair.publicKey)
   )
-  user.keys.pubKeyHash = toBase64(
-    new Uint8Array(await hash(user.keys.auth.publicKeyRaw))
+  imported.pubKeyHash = toBase64(
+    new Uint8Array(await hash(imported.auth.publicKeyRaw))
   )
-  Object.assign(user.keys.dh, {
+  Object.assign(imported.dh, {
     keyPair: {
-      publicKey: await importDHKey("jwk", user.keys.dh.jwk.publicKey, []),
-      privateKey: await importDHKey("jwk", user.keys.dh.jwk.privateKey, [
+      publicKey: await importDHKey("jwk", imported.dh.jwk.publicKey, []),
+      privateKey: await importDHKey("jwk", imported.dh.jwk.privateKey, [
         "deriveKey",
         "deriveBits",
       ]),
     },
   })
-  return user
+  return imported
 }
 
 export function storeUser(userObject) {

@@ -52,7 +52,7 @@ export const chatStyles = css`
 
   .messageContainer.in .message {
     background-color: var(--color-darkwhite);
-    color: var(--color-black);
+    color: var(--color-offblack);
   }
 
   .compose {

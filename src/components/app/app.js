@@ -1,7 +1,7 @@
 import { LitElement, html } from "lit"
 import { styleMap } from "lit/directives/style-map.js"
 import { pack, unpack } from "msgpackr"
-import { loadUser, storeUser } from "../../core/storage.js"
+import { importUserKeys, loadUser, storeUser } from "../../core/storage.js"
 import { getWebSocket, authenticateSocket } from "../../core/websocket.js"
 import { subscribeToPushNotifications } from "../../core/webpush.js"
 import { generateQR } from "../../util/qrcode.js"
@@ -12,17 +12,17 @@ import {
 import { openDBConn } from "../../core/db.js"
 import { handleIncomingMessage } from "../../core/incoming.js"
 import { appStyles } from "./styles.js"
-import { avatarFallbackURL, generalStyles, logoURL } from "../../styles/general.js"
+import { avatarFallbackURL, generalStyles } from "../../styles/general.js"
 
 export class App extends LitElement {
   static get properties() {
     return {
-      currentRoute: {},
       isSocketConnected: { type: Boolean },
       displayName: {},
       avatarURL: {},
       originURL: {},
       shareableQR: {},
+      defaultRoute: {}
     }
   }
 
@@ -45,41 +45,42 @@ export class App extends LitElement {
     return this.renderRoot?.querySelector("npchat-router")
   }
 
+  constructor() {
+    super()
+
+    this.defaultRoute = localStorage.originURL ? "/" : "/welcome/new"
+    
+    this.init()
+  }
+
   connectedCallback() {
     super.connectedCallback()
 
-    registerProtocolHandler()
-
-    this.addEventListener("routerNavigate", ({detail}) => {
-      this.router.active = detail
-      this.currentRoute = detail
-      const {active} = this.router
-      if (location.pathname !== active) {
-        history.pushState({
-          route: active,
-          routerId: this.router.id
-        }, "", active)
-      }
+    this.addEventListener("routerNavigate", event => {
+      event.stopPropagation()
+      this.router.active = event.detail
     })
 
     window.addEventListener("callStart", event => this.handleCallStart(event))
 
-    this.init()
+    registerProtocolHandler()
   }
 
   async init(force) {
+    Object.assign(this, loadUser())
+
+    await super.getUpdateComplete()
+    await this.router.getUpdateComplete()
+    this.router.active = location.pathname
+
+    if (!this.originURL) return
+
     if (!force && this.isSocketConnected && this.socket?.readyState === WebSocket.OPEN) {
       return
     }
-    const user = await loadUser()
-    Object.assign(this, user)
-    if (!this.originURL) {
-      await this.router.getUpdateComplete()
-      this.router.active = "/welcome"
-      this.currentRoute = this.router.active
-      return
-    }
 
+    Object.assign(this.keys, await importUserKeys(this.keys))
+    
     const shaereableURL = buildShareableURL(
       this.originURL,
       this.keys.pubKeyHash
@@ -93,39 +94,24 @@ export class App extends LitElement {
     return this.connectSocket()
   }
 
-  logoTemplate() {
-    const atWelcome = this.currentRoute?.startsWith("/welcome")
-    if (atWelcome) {
-      return html`
-      <img alt="logo" src=${logoURL} class="logo" />
-      `
-    } else {
-      return html`
-      <npchat-route-link route="/">
-        <img alt="logo" src=${logoURL} class="logo" />
-      </npchat-route-link>
-      `
-    }
-  }
-
   headerTemplate() {
-    const atWelcome = this.currentRoute?.startsWith("/welcome")
     const qrImgUrl = this.shareableQR && `url(${this.shareableQR})`
     const avatarURL = `url(${this.avatarURL || avatarFallbackURL})`
     return html`
     <header>
-      ${this.logoTemplate()}
+      <npchat-route-link route="/">
+        <img alt="logo" src="assets/npchat-logo.svg" class="logo" />
+      </npchat-route-link>
       <npchat-status
-        ?hidden=${atWelcome}
         ?isSocketConnected=${this.isSocketConnected}
       ></npchat-status>
-      <npchat-route-link route="/shareable" ?hidden=${atWelcome}>
+      <npchat-route-link route="/shareable">
         <div
           class="buttonRound"
           style=${styleMap({ backgroundImage: qrImgUrl })}
         ></div>
       </npchat-route-link>
-      <npchat-route-link route="/preferences" ?hidden=${atWelcome}>
+      <npchat-route-link route="/preferences">
         <div
         class="buttonRound"
         style=${styleMap({ backgroundImage: avatarURL })}
@@ -138,7 +124,7 @@ export class App extends LitElement {
   render() {
     return html`
     ${this.headerTemplate()}
-    <npchat-router default="/" id="router-main">
+    <npchat-router .default=${this.defaultRoute} id="router-main">
 
       <npchat-welcome
         route="/welcome"
@@ -176,8 +162,6 @@ export class App extends LitElement {
 
   async handlePreferencesSubmit(e) {
     storeUser(e.detail)
-    this.hideWelcome()
-    this.hidePreferences()
     Object.assign(this, e.detail)
     if (this.socket?.readyState === WebSocket.OPEN) {
       const contacts = (await this.db.getAll("contacts")).map(c => ({
@@ -193,32 +177,9 @@ export class App extends LitElement {
         shareableData: this.buildShareableData(),
       })
     }
+    this.defaultRoute = "/"
     this.router.active = "/"
-    this.currentRoute = this.router.active
     return this.init(true)
-  }
-
-  hideWelcome() {
-    this.showWelcome = false
-    storeUser({
-      showWelcome: this.showWelcome,
-    })
-  }
-
-  handleShowPreferences() {
-    this.showPreferences = true
-  }
-
-  hidePreferences() {
-    this.showPreferences = false
-  }
-
-  handleShowShareable() {
-    this.showShareable = true
-  }
-
-  hideShareable() {
-    this.showShareable = false
   }
 
   buildShareableData() {

@@ -3,7 +3,7 @@ import { pack } from "msgpackr"
 import { getUserExportData } from "../../core/export.js"
 import { avatarSize, putMedia } from "../../core/media.js"
 import { formStyles } from "../../styles/form.js"
-import { generalStyles } from "../../styles/general.js"
+import { avatarFallbackURL, generalStyles } from "../../styles/general.js"
 import { toBase64 } from "../../util/base64.js"
 import { resizeImageFile } from "../../util/image.js"
 import { generateQR } from "../../util/qrcode.js"
@@ -61,7 +61,7 @@ export class Preferences extends LitElement {
               alt="avatar"
               id="avatar-preview"
               class="avatar"
-              src=${this.preferences.avatarURL}
+              src=${this.preferences.avatarURL || avatarFallbackURL}
             />
             <input
               type="file"
@@ -140,7 +140,7 @@ export class Preferences extends LitElement {
   }
 
   async buildExportData() {
-    const data = await getUserExportData()
+    const data = getUserExportData()
     const packed = toBase64(pack(data))
     this.exportData = packed
     this.exportQR = await generateQR(

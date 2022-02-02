@@ -1,8 +1,8 @@
 import { getJwkFromValues, getValuesFromJwk } from "./keys.js"
-import { loadUser, storeUser } from "./storage.js"
+import { importUserKeys, loadUser, storeUser } from "./storage.js"
 
-export async function getUserExportData() {
-  const user = await loadUser()
+export function getUserExportData() {
+  const user = loadUser()
   const { keys } = user
   if (!keys) return
   const toExport = {
@@ -46,9 +46,9 @@ export async function importUserData(data) {
       },
     },
   }
-  // store & load to import keys
-  storeUser(user)
-  return loadUser()
+  
+  Object.assign(user.keys, await importUserKeys(user.keys))
+  return user
 }
 
 /*export async function importUserDataFromURL() {

@@ -14,23 +14,31 @@ export class Shareable extends LitElement {
 
   static get styles() {
     return [
+      formStyles,
+      generalStyles,
       css`
       .container {
+        max-width: 400px;
+      }
+
+      .flex {
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: flex-start;
       }
 
-      .text {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        margin: 10px 0;
+      .monospace {
+        color: var(--color-offwhite);
+        background-color: var(--color-offblack);
+        padding: 15px;
+        border-radius: 5px;
       }
-      `,
-      formStyles,
-      generalStyles,
+
+      img {
+        border-radius: 5px;
+      }
+      `
     ]
   }
 
@@ -51,21 +59,19 @@ export class Shareable extends LitElement {
 
   render() {
     return html`
-      <npchat-modal ?canClose=${true}>
-        <div class="container">
-          <div class="text">
-            <div class="monospace">${this.shareableURL}</div>
-            <button @click=${this.handleCopy} class="normal copy">Copy</button>
-          </div>
-          <img alt="QR code" src=${this.shareableQR} />
-          <p>
-            Share this with others, and scan/copy theirs. When you both have the
-            other's shareable, you can chat. This is necessary to securely trade
-            keys.
-          </p>
-          <button @click=${this.handleClose} class="normal">Done</button>
-        </div>
-      </npchat-modal>
+    <div class="container">
+      <h1>Your shareable</h1>
+      <div class="flex">
+        <div class="monospace">${this.shareableURL}</div>
+        <button @click=${this.handleCopy} class="button copy">Copy</button>
+        <img alt="QR code" src=${this.shareableQR} />
+        <h2>Securely trade keys</h2>
+        <p>Share the link or QR code with a friend, and scan/copy theirs.</p>
+        <p>If you copied it, you must paste it into the text box
+          <npchat-route-link route="/" class="link">here</npchat-route-link></p>
+        <p>When you've both imported the other's shareable, you can chat.</p>
+      </div>
+    </div>
     `
   }
 

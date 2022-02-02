@@ -194,4 +194,8 @@ export class Chats extends LitElement {
       c => JSON.stringify(c).toLowerCase().indexOf(this.filter) > -1
     )
   }
+
+  canAccess() {
+    return !!localStorage.originURL
+  }
 }

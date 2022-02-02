@@ -7,6 +7,7 @@ import { fromBase64 } from "../util/base64.js"
 import { importUserData } from "../core/export.js"
 import { resizeImageFile } from "../util/image.js"
 import { avatarSize, putMedia } from "../core/media.js"
+import { browserSupportsProtocolHandlers, browserUsesChromium } from "../core/browser.js"
 
 const defaultOriginURL = "https://axl.npchat.org"
 const defaultDisplayName = "Anonymous"
@@ -77,10 +78,10 @@ export class Welcome extends LitElement {
           <div class="flex">
             <h1>Welcome to npchat</h1>
             <h2>Let's get you set up</h2>
-            <p ?hidden=${this.browserSupportsProtocolHandlers()}>
+            <p ?hidden=${browserSupportsProtocolHandlers()}>
               It looks like your browser doesn't support some modern web APIs. For
               the best experience,
-              ${this.browserUsesChromium()
+              ${browserUsesChromium()
                 ? "update your browser"
                 : "switch to Brave or Google Chrome"}.
             </p>
@@ -238,20 +239,6 @@ export class Welcome extends LitElement {
       console.log(err)
       this.importErrorMessage = "Failed to import data"
     }
-  }
-
-  browserSupportsProtocolHandlers() {
-    return typeof navigator.registerProtocolHandler === "function"
-  }
-
-  browserUsesChromium() {
-    if (!navigator.userAgentData) return false
-    return (
-      navigator.userAgentData.brands.filter(
-        b =>
-          b.brand.toLowerCase() === "chromium" && parseInt(b.version, 10) >= 97
-      ).length > 0
-    )
   }
 
   canAccess() {

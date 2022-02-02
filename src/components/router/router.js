@@ -19,12 +19,17 @@ export class Router extends LitElement {
 
   set active(route) {
     const match = this.getMatch(route)
-    const canAccess = !match?.canAccess || match.canAccess && match.canAccess()
-    if (match && canAccess) {
+    if (match && typeof match.canAccess !== "function" ||  match.canAccess()) {
       this._active = route
+      if (this._active !== location.pathname) {
+        history.pushState({
+          route: this._active,
+          routerId: this.id
+        }, "", this._active)
+      }
     } else {
       this._active = this.default
-      console.log("invalid route", {route, match, canAccess})
+      console.log("invalid route", {route, match})
     }
   }
 
@@ -39,6 +44,7 @@ export class Router extends LitElement {
 
     window.addEventListener("popstate", event => {
       event.preventDefault()
+      if (!event.state) return
       const {route, routerId} = event.state
       if (routerId === this.id) {
         this.active = route
@@ -55,29 +61,10 @@ export class Router extends LitElement {
     return Promise.all(this._slottedChildren.map(c => c.getUpdateComplete()))
   }
 
-  /*
-    TODO:
-    1. find best match (longest matching path)
-    2. for each slot:
-        if is best match, remove attr hidden
-        else, set it
-  */
   updated() {
-    if (!this.active) this.active = this.default
-    const bestMatch = this._slottedChildren
-      .filter(child => {
-        const route = child.getAttribute("route")
-        return this.matches(this.active, route)
-      })
-      .sort((a, b) => {
-        const aRouteLength = a.getAttribute("route").length
-        const bRouteLength = b.getAttribute("route").length
-        console.log(aRouteLength, bRouteLength)
-        return bRouteLength - aRouteLength
-      })[0]
-
+    const match = this.getMatch(this.active || this.default)
     this._slottedChildren?.forEach(child => {
-      if (child === bestMatch) {
+      if (child === match) {
         child.removeAttribute("hidden")
       } else {
         child.setAttribute("hidden", "")
@@ -87,10 +74,19 @@ export class Router extends LitElement {
 
   getMatch(pathname) {
     if (!pathname) return
-    return this._slottedChildren?.find(child => {
-      const route = child.getAttribute("route")
-      return this.matches(pathname, route)
-    })
+    if (!this._slottedChildren) return
+
+    return this._slottedChildren
+      .filter(child => {
+        const route = child.getAttribute("route")
+        return this.matches(pathname, route)
+      })
+      .sort((a, b) => {
+        const aRouteLength = a.getAttribute("route").length
+        const bRouteLength = b.getAttribute("route").length
+        console.log(aRouteLength, bRouteLength)
+        return bRouteLength - aRouteLength
+      })[0]
   }
 
   matches(pathname, route) {

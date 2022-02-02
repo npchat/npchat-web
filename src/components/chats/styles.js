@@ -33,7 +33,7 @@ input {
   justify-content: flex-start;
   cursor: pointer;
   text-decoration: none;
-  color: var(--color-black);
+  color: var(--color-offblack);
   background-color: var(--color-offwhite);
   transition: background-color 300ms;
   padding: 5px;

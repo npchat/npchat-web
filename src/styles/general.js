@@ -1,6 +1,5 @@
 import { css } from "lit"
 
-export const logoURL = "assets/npchat-logo.svg"
 export const avatarFallbackURL = "assets/avatar.svg"
 
 export const generalStyles = css`
@@ -36,12 +35,12 @@ export const generalStyles = css`
     font-size: 1.8rem;
   }
 
-  a.link {
+  .link {
     text-decoration: underline;
     color: inherit;
   }
 
-  a.link:hover {
+  .link:hover {
     color: var(--color-primary);
   }
 
@@ -60,7 +59,7 @@ export const generalStyles = css`
     border: 0;
     outline: 0;
     background-color: transparent;
-    color: var(--color-black);
+    color: var(--color-offblack);
     cursor: pointer;
     user-select: none;
     font-size: 1.4rem;

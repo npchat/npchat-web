@@ -38,8 +38,7 @@ header > *{
   transition: border-color 300ms;
 }
 
-.buttonRound:hover,
-.buttonRound:focus {
+.buttonRound:hover {
   border-color: var(--color-primary)
 }
 `
