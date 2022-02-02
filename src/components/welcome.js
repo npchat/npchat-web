@@ -186,7 +186,7 @@ export class Welcome extends LitElement {
 
   render() {
     return html`
-    <npchat-router default="/welcome/new">
+    <npchat-router default="/welcome/new" id="router-welcome">
       ${this.welcomeFormTemplate()}
       ${this.importFormTemplate()}
     </npchat-router>

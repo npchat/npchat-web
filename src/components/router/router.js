@@ -35,10 +35,14 @@ export class Router extends LitElement {
   connectedCallback() {
     super.connectedCallback()
 
+    if (!this.id) console.log("router must have an id", this)
+
     window.addEventListener("popstate", event => {
       event.preventDefault()
-      const route = event.state?.route
-      this.active = route
+      const {route, routerId} = event.state
+      if (routerId === this.id) {
+        this.active = route
+      }
     })
 
     window.addEventListener("routerNavigate", () => {

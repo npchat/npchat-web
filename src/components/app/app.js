@@ -55,7 +55,10 @@ export class App extends LitElement {
       this.currentRoute = detail
       const {active} = this.router
       if (location.pathname !== active) {
-        history.pushState({route: active}, "", active)
+        history.pushState({
+          route: active,
+          routerId: this.router.id
+        }, "", active)
       }
     })
 
@@ -140,7 +143,7 @@ export class App extends LitElement {
   render() {
     return html`
     ${this.headerTemplate()}
-    <npchat-router default="/"}>
+    <npchat-router default="/" id="router-main">
 
       <npchat-welcome
         route="/welcome"
