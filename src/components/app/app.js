@@ -56,8 +56,7 @@ export class App extends LitElement {
   connectedCallback() {
     super.connectedCallback()
 
-    this.addEventListener("routerNavigate", event => {
-      event.stopPropagation()
+    this.addEventListener("route", event => {
       this.router.active = event.detail
     })
 
@@ -124,7 +123,7 @@ export class App extends LitElement {
   render() {
     return html`
     ${this.headerTemplate()}
-    <npchat-router .default=${this.defaultRoute} id="router-main">
+    <npchat-router .default=${this.defaultRoute} basePath="">
 
       <npchat-welcome
         route="/welcome"

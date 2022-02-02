@@ -1,7 +1,7 @@
 import { LitElement, html, css } from "lit"
 import { unpack } from "msgpackr"
 import { formStyles } from "../styles/form.js"
-import { generalStyles } from "../styles/general.js"
+import { avatarFallbackURL, generalStyles } from "../styles/general.js"
 import { generateKeys } from "../core/keys.js"
 import { fromBase64 } from "../util/base64.js"
 import { importUserData } from "../core/export.js"
@@ -16,8 +16,7 @@ export class Welcome extends LitElement {
   static get properties() {
     return {
       slideNumber: { type: Number },
-      importErrorMessage: {},
-      route: {}
+      importErrorMessage: {}
     }
   }
 
@@ -42,10 +41,19 @@ export class Welcome extends LitElement {
       .fingerprint {
         max-width: 200px;
       }
+
+      #avatar-file {
+        margin-left: 5px;
+        max-width: calc(100vw - 100px);
+      }
       `,
       formStyles,
       generalStyles,
     ]
+  }
+
+  get avatarPreview() {
+    return this.renderRoot.getElementById("avatar-preview")
   }
 
   get avatarFileInput() {
@@ -59,13 +67,12 @@ export class Welcome extends LitElement {
   constructor() {
     super()
     this.slideNumber = 0
-    this.showImportForm = false
   }
 
   connectedCallback() {
     super.connectedCallback()
 
-    this.addEventListener("routerNavigate", event => {
+    this.addEventListener("route", event => {
       event.stopPropagation()
       this.router.active = event.detail
     })
@@ -73,7 +80,7 @@ export class Welcome extends LitElement {
 
   welcomeFormTemplate() {
     return html`
-      <form route=${`${this.route}`} @submit=${this.handleWelcomeSubmit} class="main">
+      <form route="/welcome" @submit=${this.handleWelcomeSubmit} class="main">
         <div ?hidden=${this.slideNumber !== 0}>
           <div class="flex">
             <h1>Welcome to npchat</h1>
@@ -96,12 +103,21 @@ export class Welcome extends LitElement {
             <p class="color-light">Optional</p>
             <label>
               <span>Your avatar</span>
-              <input
-                type="file"
-                id="avatar-file"
-                name="avatarFile"
-                accept="image/png, image/jpeg"
-              />
+              <div class="row">
+                <img
+                  alt="avatar"
+                  id="avatar-preview"
+                  class="avatar"
+                  src=${avatarFallbackURL}
+                />
+                <input
+                  type="file"
+                  id="avatar-file"
+                  name="avatarFile"
+                  accept="image/png, image/jpeg"
+                  @change=${this.handleAvatarChange}
+                />
+              </div>
             </label>
             <label>
               <span>Your origin URL</span>
@@ -156,9 +172,9 @@ export class Welcome extends LitElement {
 
   importFormTemplate() {
     return html`
-      <form route=${`${this.route}/import`} @submit=${this.handleImportSubmit} class="main" >
+      <form route="/welcome/import" @submit=${this.handleImportSubmit} class="main" >
         <div class="flex row">
-          <npchat-route-link route="/welcome/new" class="button icon">
+          <npchat-route-link route="/welcome" class="button icon">
             <img alt="back" src="assets/icons/arrow_back.svg" />
           </npchat-route-link>
           <h2>Import</h2>
@@ -187,7 +203,7 @@ export class Welcome extends LitElement {
 
   render() {
     return html`
-    <npchat-router default="/welcome/new" id="router-welcome">
+    <npchat-router default="/welcome" basePath="/welcome">
       ${this.welcomeFormTemplate()}
       ${this.importFormTemplate()}
     </npchat-router>
@@ -239,6 +255,12 @@ export class Welcome extends LitElement {
       console.log(err)
       this.importErrorMessage = "Failed to import data"
     }
+  }
+
+  async handleAvatarChange(event) {
+    const file = event.target.files[0]
+    const resizedBlob = await resizeImageFile(file, 100, 100)
+    this.avatarPreview.src = URL.createObjectURL(resizedBlob)
   }
 
   canAccess() {

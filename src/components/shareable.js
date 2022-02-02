@@ -28,13 +28,6 @@ export class Shareable extends LitElement {
         justify-content: flex-start;
       }
 
-      .monospace {
-        color: var(--color-offwhite);
-        background-color: var(--color-offblack);
-        padding: 15px;
-        border-radius: 5px;
-      }
-
       img {
         border-radius: 5px;
       }

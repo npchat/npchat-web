@@ -1,31 +1,19 @@
 import { css } from "lit"
 
 export const preferencesStyles = css`
-form {
+.flex {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
 }
 
-.exportData {
-  display: flex;
-  align-items: center;
+.row {
+  flex-direction: row;
 }
 
 img {
   max-width: 100%;
-}
-
-.avatar {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-}
-
-.row {
-  display: flex;
-  align-items: center;
 }
 
 #avatar-file {

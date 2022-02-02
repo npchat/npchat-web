@@ -35,7 +35,7 @@ export class RouteLink extends LitElement {
   }
 
   navigate(route) {
-    this.dispatchEvent(new CustomEvent("routerNavigate", {
+    this.dispatchEvent(new CustomEvent("route", {
       detail: route,
       composed: true,
       bubbles: true

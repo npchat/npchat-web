@@ -1,12 +1,6 @@
 import { css } from "lit"
 
 export const formStyles = css`
-form.main {
-  margin: 10px;
-  width: 400px;
-  max-width: calc(100vw - 20px);
-}
-
 label {
   display: flex;
   flex-direction: column;
@@ -34,5 +28,10 @@ input {
 input:focus {
   outline: 0;
   border: 2px solid var(--color-secondary);
+}
+
+#avatar-file {
+  margin-left: 5px;
+  max-width: calc(100vw - 100px);
 }
 `

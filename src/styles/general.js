@@ -3,110 +3,135 @@ import { css } from "lit"
 export const avatarFallbackURL = "assets/avatar.svg"
 
 export const generalStyles = css`
-  .border-gradient {
-    border-image: linear-gradient(
-        45deg,
-        var(--color-primary),
-        var(--color-secondary)
-      )
-      1;
-  }
+[hidden] {
+  display: none !important;
+}
 
-  .color-light {
-    color: var(--color-grey);
-  }
+.main {
+  margin: 10px;
+  width: 400px;
+  max-width: calc(100vw - 20px);
+}
 
-  h1,
-  h2,
-  h3,
-  h4 {
-    font-weight: 300;
-  }
+.border-gradient {
+  border-image: linear-gradient(
+      45deg,
+      var(--color-primary),
+      var(--color-secondary)
+    )
+    1;
+}
 
-  h1 {
-    font-size: 3rem;
-  }
+.color-light {
+  color: var(--color-grey);
+}
 
-  h2 {
-    font-size: 2.2rem;
-  }
+h1,
+h2,
+h3,
+h4 {
+  font-weight: 300;
+}
 
-  h3 {
-    font-size: 1.8rem;
-  }
+h1 {
+  font-size: 3rem;
+}
 
-  .link {
-    text-decoration: underline;
-    color: inherit;
-  }
+h2 {
+  font-size: 2.2rem;
+}
 
-  .link:hover {
-    color: var(--color-primary);
-  }
+h3 {
+  font-size: 1.8rem;
+}
 
-  .monospace {
-    font-family: monospace;
-    font-size: 1.2rem;
-    overflow-wrap: anywhere;
-    word-break: break-all;
-  }
+.link {
+  text-decoration: underline;
+  color: inherit;
+}
 
-  .error {
-    color: var(--color-red);
-  }
+.link:hover {
+  color: var(--color-primary);
+}
 
-  .button {
-    border: 0;
-    outline: 0;
-    background-color: transparent;
-    color: var(--color-offblack);
-    cursor: pointer;
-    user-select: none;
-    font-size: 1.4rem;
-    padding: 10px 20px;
-    margin: 10px;
-    border: 2px solid var(--color-primary);
-    transition: all 300ms;
-  }
+.monospace {
+  font-family: monospace;
+  font-size: 1.2rem;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+  color: var(--color-offwhite);
+  background-color: var(--color-offblack);
+  padding: 15px;
+  border-radius: 5px;
+}
 
-  .button.small {
-    padding: 5px 10px;
-    font-size: 1.2rem;
-    border-color: var(--color-lightgrey);
-  }
+.error {
+  color: var(--color-red);
+}
 
-  .button:hover,
-  .button:focus {
-    background-color: var(--color-lightgrey);
-    border-color: var(--color-secondary);
-  }
+.button {
+  border: 0;
+  outline: 0;
+  background-color: transparent;
+  color: var(--color-offblack);
+  cursor: pointer;
+  user-select: none;
+  font-size: 1.4rem;
+  padding: 10px 20px;
+  margin: 10px;
+  border: 2px solid var(--color-primary);
+  transition: all 300ms;
+}
 
-  
-  .button.icon {
-    border: 2px solid var(--color-lightgrey);
-    border-radius: 50%;
-    padding: 0;
-    width: 44px;
-    height: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
+.button.small {
+  padding: 5px 10px;
+  font-size: 1.2rem;
+  border-color: var(--color-lightgrey);
+}
 
-  .button.icon img {
-    margin-top: 3px;
-    margin-right: 1px;
-    width: 35px;
-    height: 35px;
-  }
+.button:hover,
+.button:focus {
+  background-color: var(--color-lightgrey);
+  border-color: var(--color-secondary);
+}
 
-  .button.icon:hover,
-  .button.icon:focus {
-    border: 2px solid var(--color-primary);
-  }
 
-  .button.success,
-  input.success {
-    background-color: var(--color-green);
-  }
+.button.icon {
+  border: 2px solid var(--color-lightgrey);
+  border-radius: 50%;
+  padding: 0;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.button.icon img {
+  margin-top: 3px;
+  margin-right: 1px;
+  width: 35px;
+  height: 35px;
+}
+
+.button.icon:hover,
+.button.icon:focus {
+  border: 2px solid var(--color-primary);
+}
+
+.button.success,
+input.success {
+  background-color: var(--color-green);
+}
+
+.avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+}
 `

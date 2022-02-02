@@ -4,7 +4,8 @@ export class Router extends LitElement {
   static get properties() {
     return {
       _active: {},
-      default: {}
+      default: {},
+      basePath: {}
     }
   }
 
@@ -19,17 +20,13 @@ export class Router extends LitElement {
 
   set active(route) {
     const match = this.getMatch(route)
-    if (match && typeof match.canAccess !== "function" ||  match.canAccess()) {
+    if (match && (typeof match.canAccess !== "function" ||  match.canAccess())) {
       this._active = route
       if (this._active !== location.pathname) {
         history.pushState({
-          route: this._active,
-          routerId: this.id
+          route: this._active
         }, "", this._active)
       }
-    } else {
-      this._active = this.default
-      console.log("invalid route", {route, match})
     }
   }
 
@@ -40,18 +37,16 @@ export class Router extends LitElement {
   connectedCallback() {
     super.connectedCallback()
 
-    if (!this.id) console.log("router must have an id", this)
-
     window.addEventListener("popstate", event => {
       event.preventDefault()
       if (!event.state) return
-      const {route, routerId} = event.state
-      if (routerId === this.id) {
+      const {route} = event.state
+      if (!this.basePath || route.startsWith(this.basePath)) {
         this.active = route
       }
     })
 
-    window.addEventListener("routerNavigate", () => {
+    window.addEventListener("route", () => {
       this.requestUpdate()
     })
   }
@@ -75,7 +70,6 @@ export class Router extends LitElement {
   getMatch(pathname) {
     if (!pathname) return
     if (!this._slottedChildren) return
-
     return this._slottedChildren
       .filter(child => {
         const route = child.getAttribute("route")
@@ -84,7 +78,6 @@ export class Router extends LitElement {
       .sort((a, b) => {
         const aRouteLength = a.getAttribute("route").length
         const bRouteLength = b.getAttribute("route").length
-        console.log(aRouteLength, bRouteLength)
         return bRouteLength - aRouteLength
       })[0]
   }
