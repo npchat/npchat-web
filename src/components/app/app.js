@@ -210,10 +210,9 @@ export class App extends LitElement {
   }
 
   reconnectSocket() {
-    this.reconnectInterval = setInterval(async () => {
+    setTimeout(async () => {
       if (this.socket?.readyState === WebSocket.OPEN) {
         this.isSocketConnected = true
-        clearInterval(this.reconnectInterval)
         return
       }
       await this.connectSocket()
