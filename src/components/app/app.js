@@ -75,7 +75,7 @@ export class App extends LitElement {
     Object.assign(this, user)
     if (!this.originURL) {
       await this.router.getUpdateComplete()
-      this.router.active = "/welcome/new"
+      this.router.active = "/welcome"
       this.currentRoute = this.router.active
       return
     }
@@ -111,7 +111,7 @@ export class App extends LitElement {
   headerTemplate() {
     const atWelcome = this.currentRoute?.startsWith("/welcome")
     const qrImgUrl = this.shareableQR && `url(${this.shareableQR})`
-
+    const avatarURL = `url(${this.avatarURL || avatarFallbackURL})`
     return html`
     <header>
       ${this.logoTemplate()}
@@ -119,22 +119,17 @@ export class App extends LitElement {
         ?hidden=${atWelcome}
         ?isSocketConnected=${this.isSocketConnected}
       ></npchat-status>
-
-      <npchat-route-link route="/" ?hidden=${atWelcome}>
-        <span>Chats</span>
-      </npchat-route-link>
       <npchat-route-link route="/shareable" ?hidden=${atWelcome}>
         <div
-          class="avatar"
+          class="buttonRound"
           style=${styleMap({ backgroundImage: qrImgUrl })}
         ></div>
       </npchat-route-link>
       <npchat-route-link route="/preferences" ?hidden=${atWelcome}>
-        <img
-          alt="avatar"
-          src=${this.avatarURL || avatarFallbackURL}
-          class="avatar"
-        />
+        <div
+        class="buttonRound"
+        style=${styleMap({ backgroundImage: avatarURL })}
+        ></div>
       </npchat-route-link>
     </header>
     `

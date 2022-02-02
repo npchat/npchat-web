@@ -183,7 +183,7 @@ export class Preferences extends LitElement {
 
   async handleAvatarChange(event) {
     const file = event.target.files[0]
-    const resizedBlob = await resizeImageFile(file, 50, 50)
+    const resizedBlob = await resizeImageFile(file, 100, 100)
     this.avatarPreview.src = URL.createObjectURL(resizedBlob)
   }
 

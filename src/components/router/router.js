@@ -57,16 +57,27 @@ export class Router extends LitElement {
 
   /*
     TODO:
-    1. find best match (shortest matching path)
+    1. find best match (longest matching path)
     2. for each slot:
         if is best match, remove attr hidden
         else, set it
   */
   updated() {
     if (!this.active) this.active = this.default
+    const bestMatch = this._slottedChildren
+      .filter(child => {
+        const route = child.getAttribute("route")
+        return this.matches(this.active, route)
+      })
+      .sort((a, b) => {
+        const aRouteLength = a.getAttribute("route").length
+        const bRouteLength = b.getAttribute("route").length
+        console.log(aRouteLength, bRouteLength)
+        return bRouteLength - aRouteLength
+      })[0]
+
     this._slottedChildren?.forEach(child => {
-      const route = child.getAttribute("route")
-      if (this.matches(this.active, route)) {
+      if (child === bestMatch) {
         child.removeAttribute("hidden")
       } else {
         child.setAttribute("hidden", "")

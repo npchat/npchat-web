@@ -4,11 +4,6 @@ export const logoURL = "assets/npchat-logo.svg"
 export const avatarFallbackURL = "assets/avatar.svg"
 
 export const generalStyles = css`
-  .logo {
-    width: 80px;
-    margin-left: 5px;
-  }
-
   .border-gradient {
     border-image: linear-gradient(
         45deg,

@@ -24,15 +24,22 @@ header > *{
 }
 
 .logo {
-  width: 80px;
+  margin-top: 7px;
+  height: 50px;
 }
 
-.avatar {
+.buttonRound {
   height: 40px;
   width: 40px;
   background-size: cover;
+  background-position: center;
   border-radius: 50%;
   border: 2px solid var(--color-grey);
   transition: border-color 300ms;
+}
+
+.buttonRound:hover,
+.buttonRound:focus {
+  border-color: var(--color-primary)
 }
 `

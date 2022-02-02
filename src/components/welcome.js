@@ -72,7 +72,7 @@ export class Welcome extends LitElement {
 
   welcomeFormTemplate() {
     return html`
-      <form route=${`${this.route}/new`} @submit=${this.handleWelcomeSubmit} class="main">
+      <form route=${`${this.route}`} @submit=${this.handleWelcomeSubmit} class="main">
         <div ?hidden=${this.slideNumber !== 0}>
           <div class="flex">
             <h1>Welcome to npchat</h1>

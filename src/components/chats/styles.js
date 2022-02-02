@@ -5,6 +5,7 @@ export const chatsStyles = css`
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
+  width: 100vw;
 }
 
 .import {
