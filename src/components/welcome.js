@@ -1,12 +1,16 @@
 import { LitElement, html, css } from "lit"
 import { unpack } from "msgpackr"
 import { formStyles } from "../styles/form.js"
-import { generalStyles } from "../styles/general.js"
+import { avatarFallbackURL, generalStyles } from "../styles/general.js"
 import { generateKeys } from "../core/keys.js"
 import { fromBase64 } from "../util/base64.js"
 import { importUserData } from "../core/export.js"
 import { resizeImageFile } from "../util/image.js"
 import { avatarSize, putMedia } from "../core/media.js"
+import {
+  browserSupportsProtocolHandlers,
+  browserUsesChromium,
+} from "../core/browser.js"
 
 const defaultOriginURL = "https://axl.npchat.org"
 const defaultDisplayName = "Anonymous"
@@ -15,7 +19,6 @@ export class Welcome extends LitElement {
   static get properties() {
     return {
       slideNumber: { type: Number },
-      showImportForm: { type: Boolean },
       importErrorMessage: {},
     }
   }
@@ -30,13 +33,25 @@ export class Welcome extends LitElement {
           justify-content: flex-start;
         }
 
+        .flex.row {
+          flex-direction: row;
+        }
+
         p {
           font-size: 1.2rem;
         }
 
-        img {
-          height: 200px;
-          margin: 10px 0;
+        .fingerprint {
+          max-width: 200px;
+        }
+
+        #avatar-file {
+          margin-left: 5px;
+          max-width: calc(100vw - 100px);
+        }
+
+        .importHeader {
+          margin-left: 10px;
         }
       `,
       formStyles,
@@ -44,30 +59,37 @@ export class Welcome extends LitElement {
     ]
   }
 
+  get avatarPreview() {
+    return this.renderRoot.getElementById("avatar-preview")
+  }
+
   get avatarFileInput() {
     return this.renderRoot.getElementById("avatar-file")
+  }
+
+  get router() {
+    return this.renderRoot.querySelector("npc-router")
   }
 
   constructor() {
     super()
     this.slideNumber = 0
-    this.showImportForm = false
   }
 
   welcomeFormTemplate() {
     return html`
-      <form ?hidden=${this.showImportForm} @submit=${this.handleWelcomeSubmit}>
+      <form route="/welcome" @submit=${this.handleWelcomeSubmit} class="main">
         <div ?hidden=${this.slideNumber !== 0}>
-          <h1>Welcome to npchat</h1>
-          <h2>Let's get you set up</h2>
-          <p ?hidden=${this.browserSupportsProtocolHandlers()}>
-            It looks like your browser doesn't support some modern web APIs. For
-            the best experience,
-            ${this.browserUsesChromium()
-              ? "update your browser"
-              : "switch to Brave or Google Chrome"}.
-          </p>
           <div class="flex">
+            <h1>Welcome to npchat</h1>
+            <h2>Let's get you set up</h2>
+            <p ?hidden=${browserSupportsProtocolHandlers()}>
+              It looks like your browser doesn't support some modern web APIs.
+              For the best experience,
+              ${browserUsesChromium()
+                ? "update your browser"
+                : "switch to Brave or Google Chrome"}.
+            </p>
             <label>
               <span>Your display name</span>
               <input
@@ -79,12 +101,21 @@ export class Welcome extends LitElement {
             <p class="color-light">Optional</p>
             <label>
               <span>Your avatar</span>
-              <input
-                type="file"
-                id="avatar-file"
-                name="avatarFile"
-                accept="image/png, image/jpeg"
-              />
+              <div class="row">
+                <img
+                  alt="avatar"
+                  id="avatar-preview"
+                  class="avatar"
+                  src=${avatarFallbackURL}
+                />
+                <input
+                  type="file"
+                  id="avatar-file"
+                  name="avatarFile"
+                  accept="image/png, image/jpeg"
+                  @change=${this.handleAvatarChange}
+                />
+              </div>
             </label>
             <label>
               <span>Your origin URL</span>
@@ -100,7 +131,8 @@ export class Welcome extends LitElement {
                 <option value="https://dev.npchat.org:8000"></option>
               </datalist>
               <p>
-                Optionally point to your own self-hosted instance. Check the
+                Optionally point to your own self-hosted instance.<br />Check
+                the
                 <a
                   href="https://npchat.org/docs"
                   target="_blank"
@@ -113,26 +145,27 @@ export class Welcome extends LitElement {
             </label>
             <button
               type="button"
-              class="normal"
+              class="button"
               @click=${() => (this.slideNumber += 1)}
             >
               Continue
             </button>
             <p class="color-light">Alternatively</p>
-            <button
-              type="button"
-              @click=${() => (this.showImportForm = true)}
-              class="normal"
-            >
-              Import
-            </button>
+
+            <npc-route-link route="/welcome/import">
+              <div class="button small">Import</div>
+            </npc-route-link>
           </div>
         </div>
         <div ?hidden=${this.slideNumber !== 1}>
-          <h2>Generated fresh crypto keys</h2>
           <div class="flex">
-            <img alt="fingerprint" src="assets/fingerprint.svg" />
-            <button type="submit" class="normal">OK</button>
+            <h2>Generated fresh crypto keys</h2>
+            <img
+              class="fingerprint"
+              alt="fingerprint"
+              src="assets/fingerprint.svg"
+            />
+            <button type="submit" class="button">OK</button>
           </div>
         </div>
       </form>
@@ -141,15 +174,17 @@ export class Welcome extends LitElement {
 
   importFormTemplate() {
     return html`
-      <form ?hidden=${!this.showImportForm} @submit=${this.handleImportSubmit}>
-        <button
-          type="button"
-          @click=${() => (this.showImportForm = false)}
-          class="icon"
-        >
-          <img alt="back" src="assets/icons/arrow_back.svg" />
-        </button>
-        <h2>Import</h2>
+      <form
+        route="/welcome/import"
+        @submit=${this.handleImportSubmit}
+        class="main"
+      >
+        <div class="flex row">
+          <npc-route-link route="/welcome" class="button icon back">
+            <img alt="back" src="assets/icons/arrow_back.svg" />
+          </npc-route-link>
+          <h2 class="importHeader">Import</h2>
+        </div>
         <p>
           Import your keys from another browser or device. This will allow you
           to connect to the same inbox.
@@ -166,7 +201,7 @@ export class Welcome extends LitElement {
           <p ?hidden=${!this.importErrorMessage} class="error">
             ${this.importErrorMessage}
           </p>
-          <button type="submit" class="normal">Submit</button>
+          <button type="submit" class="button">Submit</button>
         </div>
       </form>
     `
@@ -174,9 +209,9 @@ export class Welcome extends LitElement {
 
   render() {
     return html`
-      <npchat-modal ?canClose=${false}>
+      <npc-router default="/welcome" basePath="/welcome">
         ${this.welcomeFormTemplate()} ${this.importFormTemplate()}
-      </npchat-modal>
+      </npc-router>
     `
   }
 
@@ -227,17 +262,14 @@ export class Welcome extends LitElement {
     }
   }
 
-  browserSupportsProtocolHandlers() {
-    return typeof navigator.registerProtocolHandler === "function"
+  async handleAvatarChange(event) {
+    const file = event.target.files[0]
+    const resizedBlob = await resizeImageFile(file, 100, 100)
+    this.avatarPreview.src = URL.createObjectURL(resizedBlob)
   }
 
-  browserUsesChromium() {
-    if (!navigator.userAgentData) return false
-    return (
-      navigator.userAgentData.brands.filter(
-        b =>
-          b.brand.toLowerCase() === "chromium" && parseInt(b.version, 10) >= 97
-      ).length > 0
-    )
+  canAccess() {
+    // if originURL is already set, return false
+    return !localStorage.originURL
   }
 }

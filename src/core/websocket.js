@@ -1,10 +1,10 @@
 import { pack, unpack } from "msgpackr"
 import { sign } from "../util/auth.js"
 
-export async function authenticateSocket(socket, privateKey, publicKeyRaw) {
+export async function authenticateSocket(privateKey, publicKeyRaw) {
   return new Promise((resolve, reject) => {
     // handle response message
-    socket.addEventListener(
+    window.socket.addEventListener(
       "message",
       async msg => {
         try {
@@ -19,7 +19,7 @@ export async function authenticateSocket(socket, privateKey, publicKeyRaw) {
     )
 
     // send auth solution
-    socket.addEventListener(
+    window.socket.addEventListener(
       "open",
       async () => {
         const time = new TextEncoder().encode(Date.now().toString())
@@ -28,7 +28,7 @@ export async function authenticateSocket(socket, privateKey, publicKeyRaw) {
           sig: new Uint8Array(await sign(privateKey, time)),
           publicKey: publicKeyRaw,
         })
-        socket.send(buffer)
+        window.socket.send(buffer)
       },
       { once: true }
     )
@@ -52,4 +52,12 @@ export async function getWebSocket(url) {
   fixed = fixed.replace("http://", "ws://")
   fixed = fixed.replace("https://", "wss://")
   return new WebSocket(fixed)
+}
+
+export function push(object) {
+  if (window.socket && window.socket.readyState === WebSocket.OPEN) {
+    window.socket.send(pack(object))
+    return true
+  }
+  return false
 }

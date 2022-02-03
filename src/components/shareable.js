@@ -7,31 +7,31 @@ import { generateQR } from "../util/qrcode.js"
 export class Shareable extends LitElement {
   static get properties() {
     return {
-      showQR: { type: Boolean },
       originURL: {},
-      pubKeyHash: {},
+      pubKeyHash: {}
     }
   }
 
   static get styles() {
     return [
+      formStyles,
+      generalStyles,
       css`
-        .container {
+        .flex {
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: flex-start;
         }
 
-        .text {
-          display: flex;
-          justify-content: center;
-          align-items: center;
+        img {
+          border-radius: 5px;
+        }
+
+        .copy {
           margin: 10px 0;
         }
       `,
-      formStyles,
-      generalStyles,
     ]
   }
 
@@ -52,23 +52,21 @@ export class Shareable extends LitElement {
 
   render() {
     return html`
-      <npchat-modal ?canClose=${true}>
-        <div class="container">
-          <div class="text">
-            <div class="monospace">${this.shareableURL}</div>
-            <button @click=${this.handleCopy} class="normal copy">Copy</button>
-          </div>
-          <div ?hidden=${!this.showQR}>
-            <img alt="QR code" src=${this.shareableQR} />
-          </div>
+      <div class="main">
+        <h1>Your shareable</h1>
+        <div class="flex">
+          <div class="monospace">${this.shareableURL}</div>
+          <button @click=${this.handleCopy} class="button copy">Copy</button>
+          <img alt="QR code" src=${this.shareableQR} />
+          <h2>Securely trade keys</h2>
+          <p>Share the link or QR code with a friend, and scan/copy theirs.</p>
           <p>
-            Share this with others, and scan/copy theirs. When you both have the
-            other's shareable, you can chat. This is necessary to securely trade
-            keys.
+            If you copied it, you must paste it into the text box
+            <npc-route-link route="/" class="link">here</npc-route-link>
           </p>
-          <button @click=${this.handleClose} class="normal">Done</button>
+          <p>When you've both imported the other's shareable, you can chat.</p>
         </div>
-      </npchat-modal>
+      </div>
     `
   }
 
@@ -89,5 +87,9 @@ export class Shareable extends LitElement {
       button.classList.remove("success")
     }, 500)
     await navigator.clipboard.writeText(this.shareableURL)
+  }
+
+  canAccess() {
+    return !!localStorage.originURL
   }
 }

@@ -10,13 +10,13 @@ export class Status extends LitElement {
 
   static get styles() {
     return css`
-      :host {
+      .container {
         display: flex;
         justify-content: center;
         align-items: center;
       }
 
-      div {
+      .light {
         width: 10px;
         height: 10px;
         border-radius: 50%;
@@ -49,10 +49,14 @@ export class Status extends LitElement {
 
   render() {
     return html`
-      <div class=${classMap({ connected: this.isSocketConnected })}></div>
-      <span class=${classMap({ connected: this.isSocketConnected })}
-        >Not connected</span
-      >
+      <div class="container">
+        <div
+          class="light ${classMap({ connected: this.isSocketConnected })}"
+        ></div>
+        <span class=${classMap({ connected: this.isSocketConnected })}>
+          Not connected
+        </span>
+      </div>
     `
   }
 }

@@ -6,13 +6,13 @@
   "version": "0.2.0",
   "type": "module",
   "scripts": {
-    "build": "node ./esbuild.js",
+    "build": "node esbuild.js",
     "start": "run-p start:**",
     "start:server": "./devserver",
-    "start:esbuild": "node ./esbuild.js --dev",
+    "start:esbuild": "node esbuild.js --dev",
     "https": "run-p https:**",
     "https:server": "./devserver --cert=cert.pem --key=key.pem",
-    "https:esbuild": "node ./esbuild.js --dev",
+    "https:esbuild": "node esbuild.js --dev",
     "lint": "run-p lint:**",
     "lint:src": "eslint \"src/**/*.js\" --ignore-path .gitignore && prettier \"src/**/*.js\" --check --ignore-path .gitignore",
     "lint:media-store": "eslint \"media-store/src/*.js\" --ignore-path .gitignore && prettier \"media-store/src/*.js\" --check --ignore-path .gitignore",
@@ -22,16 +22,19 @@
   },
   "dependencies": {
     "esbuild": "^0.14.14",
+    "idb": "^7.0.0",
     "lit": "^2.1.2",
     "msgpackr": "^1.5.2",
-    "idb": "^7.0.0",
     "qrcode": "^1.5.0"
   },
   "devDependencies": {
     "@open-wc/eslint-config": "^7.0.0",
     "eslint": "^8.8.0",
     "eslint-config-prettier": "^8.3.0",
-    "prettier": "^2.5.1",
-    "npm-run-all": "^4.1.5"
+    "eslint-plugin-import": "^2.25.4",
+    "eslint-plugin-lit-a11y": "^2.2.0",
+    "eslint-plugin-wc": "^1.3.2",
+    "npm-run-all": "^4.1.5",
+    "prettier": "^2.5.1"
   }
 }

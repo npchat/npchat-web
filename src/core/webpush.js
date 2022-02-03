@@ -46,7 +46,6 @@ export async function subscribeToPushNotifications(vapidKey) {
         userVisibleOnly: true,
         applicationServerKey: vapidKey,
       })
-      console.log("new subscription", sub)
       return JSON.stringify(sub.toJSON())
     } catch {
       console.log("failed to subscribe for web push")
