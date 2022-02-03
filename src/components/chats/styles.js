@@ -4,41 +4,44 @@ export const chatsStyles = css`
   .container {
     display: flex;
     flex-direction: column;
-    justify-content: flex-start;
+    align-items: center;
     width: 100vw;
   }
 
-  .import {
+  .header {
     display: flex;
+    align-items: center;
+    justify-content: center;
     position: sticky;
     top: 0;
-    min-height: 60px;
     background-color: var(--color-offwhite);
+    filter: drop-shadow(0 5px 5px rgba(0, 0, 0, 0.2));
+    width: 100vw;
   }
 
   input {
     margin: 5px;
-    flex-grow: 1;
+    width: 100%;
+    max-width: 390px;
   }
 
   .list {
     display: flex;
     flex-direction: column;
-    justify-content: flex-start;
+    align-items: center;
+    margin-top: 5px;
+    width: 100vw;
   }
 
   .contact {
     display: flex;
     align-items: center;
-    justify-content: flex-start;
     cursor: pointer;
-    text-decoration: none;
-    color: var(--color-offblack);
     background-color: var(--color-offwhite);
     transition: background-color 300ms;
     padding: 5px;
-    margin: 0;
-    border: none;
+    width: calc(100vw - 10px);
+    max-width: 400px;
   }
 
   .contact:hover {

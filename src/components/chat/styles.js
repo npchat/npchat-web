@@ -4,17 +4,7 @@ export const chatStyles = css`
   .container {
     display: flex;
     flex-direction: column;
-  }
-
-  .header {
-    display: flex;
-    align-items: center;
-    padding: 3px;
-    position: sticky;
-    top: 0;
-    min-height: 50px;
-    background-color: var(--color-offwhite);
-    filter: drop-shadow(0 5px 5px rgba(0, 0, 0, 0.2));
+    width: 100vw;
   }
 
   .list {
@@ -55,17 +45,38 @@ export const chatStyles = css`
     color: var(--color-offblack);
   }
 
-  .compose {
+  .composeContainer {
     position: sticky;
     bottom: 0;
     padding: 5px;
     display: flex;
+    justify-content: center;
+    align-items: center;
     background-color: var(--color-offwhite);
     filter: drop-shadow(0 -5px 5px rgba(0, 0, 0, 0.1));
   }
 
+  .compose {
+    width: calc(100vw - 20px);
+    max-width: 400px;
+    display: flex;
+  }
+
   input {
     flex-grow: 1;
+  }
+
+  .compose button {
+    background-color: var(--color-offwhite);
+    outline: 0;
+    border: 2px solid var(--color-lightgrey);
+    border-left: 0;
+    transition: all 300ms;
+  }
+
+  .compose button:hover,
+  .compose button:focus {
+    border-color: var(--color-secondary);
   }
 
   .avatar {
@@ -84,6 +95,7 @@ export const chatStyles = css`
 
   .detailsRouteLink {
     flex-grow: 1;
+    margin: 3px 0;
   }
 
   .avatarNameGroup {

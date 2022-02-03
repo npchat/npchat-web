@@ -62,7 +62,7 @@ export class Shareable extends LitElement {
           <p>Share the link or QR code with a friend, and scan/copy theirs.</p>
           <p>
             If you copied it, you must paste it into the text box
-            <npchat-route-link route="/" class="link">here</npchat-route-link>
+            <npc-route-link route="/" class="link">here</npc-route-link>
           </p>
           <p>When you've both imported the other's shareable, you can chat.</p>
         </div>

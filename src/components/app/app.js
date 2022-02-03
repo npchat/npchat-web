@@ -35,15 +35,15 @@ export class App extends LitElement {
   }
 
   get toastComponent() {
-    return this.renderRoot.querySelector("npchat-toast")
+    return this.renderRoot.querySelector("npc-toast")
   }
 
   get callComponent() {
-    return this.renderRoot.querySelector("npchat-call")
+    return this.renderRoot.querySelector("npc-call")
   }
 
   get routerComponent() {
-    return this.renderRoot.querySelector("npchat-router")
+    return this.renderRoot.querySelector("npc-router")
   }
 
   constructor() {
@@ -106,25 +106,25 @@ export class App extends LitElement {
     const avatarURL = `url(${this.avatarURL || avatarFallbackURL})`
     return html`
       <header>
-        <npchat-route-link route="/">
+        <npc-route-link route="/">
           <img alt="logo" src="assets/npchat-logo.svg" class="logo" />
-        </npchat-route-link>
-        <npchat-status
+        </npc-route-link>
+        <npc-status
           ?hidden=${!this.originURL}
           ?isSocketConnected=${this.isSocketConnected}
-        ></npchat-status>
-        <npchat-route-link route="/shareable" ?hidden=${!this.originURL}>
+        ></npc-status>
+        <npc-route-link route="/shareable" ?hidden=${!this.originURL}>
           <div
             class="buttonRound"
             style=${styleMap({ backgroundImage: qrImgUrl })}
           ></div>
-        </npchat-route-link>
-        <npchat-route-link route="/preferences" ?hidden=${!this.originURL}>
+        </npc-route-link>
+        <npc-route-link route="/preferences" ?hidden=${!this.originURL}>
           <div
             class="buttonRound"
             style=${styleMap({ backgroundImage: avatarURL })}
           ></div>
-        </npchat-route-link>
+        </npc-route-link>
       </header>
     `
   }
@@ -132,13 +132,13 @@ export class App extends LitElement {
   render() {
     return html`
       ${this.headerTemplate()}
-      <npchat-router .default=${this.defaultRoute} basePath="/">
-        <npchat-welcome
+      <npc-router .default=${this.defaultRoute} basePath="/">
+        <npc-welcome
           route="/welcome"
           @formSubmit=${this.handlePreferencesSubmit}
-        ></npchat-welcome>
+        ></npc-welcome>
 
-        <npchat-preferences
+        <npc-preferences
           route="/preferences"
           @formSubmit=${this.handlePreferencesSubmit}
           .preferences=${{
@@ -146,20 +146,20 @@ export class App extends LitElement {
             avatarURL: this.avatarURL,
             originURL: this.originURL,
           }}
-        ></npchat-preferences>
+        ></npc-preferences>
 
-        <npchat-shareable
+        <npc-shareable
           route="/shareable"
           @close=${this.hideShareable}
           originURL=${this.originURL}
           pubKeyHash=${this.keys && this.keys.pubKeyHash}
-        ></npchat-shareable>
+        ></npc-shareable>
 
-        <npchat-chats route="/" .keys=${this.keys}> </npchat-chats>
-      </npchat-router>
+        <npc-chats route="/" .keys=${this.keys}> </npc-chats>
+      </npc-router>
 
-      <npchat-toast></npchat-toast>
-      <npchat-call .myKeys=${this.keys}></npchat-call>
+      <npc-toast></npc-toast>
+      <npc-call .myKeys=${this.keys}></npc-call>
     `
   }
 

@@ -31,7 +31,7 @@ export class Preferences extends LitElement {
   }
 
   get router() {
-    return this.renderRoot.querySelector("npchat-router")
+    return this.renderRoot.querySelector("npc-router")
   }
 
   willUpdate() {
@@ -97,9 +97,9 @@ export class Preferences extends LitElement {
         <button type="submit" class="button">Submit</button>
 
         <div class="row">
-          <npchat-route-link route="/preferences/export">
+          <npc-route-link route="/preferences/export">
             <div class="button small">Export</div>
-          </npchat-route-link>
+          </npc-route-link>
           <p class="exportDesc">Export data for another device</p>
         </div>
 
@@ -115,9 +115,9 @@ export class Preferences extends LitElement {
     return html`
       <div route="/preferences/export">
         <div class="flex row">
-          <npchat-route-link route="/preferences" class="button icon">
+          <npc-route-link route="/preferences" class="button icon back">
             <img alt="back" src="assets/icons/arrow_back.svg" />
-          </npchat-route-link>
+          </npc-route-link>
           <h2 class="exportHeader">Export</h2>
         </div>
         <div class="flex">
@@ -133,9 +133,9 @@ export class Preferences extends LitElement {
     return html`
       <div class="main">
         <h1>Preferences</h1>
-        <npchat-router default="/preferences" basePath="/preferences">
+        <npc-router default="/preferences" basePath="/preferences">
           ${this.mainFormTemplate()} ${this.exportTemplate()}
-        </npchat-router>
+        </npc-router>
       </div>
     `
   }

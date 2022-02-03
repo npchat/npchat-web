@@ -24,12 +24,12 @@ export class Details extends LitElement {
     if (!this.contact) return
     const chatRoute = `/chat/${this.contact.keys.pubKeyHash}`
     return html`
-      <div class="header">
-        <npchat-route-link route=${chatRoute} class="button icon">
+      <npc-toolbar>
+        <npc-route-link route=${chatRoute} class="button icon back">
           <img alt="back" src="assets/icons/arrow_back.svg" />
-        </npchat-route-link>
+        </npc-route-link>
         <span class="name">${this.contact.displayName}</span>
-      </div>
+      </npc-toolbar>
     `
   }
 

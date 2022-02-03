@@ -10,7 +10,7 @@ export const generalStyles = css`
   .main {
     margin: 5px;
     width: 400px;
-    max-width: calc(100vw - 20px);
+    max-width: calc(100vw - 10px);
   }
 
   .border-gradient {
@@ -106,10 +106,13 @@ export const generalStyles = css`
   }
 
   .button.icon img {
-    margin-top: 3px;
-    margin-right: 1px;
     width: 35px;
     height: 35px;
+  }
+
+  .button.icon.back img {
+    margin-top: 3px;
+    margin-right: 1px;
   }
 
   .button.icon:hover,

@@ -68,7 +68,7 @@ export class Welcome extends LitElement {
   }
 
   get router() {
-    return this.renderRoot.querySelector("npchat-router")
+    return this.renderRoot.querySelector("npc-router")
   }
 
   constructor() {
@@ -152,9 +152,9 @@ export class Welcome extends LitElement {
             </button>
             <p class="color-light">Alternatively</p>
 
-            <npchat-route-link route="/welcome/import">
+            <npc-route-link route="/welcome/import">
               <div class="button small">Import</div>
-            </npchat-route-link>
+            </npc-route-link>
           </div>
         </div>
         <div ?hidden=${this.slideNumber !== 1}>
@@ -180,9 +180,9 @@ export class Welcome extends LitElement {
         class="main"
       >
         <div class="flex row">
-          <npchat-route-link route="/welcome" class="button icon">
+          <npc-route-link route="/welcome" class="button icon back">
             <img alt="back" src="assets/icons/arrow_back.svg" />
-          </npchat-route-link>
+          </npc-route-link>
           <h2 class="importHeader">Import</h2>
         </div>
         <p>
@@ -209,9 +209,9 @@ export class Welcome extends LitElement {
 
   render() {
     return html`
-      <npchat-router default="/welcome" basePath="/welcome">
+      <npc-router default="/welcome" basePath="/welcome">
         ${this.welcomeFormTemplate()} ${this.importFormTemplate()}
-      </npchat-router>
+      </npc-router>
     `
   }
 

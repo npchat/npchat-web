@@ -10,16 +10,18 @@ import { Chat } from "./components/chat/chat.js"
 import { Call } from "./components/call/call.js"
 import { Toast } from "./components/toast.js"
 import { Details } from "./components/details/details.js"
+import { Toolbar } from "./components/toolbar.js"
 
-customElements.define("npchat-app", App)
-customElements.define("npchat-router", Router)
-customElements.define("npchat-route-link", RouteLink)
-customElements.define("npchat-welcome", Welcome)
-customElements.define("npchat-preferences", Preferences)
-customElements.define("npchat-status", Status)
-customElements.define("npchat-shareable", Shareable)
-customElements.define("npchat-chats", Chats)
-customElements.define("npchat-chat", Chat)
-customElements.define("npchat-call", Call)
-customElements.define("npchat-toast", Toast)
-customElements.define("npchat-details", Details)
+customElements.define("npc-app", App)
+customElements.define("npc-router", Router)
+customElements.define("npc-route-link", RouteLink)
+customElements.define("npc-welcome", Welcome)
+customElements.define("npc-preferences", Preferences)
+customElements.define("npc-status", Status)
+customElements.define("npc-shareable", Shareable)
+customElements.define("npc-chats", Chats)
+customElements.define("npc-chat", Chat)
+customElements.define("npc-call", Call)
+customElements.define("npc-toast", Toast)
+customElements.define("npc-details", Details)
+customElements.define("npc-toolbar", Toolbar)

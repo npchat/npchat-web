@@ -28,7 +28,7 @@ export class Chat extends LitElement {
   }
 
   get routerComponent() {
-    return this.renderRoot.querySelector("npchat-router")
+    return this.renderRoot.querySelector("npc-router")
   }
 
   constructor() {
@@ -91,11 +91,11 @@ export class Chat extends LitElement {
   headerTemplate() {
     if (!this.contact) return
     return html`
-      <div class="header">
-        <npchat-route-link route="/" class="button icon">
+      <npc-toolbar>
+        <npc-route-link route="/" class="button icon back">
           <img alt="back" src="assets/icons/arrow_back.svg" />
-        </npchat-route-link>
-        <npchat-route-link class="detailsRouteLink" route=${this.detailsRoute}>
+        </npc-route-link>
+        <npc-route-link class="detailsRouteLink" route=${this.detailsRoute}>
           <div class="avatarNameGroup">
             <img
               alt="${this.contact.displayName}"
@@ -104,15 +104,15 @@ export class Chat extends LitElement {
             />
             <span class="name">${this.contact.displayName}</span>
           </div>
-        </npchat-route-link>
+        </npc-route-link>
         ${this.callButtonsTemplate()}
-      </div>
+      </npc-toolbar>
     `
   }
 
   callButtonsTemplate() {
     return html`
-      <button class="icon call" @click=${this.startAudioCall}>
+      <button type="button" class="button icon call" @click=${this.startAudioCall}>
         <img alt="audio call" src="assets/icons/phone.svg" />
       </button>
     `
@@ -122,13 +122,19 @@ export class Chat extends LitElement {
     return this.inCall
       ? undefined
       : html`
+        <div class="composeContainer">
           <form class="compose" @submit=${this.handleSubmit}>
             <input
               type="text"
-              placeholder="write a message"
+              placeholder="message ${this.contact.displayName}"
               name="messageText"
+              autocomplete="off"
             />
+            <button type="submit">
+              <img alt="send" src="assets/icons/send.svg" />
+            </button>
           </form>
+        </div>
         `
   }
 
@@ -141,7 +147,7 @@ export class Chat extends LitElement {
           <button
             ?hidden=${this.allLoaded}
             @click=${() => this.loadMoreMessages()}
-            class="normal"
+            class="button small"
           >
             Load more
           </button>
@@ -156,21 +162,21 @@ export class Chat extends LitElement {
   detailsTemplate() {
     if (!this.contact) return
     return html`
-      <npchat-details
+      <npc-details
         route=${this.detailsRoute}
         .contact=${this.contact}
-      ></npchat-details>
+      ></npc-details>
     `
   }
 
   render() {
     return html`
-      <npchat-router
+      <npc-router
         .default=${this.chatRoute || "/"}
         .basePath=${this.chatRoute}
       >
         ${this.chatTemplate()} ${this.detailsTemplate()}
-      </npchat-router>
+      </npc-router>
     `
   }
 
@@ -203,6 +209,7 @@ export class Chat extends LitElement {
   async handleSubmit(e) {
     e.preventDefault()
     const { messageText } = Object.fromEntries(new FormData(e.target))
+    if (!messageText) return
     e.target.querySelector("input").value = ""
     const msg = await buildMessage(
       this.keys.auth.keyPair.privateKey,

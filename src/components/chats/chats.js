@@ -25,11 +25,11 @@ export class Chats extends LitElement {
   }
 
   get chat() {
-    return this.renderRoot.querySelector("npchat-chat")
+    return this.renderRoot.querySelector("npc-chat")
   }
 
   get router() {
-    return this.renderRoot.querySelector("npchat-router")
+    return this.renderRoot.querySelector("npc-router")
   }
 
   constructor() {
@@ -67,7 +67,7 @@ export class Chats extends LitElement {
   contactTemplate(contact) {
     const route = `/chat/${contact.keys.pubKeyHash}`
     return html`
-      <npchat-route-link route=${route}>
+      <npc-route-link route=${route}>
         <div class="contact">
           <img
             alt="${contact.displayName}"
@@ -76,21 +76,21 @@ export class Chats extends LitElement {
           />
           <span class="name">${contact.displayName}</span>
         </div>
-      </npchat-route-link>
+      </npc-route-link>
     `
   }
 
   contactListTemplate() {
     return html`
       <div route="/">
-        <div class="import">
+        <npc-toolbar>
           <input
             type="text"
             placeholder="search or import"
             @input=${this.handleInput}
             @change=${this.handleChange}
           />
-        </div>
+        </npc-toolbar>
         <div class="list">
           ${this.filterContacts().map(c => this.contactTemplate(c))}
         </div>
@@ -101,10 +101,10 @@ export class Chats extends LitElement {
   render() {
     return html`
       <div class="container">
-        <npchat-router default="/" basePath="/">
+        <npc-router default="/" basePath="/">
           ${this.contactListTemplate()}
-          <npchat-chat route="/chat/" .keys=${this.keys}></npchat-chat>
-        </npchat-router>
+          <npc-chat route="/chat/" .keys=${this.keys}></npc-chat>
+        </npc-router>
       </div>
     `
   }
