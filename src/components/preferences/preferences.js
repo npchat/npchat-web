@@ -107,11 +107,11 @@ export class Preferences extends LitElement {
       </label>
       <button type="submit" class="button">Submit</button>
 
-      <div class="row">
-      <npchat-route-link route="/preferences/export">
-        <div class="button small">Export</div>
-      </npchat-route-link>  
-        <p>Export data for another device</p>
+      <div class="row exportRow">
+        <npchat-route-link route="/preferences/export">
+          <div class="button small">Export</div>
+        </npchat-route-link>
+        <p class="exportDesc">Export data for another device</p>
       </div>
     </form>
     `
@@ -124,7 +124,7 @@ export class Preferences extends LitElement {
         <npchat-route-link route="/preferences" class="button icon">
           <img alt="back" src="assets/icons/arrow_back.svg" />
         </npchat-route-link>
-        <h2>Export</h2>
+        <h2 class="exportHeader">Export</h2>
       </div>
       <div class="flex">
         <p class="monospace">${this.exportData}</p>

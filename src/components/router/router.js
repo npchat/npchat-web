@@ -19,6 +19,9 @@ export class Router extends LitElement {
   }
 
   set active(route) {
+    if (!route.startsWith(this.basePath)) {
+      return
+    }
     const match = this.getMatch(route)
     if (match && (typeof match.canAccess !== "function" ||  match.canAccess())) {
       this._active = route

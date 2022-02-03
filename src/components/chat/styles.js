@@ -82,6 +82,10 @@ export const chatStyles = css`
     user-select: none;
   }
 
+  .detailsRouteLink {
+    flex-grow: 1;
+  }
+
   .avatarNameGroup {
     flex-grow: 1;
     display: flex;

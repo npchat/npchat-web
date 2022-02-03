@@ -17,10 +17,6 @@ export class Shareable extends LitElement {
       formStyles,
       generalStyles,
       css`
-      .container {
-        max-width: 400px;
-      }
-
       .flex {
         display: flex;
         flex-direction: column;
@@ -30,6 +26,10 @@ export class Shareable extends LitElement {
 
       img {
         border-radius: 5px;
+      }
+
+      .copy {
+        margin: 10px 0;
       }
       `
     ]
@@ -52,7 +52,7 @@ export class Shareable extends LitElement {
 
   render() {
     return html`
-    <div class="container">
+    <div class="main">
       <h1>Your shareable</h1>
       <div class="flex">
         <div class="monospace">${this.shareableURL}</div>

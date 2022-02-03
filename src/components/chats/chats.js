@@ -1,5 +1,4 @@
 import { LitElement, html } from "lit"
-import { classMap } from "lit/directives/class-map.js"
 import { formStyles } from "../../styles/form.js"
 import {
   fetchShareableUsingURLData,
@@ -27,11 +26,15 @@ export class Chats extends LitElement {
   }
 
   get chat() {
-    return this.renderRoot?.querySelector("npchat-chat")
+    return this.renderRoot.querySelector("npchat-chat")
   }
 
   get toast() {
-    return this.renderRoot?.querySelector("npchat-toast") ?? null
+    return this.renderRoot.querySelector("npchat-toast")
+  }
+
+  get router() {
+    return this.renderRoot.querySelector("npchat-router")
   }
 
   constructor() {
@@ -47,48 +50,55 @@ export class Chats extends LitElement {
     window.addEventListener("socketConnected", () => this.init())
   }
 
+  connectedCallback() {
+    super.connectedCallback()
+
+    window.addEventListener("route", event => {
+      this.router.active = event.detail
+    })
+  }
+
   async init() {
     this.db = await openDBConn()
     await this.loadContacts()
+
     // import from URL
     const toImport = await fetchShareableUsingURLData()
     if (toImport && toImport.originURL && toImport.keys) {
       this.addContact(toImport)
     }
-    await this.updateContacts()
-    await this.loadContacts()
   }
 
   contactTemplate(contact) {
-    const isSelected =
-      contact.keys.pubKeyHash === this.selected?.keys.pubKeyHash
+    const route = `/chat/${contact.keys.pubKeyHash}`
     return html`
-      <button
-        class="contact ${classMap({ selected: isSelected })}"
-        @click=${() => this.select(contact)}
-      >
-        <img
-          alt="${contact.displayName}"
-          src=${contact.avatarURL || avatarFallbackURL}
-          class="avatar"
-        />
-        <span class="name">${contact.displayName}</span>
-      </button>
+      <npchat-route-link route=${route}>
+        <div class="contact">
+          <img
+            alt="${contact.displayName}"
+            src=${contact.avatarURL || avatarFallbackURL}
+            class="avatar"
+          />
+          <span class="name">${contact.displayName}</span>
+        </div>
+      </npchat-route-link>
     `
   }
 
   contactListTemplate() {
     return html`
-      <div class="import">
-        <input
-          type="text"
-          placeholder="search or import"
-          @input=${this.handleInput}
-          @change=${this.handleChange}
-        />
-      </div>
-      <div class="list">
-        ${this.filterContacts().map(c => this.contactTemplate(c))}
+      <div route="/">
+        <div class="import">
+          <input
+            type="text"
+            placeholder="search or import"
+            @input=${this.handleInput}
+            @change=${this.handleChange}
+          />
+        </div>
+        <div class="list">
+          ${this.filterContacts().map(c => this.contactTemplate(c))}
+        </div>
       </div>
     `
   }
@@ -96,12 +106,13 @@ export class Chats extends LitElement {
   render() {
     return html`
       <div class="container">
-        ${this.selected ? undefined : this.contactListTemplate()}
-        <npchat-chat
-          ?hidden=${!this.selected}
-          .myKeys=${this.keys}
-          @contactCleared=${() => this.select(undefined)}
-        ></npchat-chat>
+        <npchat-router default="/" basePath="/">
+          ${this.contactListTemplate()}
+          <npchat-chat
+            route="/chat/"
+            .keys=${this.keys}
+          ></npchat-chat>
+        </npchat-router>
       </div>
       <npchat-toast></npchat-toast>
     `
@@ -168,7 +179,6 @@ export class Chats extends LitElement {
         shareableData.displayName
       ) {
         await this.addContact(shareableData)
-        await this.loadContacts()
         input.value = ""
         input.classList.add("success")
         setTimeout(() => {
@@ -182,6 +192,7 @@ export class Chats extends LitElement {
 
   async addContact(data) {
     await this.db.put("contacts", data, data.keys.pubKeyHash)
+    await this.loadContacts()
     this.toast.show(`Imported contact: ${data.displayName}`)
   }
 

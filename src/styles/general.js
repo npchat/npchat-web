@@ -8,7 +8,7 @@ export const generalStyles = css`
 }
 
 .main {
-  margin: 10px;
+  margin: 5px;
   width: 400px;
   max-width: calc(100vw - 20px);
 }
@@ -78,7 +78,6 @@ h3 {
   user-select: none;
   font-size: 1.4rem;
   padding: 10px 20px;
-  margin: 10px;
   border: 2px solid var(--color-primary);
   transition: all 300ms;
 }

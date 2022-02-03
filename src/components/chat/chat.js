@@ -7,39 +7,63 @@ import { importDHKey, importAuthKey } from "../../core/keys.js"
 import { fromBase64, toBase64 } from "../../util/base64.js"
 import { openDBConn } from "../../core/db.js"
 import { chatStyles } from "./styles.js"
-import { avatarFallbackURL } from "../../styles/general.js"
+import { avatarFallbackURL, generalStyles } from "../../styles/general.js"
 
 export class Chat extends LitElement {
   static get properties() {
     return {
-      myKeys: { type: Object },
+      keys: { type: Object },
+      pubKeyHash: {},
       contact: { type: Object },
       cursorPos: { type: Number },
       limit: { type: Number },
       reactiveMsgs: { type: Array },
       storedMsgs: { type: Array },
-      allLoaded: { type: Boolean },
+      allLoaded: { type: Boolean }
     }
   }
 
   static get styles() {
     return [
       formStyles,
+      generalStyles,
       chatStyles,
     ]
   }
 
+  get router() {
+    return this.renderRoot.querySelector("npchat-router")
+  }
+
   constructor() {
     super()
-    this.init()
     this.reactiveMsgs = []
     this.storedMsgs = []
+  }
+
+  connectedCallback() {
+    super.connectedCallback()
 
     window.addEventListener("messageReceived", event => {
       if (event.detail.with !== this.contact?.keys.pubKeyHash) return
       this.reactiveMsgs.push(event.detail)
       this.requestUpdate()
     })
+
+    window.addEventListener("route", async event => {
+      const route = event.detail
+      this.handleRoute(route)
+    })
+
+    this.getUpdateComplete().then(async () => {
+      await this.init()
+      this.handleRoute(location.pathname)
+    })
+  }
+
+  async getUpdateComplete() {
+    await super.getUpdateComplete()
+    await this.router.getUpdateComplete()
   }
 
   updated() {
@@ -48,6 +72,15 @@ export class Chat extends LitElement {
       ?.scrollIntoView({
         block: "center",
       })
+  }
+
+  async handleRoute(route) {
+    const paths = route.split("/")
+    if (route.startsWith("/chat/") && paths.length >= 3) {
+      const pubKeyHash = paths[2]
+      await this.setContact(pubKeyHash)
+    }
+    this.router.active = route
   }
 
   messageTemplate(msg) {
@@ -64,20 +97,21 @@ export class Chat extends LitElement {
     if (!this.contact) return
     return html`
       <div class="header">
-        <button @click=${this.clearContact} class="icon">
+        <npchat-route-link route="/" class="button icon">
           <img alt="back" src="assets/icons/arrow_back.svg" />
-        </button>
-        <button
-          class="avatarNameGroup"
-          @click=${() => (this.showDetails = true)}
-        >
-          <img
-            alt="${this.contact.displayName}"
-            src=${this.contact.avatarURL || avatarFallbackURL}
-            class="avatar"
-          />
-          <span class="name">${this.contact.displayName}</span>
-        </button>
+        </npchat-route-link>
+        <npchat-route-link
+          class="detailsRouteLink"
+          route=${this.detailsRoute}>
+          <div class="avatarNameGroup">
+            <img
+              alt="${this.contact.displayName}"
+              src=${this.contact.avatarURL || avatarFallbackURL}
+              class="avatar"
+            />
+            <span class="name">${this.contact.displayName}</span>
+          </div>
+        </npchat-route-link>
         ${this.callButtonsTemplate()}
       </div>
     `
@@ -105,23 +139,42 @@ export class Chat extends LitElement {
         `
   }
 
+  chatTemplate() {
+    if (!this.contact) return
+    return html`
+    <div route=${this.chatRoute} class="container">
+      ${this.headerTemplate()}
+      <div class="list">
+        <button
+          ?hidden=${this.allLoaded}
+          @click=${() => this.loadMoreMessages()}
+          class="normal"
+        >
+          Load more
+        </button>
+        ${this.storedMsgs?.map(m => this.messageTemplate(m))}
+        ${this.reactiveMsgs?.map(m => this.messageTemplate(m))}
+      </div>
+      ${this.composeTemplate()}
+    </div>
+    `
+  }
+
+  detailsTemplate() {
+    if (!this.contact) return
+    return html`
+      <div class="main">
+        <h2 route=${this.detailsRoute}>${this.contact.displayName} details</h2>
+      </div>
+    `
+  }
+
   render() {
     return html`
-      <div class="container">
-        ${this.headerTemplate()}
-        <div class="list">
-          <button
-            ?hidden=${this.allLoaded}
-            @click=${() => this.loadMoreMessages()}
-            class="normal"
-          >
-            Load more
-          </button>
-          ${this.storedMsgs?.map(m => this.messageTemplate(m))}
-          ${this.reactiveMsgs?.map(m => this.messageTemplate(m))}
-        </div>
-        ${this.composeTemplate()}
-      </div>
+    <npchat-router .basePath=${this.chatRoute}>
+      ${this.chatTemplate()}
+      ${this.detailsTemplate()}
+    </npchat-router>
     `
   }
 
@@ -129,8 +182,13 @@ export class Chat extends LitElement {
     this.db = await openDBConn()
   }
 
-  async setContact(contact) {
-    this.contact = contact
+  async setContact(pubKeyHash) {
+    this.pubKeyHash = pubKeyHash
+    this.chatRoute = `/chat/${this.pubKeyHash}`
+    this.detailsRoute = `${this.chatRoute}/details`
+
+    this.contact = await this.db.get("contacts", pubKeyHash)
+
     if (!this.contact) return
 
     this.storedMsgs = []
@@ -138,18 +196,14 @@ export class Chat extends LitElement {
     this.cursorPos = 0
     this.limit = 10
     await this.loadMoreMessages()
-    this.allLoaded = this.limit > this.storedMsgs.length
 
     this.theirKeys = {
       auth: await importAuthKey("jwk", this.contact.keys.auth, ["verify"]),
       dh: await importDHKey("jwk", this.contact.keys.dh, []),
     }
-    this.myPubKeyHashBytes = fromBase64(this.myKeys.pubKeyHash)
-  }
+    this.myPubKeyHashBytes = fromBase64(this.keys.pubKeyHash)
 
-  clearContact() {
-    this.setContact(undefined)
-    this.dispatchEvent(new CustomEvent("contactCleared"))
+    this.update()
   }
 
   async handleSubmit(e) {
@@ -157,8 +211,8 @@ export class Chat extends LitElement {
     const { messageText } = Object.fromEntries(new FormData(e.target))
     e.target.querySelector("input").value = ""
     const msg = await buildMessage(
-      this.myKeys.auth.keyPair.privateKey,
-      this.myKeys.dh.keyPair.privateKey,
+      this.keys.auth.keyPair.privateKey,
+      this.keys.dh.keyPair.privateKey,
       new TextEncoder().encode(messageText),
       this.myPubKeyHashBytes,
       this.theirKeys.dh
