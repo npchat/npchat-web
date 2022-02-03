@@ -22,15 +22,12 @@ export class App extends LitElement {
       avatarURL: {},
       originURL: {},
       shareableQR: {},
-      defaultRoute: {}
+      defaultRoute: {},
     }
   }
 
   static get styles() {
-    return [
-      appStyles,
-      generalStyles
-    ]
+    return [appStyles, generalStyles]
   }
 
   get toastComponent() {
@@ -49,20 +46,19 @@ export class App extends LitElement {
     super()
 
     this.defaultRoute = localStorage.originURL ? "/" : "/welcome"
-    
+
     this.init()
   }
 
   connectedCallback() {
     super.connectedCallback()
-
-    this.addEventListener("route", event => {
-      this.router.active = event.detail
-    })
-
-    window.addEventListener("callStart", event => this.handleCallStart(event))
-
+    window.addEventListener("callStart", this.handleCallStart)
     registerProtocolHandler()
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback()
+    window.removeEventListener("callStart", this.handleCallStart)
   }
 
   async init(force) {
@@ -70,20 +66,24 @@ export class App extends LitElement {
 
     if (!this.originURL) return
 
-    if (!force && this.isSocketConnected && this.socket?.readyState === WebSocket.OPEN) {
+    if (
+      !force &&
+      this.isSocketConnected &&
+      this.socket?.readyState === WebSocket.OPEN
+    ) {
       return
     }
 
     Object.assign(this.keys, await importUserKeys(this.keys))
-    
+
     const shaereableURL = buildShareableURL(
       this.originURL,
       this.keys.pubKeyHash
-      )
-      this.shareableQR = await generateQR(shaereableURL, {
-        errorCorrectionLevel: "L",
-      })
-      
+    )
+    this.shareableQR = await generateQR(shaereableURL, {
+      errorCorrectionLevel: "L",
+    })
+
     this.db = await openDBConn()
 
     return this.connectSocket()
@@ -93,66 +93,61 @@ export class App extends LitElement {
     const qrImgUrl = this.shareableQR && `url(${this.shareableQR})`
     const avatarURL = `url(${this.avatarURL || avatarFallbackURL})`
     return html`
-    <header>
-      <npchat-route-link route="/">
-        <img alt="logo" src="assets/npchat-logo.svg" class="logo" />
-      </npchat-route-link>
-      <npchat-status
-        ?hidden=${!this.originURL}
-        ?isSocketConnected=${this.isSocketConnected}
-      ></npchat-status>
-      <npchat-route-link route="/shareable" ?hidden=${!this.originURL}>
-        <div
-          class="buttonRound"
-          style=${styleMap({ backgroundImage: qrImgUrl })}
-        ></div>
-      </npchat-route-link>
-      <npchat-route-link route="/preferences" ?hidden=${!this.originURL}>
-        <div
-        class="buttonRound"
-        style=${styleMap({ backgroundImage: avatarURL })}
-        ></div>
-      </npchat-route-link>
-    </header>
+      <header>
+        <npchat-route-link route="/">
+          <img alt="logo" src="assets/npchat-logo.svg" class="logo" />
+        </npchat-route-link>
+        <npchat-status
+          ?hidden=${!this.originURL}
+          ?isSocketConnected=${this.isSocketConnected}
+        ></npchat-status>
+        <npchat-route-link route="/shareable" ?hidden=${!this.originURL}>
+          <div
+            class="buttonRound"
+            style=${styleMap({ backgroundImage: qrImgUrl })}
+          ></div>
+        </npchat-route-link>
+        <npchat-route-link route="/preferences" ?hidden=${!this.originURL}>
+          <div
+            class="buttonRound"
+            style=${styleMap({ backgroundImage: avatarURL })}
+          ></div>
+        </npchat-route-link>
+      </header>
     `
   }
 
   render() {
     return html`
-    ${this.headerTemplate()}
-    <npchat-router .default=${this.defaultRoute} basePath="">
+      ${this.headerTemplate()}
+      <npchat-router .default=${this.defaultRoute} basePath="/">
+        <npchat-welcome
+          route="/welcome"
+          @formSubmit=${this.handlePreferencesSubmit}
+        ></npchat-welcome>
 
-      <npchat-welcome
-        route="/welcome"
-        @formSubmit=${this.handlePreferencesSubmit}
-      ></npchat-welcome>
+        <npchat-preferences
+          route="/preferences"
+          @formSubmit=${this.handlePreferencesSubmit}
+          .preferences=${{
+            displayName: this.displayName,
+            avatarURL: this.avatarURL,
+            originURL: this.originURL,
+          }}
+        ></npchat-preferences>
 
-      <npchat-preferences
-        route="/preferences"
-        @formSubmit=${this.handlePreferencesSubmit}
-        .preferences=${{
-          displayName: this.displayName,
-          avatarURL: this.avatarURL,
-          originURL: this.originURL,
-        }}
-      ></npchat-preferences>
+        <npchat-shareable
+          route="/shareable"
+          @close=${this.hideShareable}
+          originURL=${this.originURL}
+          pubKeyHash=${this.keys && this.keys.pubKeyHash}
+        ></npchat-shareable>
 
-      <npchat-shareable
-        route="/shareable"
-        @close=${this.hideShareable}
-        originURL=${this.originURL}
-        pubKeyHash=${this.keys && this.keys.pubKeyHash}
-      ></npchat-shareable>
+        <npchat-chats route="/" .keys=${this.keys}> </npchat-chats>
+      </npchat-router>
 
-      <npchat-chats
-        route="/"
-        .keys=${this.keys}>
-      </npchat-chats>
-
-    </npchat-router>
-
-    <npchat-toast></npchat-toast>
-    <npchat-call .myKeys=${this.keys}></npchat-call>
+      <npchat-toast></npchat-toast>
+      <npchat-call .myKeys=${this.keys}></npchat-call>
     `
   }
 

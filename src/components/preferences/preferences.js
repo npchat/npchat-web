@@ -1,4 +1,4 @@
-import { LitElement, html, css } from "lit"
+import { LitElement, html } from "lit"
 import { pack } from "msgpackr"
 import { getUserExportData } from "../../core/export.js"
 import { avatarSize, putMedia } from "../../core/media.js"
@@ -12,16 +12,12 @@ import { preferencesStyles } from "./styles.js"
 export class Preferences extends LitElement {
   static get properties() {
     return {
-      preferences: { type: Object }
+      preferences: { type: Object },
     }
   }
 
   static get styles() {
-    return [
-      formStyles,
-      generalStyles,
-      preferencesStyles,
-    ]
+    return [formStyles, generalStyles, preferencesStyles]
   }
 
   get avatarFileInput() {
@@ -36,116 +32,104 @@ export class Preferences extends LitElement {
     return this.renderRoot.querySelector("npchat-router")
   }
 
-  connectedCallback() {
-    super.connectedCallback()
-
-    // listen for all routing events (they bubble)
-    window.addEventListener("route", event => {
-      this.router.active = event.detail
-    })
-  }
-
   willUpdate() {
     this.buildExportData().then(() => this.update())
   }
 
   mainFormTemplate() {
     return html`
-    <form route="/preferences" @submit=${this.handleSubmit} class="flex">
-      <label>
-        <span>Display name</span>
-        <input
-          type="text"
-          name="displayName"
-          placeholder="Anonymous"
-          .value=${this.preferences.displayName}
-        />
-      </label>
-      <label>
-        <span>Avatar</span>
-        <div class="row">
-          <img
-            alt="avatar"
-            id="avatar-preview"
-            class="avatar"
-            src=${this.preferences.avatarURL || avatarFallbackURL}
-          />
+      <form route="/preferences" @submit=${this.handleSubmit} class="flex">
+        <label>
+          <span>Display name</span>
           <input
-            type="file"
-            id="avatar-file"
-            name="avatarFile"
-            accept="image/png, image/jpeg"
-            @change=${this.handleAvatarChange}
+            type="text"
+            name="displayName"
+            placeholder="Anonymous"
+            .value=${this.preferences.displayName}
           />
-        </div>
-      </label>
-      <label>
-        <span>Origin URL</span>
-        <input
-          list="origins"
-          name="originURL"
-          placeholder="https://axl.npchat.org"
-          .value=${this.preferences.originURL}
-        />
-        <datalist id="origins">
-          <option value="https://axl.npchat.org"></option>
-          <option value="https://frosty-meadow-296.fly.dev"></option>
-          <option value="https://wispy-feather-9047.fly.dev"></option>
-          <option value="https://dev.npchat.org:8000"></option>
-        </datalist>
-        <p>
-          Optionally point to your own self-hosted instance. Check the
-          <a
-            href="https://npchat.org/docs"
-            target="_blank"
-            class="link"
-            tabindex="-1"
-            >docs</a
-          >
-          for guidance.
-        </p>
-      </label>
-      <button type="submit" class="button">Submit</button>
+        </label>
+        <label>
+          <span>Avatar</span>
+          <div class="row">
+            <img
+              alt="avatar"
+              id="avatar-preview"
+              class="avatar"
+              src=${this.preferences.avatarURL || avatarFallbackURL}
+            />
+            <input
+              type="file"
+              id="avatar-file"
+              name="avatarFile"
+              accept="image/png, image/jpeg"
+              @change=${this.handleAvatarChange}
+            />
+          </div>
+        </label>
+        <label>
+          <span>Origin URL</span>
+          <input
+            list="origins"
+            name="originURL"
+            placeholder="https://axl.npchat.org"
+            .value=${this.preferences.originURL}
+          />
+          <datalist id="origins">
+            <option value="https://axl.npchat.org"></option>
+            <option value="https://frosty-meadow-296.fly.dev"></option>
+            <option value="https://wispy-feather-9047.fly.dev"></option>
+            <option value="https://dev.npchat.org:8000"></option>
+          </datalist>
+          <p>
+            Optionally point to your own self-hosted instance. Check the
+            <a
+              href="https://npchat.org/docs"
+              target="_blank"
+              class="link"
+              tabindex="-1"
+              >docs</a
+            >
+            for guidance.
+          </p>
+        </label>
+        <button type="submit" class="button">Submit</button>
 
-      <div class="row exportRow">
-        <npchat-route-link route="/preferences/export">
-          <div class="button small">Export</div>
-        </npchat-route-link>
-        <p class="exportDesc">Export data for another device</p>
-      </div>
-    </form>
+        <div class="row exportRow">
+          <npchat-route-link route="/preferences/export">
+            <div class="button small">Export</div>
+          </npchat-route-link>
+          <p class="exportDesc">Export data for another device</p>
+        </div>
+      </form>
     `
   }
 
   exportTemplate() {
     return html`
-    <div route="/preferences/export">
-      <div class="flex row">
-        <npchat-route-link route="/preferences" class="button icon">
-          <img alt="back" src="assets/icons/arrow_back.svg" />
-        </npchat-route-link>
-        <h2 class="exportHeader">Export</h2>
+      <div route="/preferences/export">
+        <div class="flex row">
+          <npchat-route-link route="/preferences" class="button icon">
+            <img alt="back" src="assets/icons/arrow_back.svg" />
+          </npchat-route-link>
+          <h2 class="exportHeader">Export</h2>
+        </div>
+        <div class="flex">
+          <p class="monospace">${this.exportData}</p>
+          <button @click=${this.handleExportCopy} class="button">Copy</button>
+          <img alt="export QR" src=${this.exportQR} />
+        </div>
       </div>
-      <div class="flex">
-        <p class="monospace">${this.exportData}</p>
-        <button @click=${this.handleExportCopy} class="button">
-            Copy
-        </button>
-        <img alt="export QR" src=${this.exportQR} />
-      </div>
-    </div>
     `
   }
 
   render() {
     return html`
-    <div class="main">
-      <h1>Preferences</h1>
-      <npchat-router default="/preferences" basePath="/preferences">
-        ${this.mainFormTemplate()}
-        ${this.exportTemplate()}
-      </npchat-router>
-    </div>
+      <div class="main">
+        <h1>Preferences</h1>
+        <npchat-router default="/preferences" basePath="/preferences">
+          ${this.mainFormTemplate()} ${this.exportTemplate()}
+        </npchat-router>
+      </div>
     `
   }
 

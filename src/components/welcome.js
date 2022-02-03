@@ -7,7 +7,10 @@ import { fromBase64 } from "../util/base64.js"
 import { importUserData } from "../core/export.js"
 import { resizeImageFile } from "../util/image.js"
 import { avatarSize, putMedia } from "../core/media.js"
-import { browserSupportsProtocolHandlers, browserUsesChromium } from "../core/browser.js"
+import {
+  browserSupportsProtocolHandlers,
+  browserUsesChromium,
+} from "../core/browser.js"
 
 const defaultOriginURL = "https://axl.npchat.org"
 const defaultDisplayName = "Anonymous"
@@ -16,36 +19,36 @@ export class Welcome extends LitElement {
   static get properties() {
     return {
       slideNumber: { type: Number },
-      importErrorMessage: {}
+      importErrorMessage: {},
     }
   }
 
   static get styles() {
     return [
       css`
-      .flex {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: flex-start;
-      }
+        .flex {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: flex-start;
+        }
 
-      .flex.row {
-        flex-direction: row;
-      }
+        .flex.row {
+          flex-direction: row;
+        }
 
-      p {
-        font-size: 1.2rem;
-      }
+        p {
+          font-size: 1.2rem;
+        }
 
-      .fingerprint {
-        max-width: 200px;
-      }
+        .fingerprint {
+          max-width: 200px;
+        }
 
-      #avatar-file {
-        margin-left: 5px;
-        max-width: calc(100vw - 100px);
-      }
+        #avatar-file {
+          margin-left: 5px;
+          max-width: calc(100vw - 100px);
+        }
       `,
       formStyles,
       generalStyles,
@@ -59,7 +62,7 @@ export class Welcome extends LitElement {
   get avatarFileInput() {
     return this.renderRoot.getElementById("avatar-file")
   }
-  
+
   get router() {
     return this.renderRoot.querySelector("npchat-router")
   }
@@ -67,15 +70,6 @@ export class Welcome extends LitElement {
   constructor() {
     super()
     this.slideNumber = 0
-  }
-
-  connectedCallback() {
-    super.connectedCallback()
-
-    this.addEventListener("route", event => {
-      event.stopPropagation()
-      this.router.active = event.detail
-    })
   }
 
   welcomeFormTemplate() {
@@ -86,8 +80,8 @@ export class Welcome extends LitElement {
             <h1>Welcome to npchat</h1>
             <h2>Let's get you set up</h2>
             <p ?hidden=${browserSupportsProtocolHandlers()}>
-              It looks like your browser doesn't support some modern web APIs. For
-              the best experience,
+              It looks like your browser doesn't support some modern web APIs.
+              For the best experience,
               ${browserUsesChromium()
                 ? "update your browser"
                 : "switch to Brave or Google Chrome"}.
@@ -133,7 +127,8 @@ export class Welcome extends LitElement {
                 <option value="https://dev.npchat.org:8000"></option>
               </datalist>
               <p>
-                Optionally point to your own self-hosted instance.<br>Check the
+                Optionally point to your own self-hosted instance.<br />Check
+                the
                 <a
                   href="https://npchat.org/docs"
                   target="_blank"
@@ -152,8 +147,7 @@ export class Welcome extends LitElement {
               Continue
             </button>
             <p class="color-light">Alternatively</p>
-            
-            
+
             <npchat-route-link route="/welcome/import">
               <div class="button small">Import</div>
             </npchat-route-link>
@@ -162,7 +156,11 @@ export class Welcome extends LitElement {
         <div ?hidden=${this.slideNumber !== 1}>
           <div class="flex">
             <h2>Generated fresh crypto keys</h2>
-            <img class="fingerprint" alt="fingerprint" src="assets/fingerprint.svg" />
+            <img
+              class="fingerprint"
+              alt="fingerprint"
+              src="assets/fingerprint.svg"
+            />
             <button type="submit" class="button">OK</button>
           </div>
         </div>
@@ -172,7 +170,11 @@ export class Welcome extends LitElement {
 
   importFormTemplate() {
     return html`
-      <form route="/welcome/import" @submit=${this.handleImportSubmit} class="main" >
+      <form
+        route="/welcome/import"
+        @submit=${this.handleImportSubmit}
+        class="main"
+      >
         <div class="flex row">
           <npchat-route-link route="/welcome" class="button icon">
             <img alt="back" src="assets/icons/arrow_back.svg" />
@@ -203,10 +205,9 @@ export class Welcome extends LitElement {
 
   render() {
     return html`
-    <npchat-router default="/welcome" basePath="/welcome">
-      ${this.welcomeFormTemplate()}
-      ${this.importFormTemplate()}
-    </npchat-router>
+      <npchat-router default="/welcome" basePath="/welcome">
+        ${this.welcomeFormTemplate()} ${this.importFormTemplate()}
+      </npchat-router>
     `
   }
 

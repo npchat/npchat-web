@@ -1,17 +1,17 @@
-import { LitElement, html } from "lit";
+import { LitElement, html } from "lit"
 
 export class Router extends LitElement {
   static get properties() {
     return {
       _active: {},
       default: {},
-      basePath: {}
+      basePath: {},
     }
   }
 
   get _slottedChildren() {
-    const slot = this.shadowRoot.querySelector("slot");
-    return slot?.assignedElements({flatten: true})
+    const slot = this.shadowRoot.querySelector("slot")
+    return slot?.assignedElements({ flatten: true })
   }
 
   get active() {
@@ -23,12 +23,16 @@ export class Router extends LitElement {
       return
     }
     const match = this.getMatch(route)
-    if (match && (typeof match.canAccess !== "function" ||  match.canAccess())) {
+    if (match && (typeof match.canAccess !== "function" || match.canAccess())) {
       this._active = route
       if (this._active !== location.pathname) {
-        history.pushState({
-          route: this._active
-        }, "", this._active)
+        history.pushState(
+          {
+            route: this._active,
+          },
+          "",
+          this._active
+        )
       }
     }
   }
@@ -43,26 +47,34 @@ export class Router extends LitElement {
     window.addEventListener("popstate", event => {
       event.preventDefault()
       if (!event.state) return
-      const {route} = event.state
-      if (!this.basePath || route.startsWith(this.basePath)) {
+      if (!this.basePath) return
+      const { route } = event.state
+      if (route.startsWith(this.basePath)) {
         this.active = route
       }
     })
 
-    window.addEventListener("route", () => {
-      this.requestUpdate()
+    window.addEventListener("route", event => {
+      const route = event.detail
+      if (route.startsWith(this.basePath)) {
+        this.active = route
+      }
     })
 
-    this.getUpdateComplete().then(() => {
-      this.active = location.pathname
-    })
+    this.getUpdateComplete().then(() => (this.active = location.pathname))
   }
 
   async getUpdateComplete() {
     await super.getUpdateComplete()
-    return Promise.all(this._slottedChildren.map(c => {
-      return typeof c.getUpdateComplete === "function" && c.getUpdateComplete() || Promise.resolve()
-    }))
+    const promises = this._slottedChildren.map(c => checkUpdateComplete(c))
+    return Promise.all(promises)
+
+    function checkUpdateComplete(c) {
+      return (
+        (typeof c.getUpdateComplete === "function" && c.getUpdateComplete()) ||
+        Promise.resolve()
+      )
+    }
   }
 
   updated() {
@@ -96,8 +108,7 @@ export class Router extends LitElement {
       // root path always starts with "/",
       // so must match exactly
       return route === pathname
-    } else {
-      return pathname.startsWith(route)
     }
+    return pathname.startsWith(route)
   }
 }

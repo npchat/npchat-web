@@ -11,11 +11,7 @@ export class Details extends LitElement {
   }
 
   static get styles() {
-    return [
-      formStyles,
-      generalStyles,
-      detailsStyles,
-    ]
+    return [formStyles, generalStyles, detailsStyles]
   }
 
   headerTemplate() {
@@ -37,9 +33,9 @@ export class Details extends LitElement {
         ${this.headerTemplate()}
         <div class="main">
           <img
-              alt="${this.contact.displayName}"
-              src=${this.contact.avatarURL || avatarFallbackURL}
-              class="avatar fullsize"
+            alt="${this.contact.displayName}"
+            src=${this.contact.avatarURL || avatarFallbackURL}
+            class="avatar fullsize"
           />
           <button class="button error">Delete</button>
         </div>

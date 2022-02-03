@@ -1,4 +1,4 @@
-import { LitElement, html, css } from "lit";
+import { LitElement, html, css } from "lit"
 
 export class RouteLink extends LitElement {
   static get styles() {
@@ -23,22 +23,24 @@ export class RouteLink extends LitElement {
 
   render() {
     return html`
-    <a href="${this.route}" @click="${this.handleClick}">
-      <slot></slot>
-    </a>
+      <a href="${this.route}" @click="${this.handleClick}">
+        <slot></slot>
+      </a>
     `
   }
 
   handleClick(event) {
-    event.preventDefault() 
+    event.preventDefault()
     this.navigate(this.route)
   }
 
   navigate(route) {
-    this.dispatchEvent(new CustomEvent("route", {
-      detail: route,
-      composed: true,
-      bubbles: true
-    }))
+    this.dispatchEvent(
+      new CustomEvent("route", {
+        detail: route,
+        composed: true,
+        bubbles: true,
+      })
+    )
   }
 }

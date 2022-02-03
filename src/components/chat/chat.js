@@ -19,16 +19,12 @@ export class Chat extends LitElement {
       limit: { type: Number },
       reactiveMsgs: { type: Array },
       storedMsgs: { type: Array },
-      allLoaded: { type: Boolean }
+      allLoaded: { type: Boolean },
     }
   }
 
   static get styles() {
-    return [
-      formStyles,
-      generalStyles,
-      chatStyles,
-    ]
+    return [formStyles, generalStyles, chatStyles]
   }
 
   get router() {
@@ -56,7 +52,7 @@ export class Chat extends LitElement {
     })
 
     this.getUpdateComplete().then(async () => {
-      await this.init()
+      this.db = await openDBConn()
       this.handleRoute(location.pathname)
     })
   }
@@ -79,8 +75,8 @@ export class Chat extends LitElement {
     if (route.startsWith("/chat/") && paths.length >= 3) {
       const pubKeyHash = paths[2]
       await this.setContact(pubKeyHash)
+      this.router.active = route
     }
-    this.router.active = route
   }
 
   messageTemplate(msg) {
@@ -100,9 +96,7 @@ export class Chat extends LitElement {
         <npchat-route-link route="/" class="button icon">
           <img alt="back" src="assets/icons/arrow_back.svg" />
         </npchat-route-link>
-        <npchat-route-link
-          class="detailsRouteLink"
-          route=${this.detailsRoute}>
+        <npchat-route-link class="detailsRouteLink" route=${this.detailsRoute}>
           <div class="avatarNameGroup">
             <img
               alt="${this.contact.displayName}"
@@ -142,45 +136,43 @@ export class Chat extends LitElement {
   chatTemplate() {
     if (!this.contact) return
     return html`
-    <div route=${this.chatRoute} class="container">
-      ${this.headerTemplate()}
-      <div class="list">
-        <button
-          ?hidden=${this.allLoaded}
-          @click=${() => this.loadMoreMessages()}
-          class="normal"
-        >
-          Load more
-        </button>
-        ${this.storedMsgs?.map(m => this.messageTemplate(m))}
-        ${this.reactiveMsgs?.map(m => this.messageTemplate(m))}
+      <div route=${this.chatRoute} class="container">
+        ${this.headerTemplate()}
+        <div class="list">
+          <button
+            ?hidden=${this.allLoaded}
+            @click=${() => this.loadMoreMessages()}
+            class="normal"
+          >
+            Load more
+          </button>
+          ${this.storedMsgs?.map(m => this.messageTemplate(m))}
+          ${this.reactiveMsgs?.map(m => this.messageTemplate(m))}
+        </div>
+        ${this.composeTemplate()}
       </div>
-      ${this.composeTemplate()}
-    </div>
     `
   }
 
   detailsTemplate() {
     if (!this.contact) return
     return html`
-    
+      <npchat-details
+        route=${this.detailsRoute}
+        .contact=${this.contact}
+      ></npchat-details>
     `
   }
 
   render() {
     return html`
-    <npchat-router .basePath=${this.chatRoute}>
-      ${this.chatTemplate()}
-      <npchat-details
-        route=${this.detailsRoute}
-        .contact=${this.contact}
-      ></npchat-details>
-    </npchat-router>
+      <npchat-router
+        .default=${this.chatRoute || "/"}
+        .basePath=${this.chatRoute}
+      >
+        ${this.chatTemplate()} ${this.detailsTemplate()}
+      </npchat-router>
     `
-  }
-
-  async init() {
-    this.db = await openDBConn()
   }
 
   async setContact(pubKeyHash) {

@@ -18,11 +18,7 @@ export class Call extends LitElement {
   }
 
   static get styles() {
-    return [
-      formStyles,
-      generalStyles,
-      callStyles,
-    ]
+    return [formStyles, generalStyles, callStyles]
   }
 
   get localView() {

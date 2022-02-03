@@ -50,10 +50,12 @@ export class Status extends LitElement {
   render() {
     return html`
       <div class="container">
-      <div class="light ${classMap({ connected: this.isSocketConnected })}"></div>
-      <span class=${classMap({ connected: this.isSocketConnected })}>
-        Not connected
-      </span>
+        <div
+          class="light ${classMap({ connected: this.isSocketConnected })}"
+        ></div>
+        <span class=${classMap({ connected: this.isSocketConnected })}>
+          Not connected
+        </span>
       </div>
     `
   }

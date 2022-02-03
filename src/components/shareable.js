@@ -17,21 +17,21 @@ export class Shareable extends LitElement {
       formStyles,
       generalStyles,
       css`
-      .flex {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: flex-start;
-      }
+        .flex {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: flex-start;
+        }
 
-      img {
-        border-radius: 5px;
-      }
+        img {
+          border-radius: 5px;
+        }
 
-      .copy {
-        margin: 10px 0;
-      }
-      `
+        .copy {
+          margin: 10px 0;
+        }
+      `,
     ]
   }
 
@@ -52,19 +52,21 @@ export class Shareable extends LitElement {
 
   render() {
     return html`
-    <div class="main">
-      <h1>Your shareable</h1>
-      <div class="flex">
-        <div class="monospace">${this.shareableURL}</div>
-        <button @click=${this.handleCopy} class="button copy">Copy</button>
-        <img alt="QR code" src=${this.shareableQR} />
-        <h2>Securely trade keys</h2>
-        <p>Share the link or QR code with a friend, and scan/copy theirs.</p>
-        <p>If you copied it, you must paste it into the text box
-          <npchat-route-link route="/" class="link">here</npchat-route-link></p>
-        <p>When you've both imported the other's shareable, you can chat.</p>
+      <div class="main">
+        <h1>Your shareable</h1>
+        <div class="flex">
+          <div class="monospace">${this.shareableURL}</div>
+          <button @click=${this.handleCopy} class="button copy">Copy</button>
+          <img alt="QR code" src=${this.shareableQR} />
+          <h2>Securely trade keys</h2>
+          <p>Share the link or QR code with a friend, and scan/copy theirs.</p>
+          <p>
+            If you copied it, you must paste it into the text box
+            <npchat-route-link route="/" class="link">here</npchat-route-link>
+          </p>
+          <p>When you've both imported the other's shareable, you can chat.</p>
+        </div>
       </div>
-    </div>
     `
   }
 

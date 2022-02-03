@@ -19,10 +19,7 @@ export class Chats extends LitElement {
   }
 
   static get styles() {
-    return [
-      formStyles,
-      chatsStyles,
-    ]
+    return [formStyles, chatsStyles]
   }
 
   get chat() {
@@ -47,15 +44,8 @@ export class Chats extends LitElement {
       const preview = `${msg.m.slice(0, 25)}${msg.m.length > 25 ? "..." : ""}`
       this.toast.show(`${msg.displayName}: ${preview}`)
     })
-    window.addEventListener("socketConnected", () => this.init())
-  }
 
-  connectedCallback() {
-    super.connectedCallback()
-
-    window.addEventListener("route", event => {
-      this.router.active = event.detail
-    })
+    this.init()
   }
 
   async init() {
@@ -108,10 +98,7 @@ export class Chats extends LitElement {
       <div class="container">
         <npchat-router default="/" basePath="/">
           ${this.contactListTemplate()}
-          <npchat-chat
-            route="/chat/"
-            .keys=${this.keys}
-          ></npchat-chat>
+          <npchat-chat route="/chat/" .keys=${this.keys}></npchat-chat>
         </npchat-router>
       </div>
       <npchat-toast></npchat-toast>
