@@ -61,7 +61,9 @@ export class Router extends LitElement {
       }
     })
 
-    this.getUpdateComplete().then(() => (this.active = location.pathname))
+    this.getUpdateComplete().then(() => {
+      this.active = location.pathname
+    })
   }
 
   async getUpdateComplete() {
@@ -111,4 +113,13 @@ export class Router extends LitElement {
     }
     return pathname.startsWith(route)
   }
+}
+
+export function goToRoute(route) {
+  window.dispatchEvent(
+    new CustomEvent("route", {
+      detail: route,
+      composed: true
+    })
+  )
 }

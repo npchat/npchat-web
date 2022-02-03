@@ -49,6 +49,10 @@ export class Welcome extends LitElement {
           margin-left: 5px;
           max-width: calc(100vw - 100px);
         }
+
+        .importHeader {
+          margin-left: 10px;
+        }
       `,
       formStyles,
       generalStyles,
@@ -179,7 +183,7 @@ export class Welcome extends LitElement {
           <npchat-route-link route="/welcome" class="button icon">
             <img alt="back" src="assets/icons/arrow_back.svg" />
           </npchat-route-link>
-          <h2>Import</h2>
+          <h2 class="importHeader">Import</h2>
         </div>
         <p>
           Import your keys from another browser or device. This will allow you

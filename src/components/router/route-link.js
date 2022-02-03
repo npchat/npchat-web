@@ -1,4 +1,5 @@
 import { LitElement, html, css } from "lit"
+import { goToRoute } from "./router"
 
 export class RouteLink extends LitElement {
   static get styles() {
@@ -31,16 +32,6 @@ export class RouteLink extends LitElement {
 
   handleClick(event) {
     event.preventDefault()
-    this.navigate(this.route)
-  }
-
-  navigate(route) {
-    this.dispatchEvent(
-      new CustomEvent("route", {
-        detail: route,
-        composed: true,
-        bubbles: true,
-      })
-    )
+    goToRoute(this.route)
   }
 }

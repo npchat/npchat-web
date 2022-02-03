@@ -27,7 +27,7 @@ export class Chat extends LitElement {
     return [formStyles, generalStyles, chatStyles]
   }
 
-  get router() {
+  get routerComponent() {
     return this.renderRoot.querySelector("npchat-router")
   }
 
@@ -58,7 +58,7 @@ export class Chat extends LitElement {
 
   async getUpdateComplete() {
     await super.getUpdateComplete()
-    await this.router.getUpdateComplete()
+    await this.routerComponent.getUpdateComplete()
   }
 
   updated() {
@@ -74,7 +74,7 @@ export class Chat extends LitElement {
     if (route.startsWith("/chat/") && paths.length >= 3) {
       const pubKeyHash = paths[2]
       await this.setContact(pubKeyHash)
-      this.router.active = route
+      this.routerComponent.active = route
     }
   }
 

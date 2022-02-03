@@ -1,5 +1,6 @@
 import { LitElement, html } from "lit"
 import { pack } from "msgpackr"
+import { openDBConn } from "../../core/db.js"
 import { getUserExportData } from "../../core/export.js"
 import { avatarSize, putMedia } from "../../core/media.js"
 import { formStyles } from "../../styles/form.js"
@@ -7,6 +8,7 @@ import { avatarFallbackURL, generalStyles } from "../../styles/general.js"
 import { toBase64 } from "../../util/base64.js"
 import { resizeImageFile } from "../../util/image.js"
 import { generateQR } from "../../util/qrcode.js"
+import { goToRoute } from "../router/router.js"
 import { preferencesStyles } from "./styles.js"
 
 export class Preferences extends LitElement {
@@ -94,11 +96,16 @@ export class Preferences extends LitElement {
         </label>
         <button type="submit" class="button">Submit</button>
 
-        <div class="row exportRow">
+        <div class="row">
           <npchat-route-link route="/preferences/export">
             <div class="button small">Export</div>
           </npchat-route-link>
           <p class="exportDesc">Export data for another device</p>
+        </div>
+
+        <div class="row">
+          <button type="button" class="button small error" @click=${this.clearData}>Clear data</button>
+          <p class="exportDesc">Sign out permenantly by deleting the keys, contacts & messages from the browser's storage</p>
         </div>
       </form>
     `
@@ -131,6 +138,18 @@ export class Preferences extends LitElement {
         </npchat-router>
       </div>
     `
+  }
+
+  async clearData() {
+    if (!window.confirm("Are you sure you want to log out permenantly? Save your export data somewhere if you wish to gain access again.")) {
+      return
+    }
+    localStorage.clear()
+    const db = await openDBConn()
+    await db.clear("contacts")
+    await db.clear("messages")
+    goToRoute("/")
+    location.reload()
   }
 
   async buildExportData() {

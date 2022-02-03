@@ -15,6 +15,8 @@ import { handleIncomingMessage } from "../../core/incoming.js"
 import { appStyles } from "./styles.js"
 import { avatarFallbackURL, generalStyles } from "../../styles/general.js"
 import { buildDataToSync } from "../../core/sync.js"
+import { importUserDataFromURL } from "../../core/export.js"
+import { goToRoute } from "../router/router.js"
 
 export class App extends LitElement {
   static get properties() {
@@ -33,29 +35,35 @@ export class App extends LitElement {
   }
 
   get toastComponent() {
-    return this.renderRoot?.querySelector("npchat-toast")
+    return this.renderRoot.querySelector("npchat-toast")
   }
 
   get callComponent() {
-    return this.renderRoot?.querySelector("npchat-call")
+    return this.renderRoot.querySelector("npchat-call")
   }
 
-  get router() {
-    return this.renderRoot?.querySelector("npchat-router")
+  get routerComponent() {
+    return this.renderRoot.querySelector("npchat-router")
   }
 
   constructor() {
     super()
-
     this.defaultRoute = localStorage.originURL ? "/" : "/welcome"
-
-    this.init()
+    importUserDataFromURL().then(async didImport => {
+      await this.init()
+      if (didImport) {
+        window.dispatchEvent(new CustomEvent("contactsChanged"))
+        goToRoute("/")
+        showToast("Imported your keys & settings")
+      }
+    })
   }
 
   connectedCallback() {
     super.connectedCallback()
-    window.addEventListener("callStart", this.handleCallStart)
     registerProtocolHandler()
+    window.addEventListener("callStart", this.handleCallStart)
+    window.addEventListener("toast", event => this.showToast(event))
   }
 
   disconnectedCallback() {
@@ -87,6 +95,10 @@ export class App extends LitElement {
     })
 
     return this.connectSocket()
+  }
+
+  showToast(event) {
+    this.toastComponent.show(event.detail)
   }
 
   headerTemplate() {
@@ -159,7 +171,7 @@ export class App extends LitElement {
       shareableData: buildShareableData(this.keys)
     })
     this.defaultRoute = "/"
-    this.router.active = "/"
+    this.routerComponent.active = "/"
     return this.init(true)
   }
 
@@ -216,14 +228,14 @@ export class App extends LitElement {
         await Promise.all(
           contacts.map(async c => {
             if (!(await db.get("contacts", c.pubKeyHash))) {
+              // fetch data from shareable
+              const resp = await fetch(`${c.originURL}/${c.pubKeyHash}/shareable`)
+              if (resp.status !== 200) return
+              const data = await resp.json()
+              console.log("fetched", data)
               return db.put(
                 "contacts",
-                {
-                  originURL: c.originURL,
-                  keys: {
-                    pubKeyHash: c.pubKeyHash,
-                  },
-                },
+                data,
                 c.pubKeyHash
               )
             }
@@ -246,4 +258,10 @@ export class App extends LitElement {
       return Promise.resolve(err)
     }
   }
+}
+
+export function showToast(message) {
+  window.dispatchEvent(new CustomEvent("toast", {
+    detail: message
+  }))
 }

@@ -8,7 +8,7 @@ export class Shareable extends LitElement {
   static get properties() {
     return {
       originURL: {},
-      pubKeyHash: {},
+      pubKeyHash: {}
     }
   }
 

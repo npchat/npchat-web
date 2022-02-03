@@ -7,6 +7,9 @@ import {
 import { openDBConn } from "../../core/db.js"
 import { chatsStyles } from "./styles.js"
 import { avatarFallbackURL } from "../../styles/general.js"
+import { push } from "../../core/websocket.js"
+import { buildDataToSync } from "../../core/sync.js"
+import { showToast } from "../app/app.js"
 
 export class Chats extends LitElement {
   static get properties() {
@@ -23,10 +26,6 @@ export class Chats extends LitElement {
 
   get chat() {
     return this.renderRoot.querySelector("npchat-chat")
-  }
-
-  get toast() {
-    return this.renderRoot.querySelector("npchat-toast")
   }
 
   get router() {
@@ -52,7 +51,7 @@ export class Chats extends LitElement {
     if (this.selected?.keys.pubKeyHash === event.detail.with) return
     // notify if contact not selected
     const preview = `${msg.m.slice(0, 25)}${msg.m.length > 25 ? "..." : ""}`
-    this.toast.show(`${msg.displayName}: ${preview}`)
+    showToast(`${msg.displayName}: ${preview}`)
   }
 
   async init() {
@@ -107,7 +106,6 @@ export class Chats extends LitElement {
           <npchat-chat route="/chat/" .keys=${this.keys}></npchat-chat>
         </npchat-router>
       </div>
-      <npchat-toast></npchat-toast>
     `
   }
 
@@ -187,8 +185,9 @@ export class Chats extends LitElement {
     const db = await openDBConn()
     await db.put("contacts", data, data.keys.pubKeyHash)
     db.close()
-    await this.loadContacts()
-    this.toast.show(`Imported contact: ${data.displayName}`)
+    push({ data: await buildDataToSync() })
+    window.dispatchEvent(new CustomEvent("contactsChanged"))
+    showToast(`Imported contact: ${data.displayName}`)
   }
 
   filterContacts() {

@@ -5,11 +5,14 @@ import { avatarFallbackURL, generalStyles } from "../../styles/general.js"
 import { openDBConn } from "../../core/db.js"
 import { push } from "../../core/websocket.js"
 import { buildDataToSync } from "../../core/sync.js"
+import { buildShareableURL } from "../../core/shareable.js"
+import { goToRoute } from "../router/router.js"
 
 export class Details extends LitElement {
   static get properties() {
     return {
       contact: { type: Object },
+      shareableURL: {}
     }
   }
 
@@ -30,6 +33,10 @@ export class Details extends LitElement {
     `
   }
 
+  willUpdate() {
+    this.shareableURL = buildShareableURL(this.contact.originURL, this.contact.keys.pubKeyHash)
+  }
+
   render() {
     return html`
       <div class="container">
@@ -40,6 +47,7 @@ export class Details extends LitElement {
             src=${this.contact.avatarURL || avatarFallbackURL}
             class="avatar fullsize"
           />
+          <div class="monospace">${this.shareableURL}</div>
           <button class="button error" @click=${this.deleteContact}>Delete ${this.contact.displayName}</button>
         </div>
       </div>
@@ -47,18 +55,13 @@ export class Details extends LitElement {
   }
 
   async deleteContact() {
-    const message = `Delete contact ${this.contact.displayName}`
+    const message = `Deleting contact ${this.contact.displayName}... are you sure?`
     if (!window.confirm(message)) return
     const db = await openDBConn()
     await db.delete("contacts", this.contact.keys.pubKeyHash)
     db.close()
     push({ data: await buildDataToSync() })
-    window.dispatchEvent(new CustomEvent("contactsChanged", {
-      composed: true
-    }))
-    window.dispatchEvent(new CustomEvent("route", {
-      detail: "/",
-      composed: true
-    }))
+    window.dispatchEvent(new CustomEvent("contactsChanged"))
+    goToRoute("/")
   }
 }

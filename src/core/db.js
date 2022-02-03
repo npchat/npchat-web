@@ -12,3 +12,10 @@ export async function openDBConn() {
     },
   })
 }
+
+export async function emptyDB() {
+  const db = await openDBConn()
+  await db.clear("contacts")
+  await db.clear("messages")
+  db.close()
+}
