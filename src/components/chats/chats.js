@@ -42,7 +42,7 @@ export class Chats extends LitElement {
 
   connectedCallback() {
     super.connectedCallback()
-    window.addEventListener("messageReceived", () => this.handleMessageReceived())
+    window.addEventListener("messageReceived", event => this.handleMessageReceived(event))
     window.addEventListener("contactsChanged", () => this.loadContacts())
   }
 
