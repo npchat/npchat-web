@@ -12,7 +12,6 @@ export class Chats extends LitElement {
   static get properties() {
     return {
       contacts: { type: Array },
-      selected: { type: Object },
       filter: {},
       keys: { type: Object },
     }
@@ -37,19 +36,26 @@ export class Chats extends LitElement {
   constructor() {
     super()
     this.contacts = []
-    window.addEventListener("messageReceived", async event => {
-      const msg = event.detail
-      if (this.selected?.keys.pubKeyHash === event.detail.with) return
-      // notify if contact not selected
-      const preview = `${msg.m.slice(0, 25)}${msg.m.length > 25 ? "..." : ""}`
-      this.toast.show(`${msg.displayName}: ${preview}`)
-    })
+    
 
     this.init()
   }
 
+  connectedCallback() {
+    super.connectedCallback()
+    window.addEventListener("messageReceived", () => this.handleMessageReceived())
+    window.addEventListener("contactsChanged", () => this.loadContacts())
+  }
+
+  async handleMessageReceived(event) {
+    const msg = event.detail
+    if (this.selected?.keys.pubKeyHash === event.detail.with) return
+    // notify if contact not selected
+    const preview = `${msg.m.slice(0, 25)}${msg.m.length > 25 ? "..." : ""}`
+    this.toast.show(`${msg.displayName}: ${preview}`)
+  }
+
   async init() {
-    this.db = await openDBConn()
     await this.loadContacts()
 
     // import from URL
@@ -106,11 +112,15 @@ export class Chats extends LitElement {
   }
 
   async loadContacts() {
-    this.contacts = await this.db.getAll("contacts")
+    const db = await openDBConn()
+    this.contacts = await db.getAll("contacts")
+    db.close()
+    this.requestUpdate()
   }
 
   async updateContacts() {
-    const contacts = await this.db.getAll("contacts")
+    const db = await openDBConn()
+    const contacts = await db.getAll("contacts")
     await Promise.all(
       contacts.map(async c => {
         try {
@@ -127,17 +137,13 @@ export class Chats extends LitElement {
             // this only happens when contacts are synced
             Object.assign(updated, { keys })
           }
-          return this.db.put("contacts", updated, c.keys.pubKeyHash)
+          return db.put("contacts", updated, c.keys.pubKeyHash)
         } catch {
           return Promise.resolve()
         }
       })
     )
-  }
-
-  select(contact) {
-    this.selected = contact
-    this.chat?.setContact(contact)
+    db.close()
   }
 
   handleInput(e) {
@@ -178,7 +184,9 @@ export class Chats extends LitElement {
   }
 
   async addContact(data) {
-    await this.db.put("contacts", data, data.keys.pubKeyHash)
+    const db = await openDBConn()
+    await db.put("contacts", data, data.keys.pubKeyHash)
+    db.close()
     await this.loadContacts()
     this.toast.show(`Imported contact: ${data.displayName}`)
   }

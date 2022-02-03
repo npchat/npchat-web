@@ -1,23 +1,26 @@
 import { unpack } from "msgpackr"
 import { toBase64 } from "../util/base64.js"
 import { decrypt } from "../util/privacy.js"
+import { openDBConn } from "./db.js"
 import { deriveDHSecret, importAuthKey, importDHKey } from "./keys.js"
 import { verifyMessage } from "./message.js"
 
-export async function handleIncomingMessage(msg, db, myKeys) {
+export async function handleIncomingMessage(msg, myKeys) {
   if (!(msg.data instanceof Blob)) return
   const arrayBuffer = await msg.data.arrayBuffer()
   const data = unpack(new Uint8Array(arrayBuffer))
   if (!data.m || !data.f) return
 
-  // match contact
+  // match contact &
+  // check message does not already exist
   const fromPubKeyHash = toBase64(data.f)
+  const db = await openDBConn()
   const contact = await db.get("contacts", fromPubKeyHash)
-  if (!contact) return
-
-  // check does not already exist
   const stored = await db.get("messages", data.t)
-  if (stored) return
+  if (!contact || stored) {
+    db.close()
+    return
+  }
 
   // verify signature
   const authKey = await importAuthKey("jwk", contact.keys.auth, ["verify"])
@@ -61,4 +64,5 @@ export async function handleIncomingMessage(msg, db, myKeys) {
       })
     )
   }
+  db.close()
 }

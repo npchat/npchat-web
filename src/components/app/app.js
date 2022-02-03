@@ -2,17 +2,19 @@ import { LitElement, html } from "lit"
 import { styleMap } from "lit/directives/style-map.js"
 import { pack, unpack } from "msgpackr"
 import { importUserKeys, loadUser, storeUser } from "../../core/storage.js"
-import { getWebSocket, authenticateSocket } from "../../core/websocket.js"
+import { getWebSocket, authenticateSocket, push } from "../../core/websocket.js"
 import { subscribeToPushNotifications } from "../../core/webpush.js"
 import { generateQR } from "../../util/qrcode.js"
 import {
   registerProtocolHandler,
   buildShareableURL,
+  buildShareableData,
 } from "../../core/shareable.js"
 import { openDBConn } from "../../core/db.js"
 import { handleIncomingMessage } from "../../core/incoming.js"
 import { appStyles } from "./styles.js"
 import { avatarFallbackURL, generalStyles } from "../../styles/general.js"
+import { buildDataToSync } from "../../core/sync.js"
 
 export class App extends LitElement {
   static get properties() {
@@ -69,7 +71,7 @@ export class App extends LitElement {
     if (
       !force &&
       this.isSocketConnected &&
-      this.socket?.readyState === WebSocket.OPEN
+      winsow.socket?.readyState === WebSocket.OPEN
     ) {
       return
     }
@@ -83,8 +85,6 @@ export class App extends LitElement {
     this.shareableQR = await generateQR(shaereableURL, {
       errorCorrectionLevel: "L",
     })
-
-    this.db = await openDBConn()
 
     return this.connectSocket()
   }
@@ -154,42 +154,13 @@ export class App extends LitElement {
   async handlePreferencesSubmit(e) {
     storeUser(e.detail)
     Object.assign(this, e.detail)
-    if (this.socket?.readyState === WebSocket.OPEN) {
-      const contacts = (await this.db.getAll("contacts")).map(c => ({
-        originURL: c.originURL,
-        pubKeyHash: c.keys.pubKeyHash,
-      }))
-      this.push({
-        data: pack({
-          displayName: this.displayName,
-          avatarURL: this.avatarURL,
-          contacts,
-        }),
-        shareableData: this.buildShareableData(),
-      })
-    }
+    push({
+      data: await buildDataToSync(),
+      shareableData: buildShareableData(this.keys)
+    })
     this.defaultRoute = "/"
     this.router.active = "/"
     return this.init(true)
-  }
-
-  buildShareableData() {
-    return new TextEncoder().encode(
-      JSON.stringify({
-        displayName: this.displayName,
-        avatarURL: this.avatarURL,
-        originURL: this.originURL,
-        keys: {
-          auth: this.keys.auth.jwk.publicKey,
-          dh: this.keys.dh.jwk.publicKey,
-          pubKeyHash: this.keys.pubKeyHash,
-        },
-      })
-    )
-  }
-
-  push(object) {
-    this.socket.send(pack(object))
   }
 
   handleMessageSent(e) {
@@ -206,7 +177,7 @@ export class App extends LitElement {
 
   reconnectSocket() {
     setTimeout(async () => {
-      if (this.socket?.readyState === WebSocket.OPEN) {
+      if (window.socket?.readyState === WebSocket.OPEN) {
         this.isSocketConnected = true
         return
       }
@@ -217,15 +188,15 @@ export class App extends LitElement {
   async connectSocket() {
     try {
       const url = new URL(this.keys.pubKeyHash, this.originURL)
-      this.socket = await getWebSocket(url.toString())
-      this.socket.onclose = () => {
+      window.socket = await getWebSocket(url.toString())
+      window.socket.onclose = () => {
         this.isSocketConnected = false
+        console.log("closed")
         this.reconnectSocket()
       }
-      this.socket.onmessage = event =>
-        handleIncomingMessage(event, this.db, this.keys)
+      window.socket.onmessage = event =>
+        handleIncomingMessage(event, this.keys)
       const authResp = await authenticateSocket(
-        this.socket,
         this.keys.auth.keyPair.privateKey,
         this.keys.auth.publicKeyRaw
       )
@@ -241,10 +212,11 @@ export class App extends LitElement {
           storeUser({ displayName, avatarURL })
           Object.assign(this, { displayName, avatarURL })
         }
+        const db = await openDBConn()
         await Promise.all(
           contacts.map(async c => {
-            if (!(await this.db.get("contacts", c.pubKeyHash))) {
-              return this.db.put(
+            if (!(await db.get("contacts", c.pubKeyHash))) {
+              return db.put(
                 "contacts",
                 {
                   originURL: c.originURL,
@@ -257,26 +229,19 @@ export class App extends LitElement {
             }
           })
         )
+        db.close()
       }
       // push merged data
-      // TODO: also push when contacts are added & deleted
       const sub = await subscribeToPushNotifications(authResp.vapidKey)
-      const contactsToPush = (await this.db.getAll("contacts")).map(c => ({
-        originURL: c.originURL,
-        pubKeyHash: c.keys.pubKeyHash,
-      }))
-      this.push({
-        data: pack({
-          displayName: this.displayName,
-          avatarURL: this.avatarURL,
-          contacts: contactsToPush,
-        }),
-        shareableData: this.buildShareableData(),
+      push({
+        data: await buildDataToSync(),
+        shareableData: buildShareableData(this.keys),
         sub: sub || "",
       })
       window.dispatchEvent(new CustomEvent("socketConnected"))
       return Promise.resolve(true)
     } catch (err) {
+      console.log("failed to connect", err)
       this.isSocketConnected = false
       return Promise.resolve(err)
     }

@@ -1,3 +1,5 @@
+import { importUserKeys, loadUser } from "./storage"
+
 export const protocolScheme = "web+npchat"
 
 export function registerProtocolHandler() {
@@ -30,4 +32,20 @@ export async function fetchShareableUsingURLData() {
       console.log("failed to import data from URL", e)
     }
   }
+}
+
+export function buildShareableData(keys) {
+  const user = loadUser()
+  return new TextEncoder().encode(
+    JSON.stringify({
+      displayName: user.displayName,
+      avatarURL: user.avatarURL,
+      originURL: user.originURL,
+      keys: {
+        auth: keys.auth.jwk.publicKey,
+        dh: keys.dh.jwk.publicKey,
+        pubKeyHash: keys.pubKeyHash,
+      },
+    })
+  )
 }

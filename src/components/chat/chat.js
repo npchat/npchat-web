@@ -52,7 +52,6 @@ export class Chat extends LitElement {
     })
 
     this.getUpdateComplete().then(async () => {
-      this.db = await openDBConn()
       this.handleRoute(location.pathname)
     })
   }
@@ -180,7 +179,9 @@ export class Chat extends LitElement {
     this.chatRoute = `/chat/${this.pubKeyHash}`
     this.detailsRoute = `${this.chatRoute}/details`
 
-    this.contact = await this.db.get("contacts", pubKeyHash)
+    const db = await openDBConn()
+    this.contact = await db.get("contacts", pubKeyHash)
+    db.close()
 
     if (!this.contact) return
 
@@ -223,7 +224,9 @@ export class Chat extends LitElement {
       in: false, // outgoing
       sent: resp.status === 200,
     }
-    this.db.put("messages", toStore, msg.t)
+    const db = await openDBConn()
+    await db.put("messages", toStore, msg.t)
+    db.close()
     this.reactiveMsgs.push(toStore)
     this.requestUpdate()
     localStorage.lastMessagePubKeyHash = this.contact.keys.pubKeyHash
@@ -240,17 +243,25 @@ export class Chat extends LitElement {
   }
 
   async fetchMessagesFromDB() {
-    const tx = this.db.transaction("messages", "readonly")
+    const db = await openDBConn()
+    const tx = db.transaction("messages", "readonly")
     const index = tx.store.index("with")
     const cursor = await index.openKeyCursor(
       this.contact.keys.pubKeyHash,
       "prev"
     )
-    if (!cursor) return []
+    
+    if (!cursor) {
+      db.close()
+      return []
+    }
 
     if (this.cursorPos > 0) {
       const advanced = await cursor.advance(this.cursorPos)
-      if (!advanced) return []
+      if (!advanced) {
+        db.close()
+        return []
+      }
     }
 
     const keys = []
@@ -264,8 +275,9 @@ export class Chat extends LitElement {
 
     const msgs = []
     for await (const k of keys) {
-      msgs.push(await this.db.get("messages", k))
+      msgs.push(await db.get("messages", k))
     }
+    db.close()
     return msgs
   }
 
