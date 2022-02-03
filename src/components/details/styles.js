@@ -6,6 +6,17 @@ export const detailsStyles = css`
   flex-direction: column;
 }
 
+.main {
+  align-self: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.main > * {
+  margin: 10px 0;
+}
+
 .header {
   display: flex;
   align-items: center;
@@ -17,26 +28,15 @@ export const detailsStyles = css`
   filter: drop-shadow(0 5px 5px rgba(0, 0, 0, 0.2));
 }
 
-.avatar {
-  width: 40px;
-  height: 40px;
-  margin-left: 5px;
-  border-radius: 50%;
-  border: 2px solid var(--color-secondary);
+.avatar.fullsize {
+  width: min-content;
+  max-width: 100%;
+  height: auto;
 }
 
 .name {
   margin-left: 10px;
   font-size: 1.4rem;
   user-select: none;
-}
-
-.avatarNameGroup {
-  flex-grow: 1;
-  display: flex;
-  align-items: center;
-  border-radius: 5px;
-  margin: 0 5px;
-  padding: 3px 0;
 }
 `

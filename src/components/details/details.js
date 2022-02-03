@@ -1,8 +1,7 @@
 import { LitElement, html } from "lit"
 import { formStyles } from "../../styles/form.js"
-import { openDBConn } from "../../core/db.js"
 import { detailsStyles } from "./styles.js"
-import { avatarFallbackURL } from "../../styles/general.js"
+import { avatarFallbackURL, generalStyles } from "../../styles/general.js"
 
 export class Details extends LitElement {
   static get properties() {
@@ -14,30 +13,20 @@ export class Details extends LitElement {
   static get styles() {
     return [
       formStyles,
+      generalStyles,
       detailsStyles,
     ]
   }
 
-  constructor() {
-    super()
-    this.init()
-  }
-
   headerTemplate() {
     if (!this.contact) return
+    const chatRoute = `/chat/${this.contact.keys.pubKeyHash}`
     return html`
       <div class="header">
-        <button @click=${this.clearContact} class="icon">
+        <npchat-route-link route=${chatRoute} class="button icon">
           <img alt="back" src="assets/icons/arrow_back.svg" />
-        </button>
-        <div class="avatarNameGroup">
-          <img
-            alt="${this.contact.displayName}"
-            src=${this.contact.avatarURL || avatarFallbackURL}
-            class="avatar"
-          />
-          <span class="name">${this.contact.displayName}</span>
-        </div>
+        </npchat-route-link>
+        <span class="name">${this.contact.displayName}</span>
       </div>
     `
   }
@@ -46,12 +35,15 @@ export class Details extends LitElement {
     return html`
       <div class="container">
         ${this.headerTemplate()}
-        <h1>Contact details</h1>
+        <div class="main">
+          <img
+              alt="${this.contact.displayName}"
+              src=${this.contact.avatarURL || avatarFallbackURL}
+              class="avatar fullsize"
+          />
+          <button class="button error">Delete</button>
+        </div>
       </div>
     `
-  }
-
-  async init() {
-    this.db = await openDBConn()
   }
 }

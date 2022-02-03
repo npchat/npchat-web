@@ -94,6 +94,7 @@ export const chatStyles = css`
     margin: 0 5px;
     padding: 3px 0;
     cursor: pointer;
+    transition: background-color 300ms;
   }
 
   .avatarNameGroup:hover {

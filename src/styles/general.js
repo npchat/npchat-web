@@ -65,7 +65,7 @@ h3 {
   border-radius: 5px;
 }
 
-.error {
+p.error {
   color: var(--color-red);
 }
 
@@ -90,7 +90,7 @@ h3 {
 
 .button:hover,
 .button:focus {
-  background-color: var(--color-lightgrey);
+  background-color: var(--color-darkwhite);
   border-color: var(--color-secondary);
 }
 
@@ -121,6 +121,16 @@ h3 {
 .button.success,
 input.success {
   background-color: var(--color-green);
+}
+
+.button.error {
+  border-color: transparent;
+  background-color: var(--color-red);
+}
+
+.button.error:hover,
+.button.error:focus {
+  border-color: var(--color-primary);
 }
 
 .avatar {

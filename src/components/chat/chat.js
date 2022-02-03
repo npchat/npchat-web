@@ -163,9 +163,7 @@ export class Chat extends LitElement {
   detailsTemplate() {
     if (!this.contact) return
     return html`
-      <div class="main">
-        <h2 route=${this.detailsRoute}>${this.contact.displayName} details</h2>
-      </div>
+    
     `
   }
 
@@ -173,7 +171,10 @@ export class Chat extends LitElement {
     return html`
     <npchat-router .basePath=${this.chatRoute}>
       ${this.chatTemplate()}
-      ${this.detailsTemplate()}
+      <npchat-details
+        route=${this.detailsRoute}
+        .contact=${this.contact}
+      ></npchat-details>
     </npchat-router>
     `
   }
