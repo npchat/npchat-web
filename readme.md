@@ -10,3 +10,6 @@ The principles of this project are:
 - Security
 - Minimalism
 - Maintainability
+
+## To do
+- Fetch ephemeral TURN credentials from origin

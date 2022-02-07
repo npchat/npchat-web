@@ -26,32 +26,18 @@ export class Welcome extends LitElement {
   static get styles() {
     return [
       css`
-        .flex {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: flex-start;
-        }
-
-        .flex.row {
-          flex-direction: row;
-        }
-
         p {
           font-size: 1.2rem;
         }
 
         .fingerprint {
           max-width: 200px;
+          margin-bottom: 20px;
         }
 
         #avatar-file {
           margin-left: 5px;
           max-width: calc(100vw - 100px);
-        }
-
-        .importHeader {
-          margin-left: 10px;
         }
       `,
       formStyles,
@@ -179,11 +165,11 @@ export class Welcome extends LitElement {
         @submit=${this.handleImportSubmit}
         class="main"
       >
-        <div class="flex row">
+        <div class="header">
           <npc-route-link route="/welcome" class="button icon back">
             <img alt="back" src="assets/icons/arrow_back.svg" />
           </npc-route-link>
-          <h2 class="importHeader">Import</h2>
+          <h2>Import</h2>
         </div>
         <p>
           Import your keys from another browser or device. This will allow you

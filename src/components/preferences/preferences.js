@@ -96,14 +96,14 @@ export class Preferences extends LitElement {
         </label>
         <button type="submit" class="button">Submit</button>
 
-        <div class="row">
+        <div class="row margin">
           <npc-route-link route="/preferences/export">
             <div class="button small">Export</div>
           </npc-route-link>
           <p>Export data for another device</p>
         </div>
 
-        <div class="row">
+        <div class="row margin">
           <button type="button" class="button small error" @click=${this.clearData}>Clear data</button>
           <p>Sign out permenantly by deleting the keys, contacts & messages from the browser's storage</p>
         </div>
@@ -114,7 +114,7 @@ export class Preferences extends LitElement {
   exportTemplate() {
     return html`
       <div route="/preferences/export">
-        <div class="flex row">
+        <div class="header">
           <npc-route-link route="/preferences" class="button icon back">
             <img alt="back" src="assets/icons/arrow_back.svg" />
           </npc-route-link>

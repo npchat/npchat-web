@@ -15,6 +15,7 @@ export const formStyles = css`
 
   label span {
     font-size: 1.4rem;
+    margin: 5px 0;
   }
 
   input {

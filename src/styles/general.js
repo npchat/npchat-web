@@ -13,6 +13,25 @@ export const generalStyles = css`
     max-width: calc(100vw - 10px);
   }
 
+  .flex {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+  }
+
+  .row {
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .row.margin {
+    margin: 20px 0;
+  }
+
   .border-gradient {
     border-image: linear-gradient(
         45deg,
@@ -140,8 +159,13 @@ export const generalStyles = css`
     border-radius: 50%;
   }
 
-  .row {
+  .header {
     display: flex;
+    flex-direction: row;
     align-items: center;
+  }
+
+  .header .button {
+    margin-right: 10px;
   }
 `
