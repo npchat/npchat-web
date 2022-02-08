@@ -3,7 +3,10 @@ import { styleMap } from "lit/directives/style-map.js"
 import { unpack } from "msgpackr"
 import { importUserKeys, loadUser, storeUser } from "../../core/storage.js"
 import { getWebSocket, authenticateSocket, push } from "../../core/websocket.js"
-import { addNotificationClickEventListener, subscribeToPushNotifications } from "../../core/webpush.js"
+import {
+  addNotificationClickEventListener,
+  subscribeToPushNotifications,
+} from "../../core/webpush.js"
 import { generateQR } from "../../util/qrcode.js"
 import {
   registerProtocolHandler,
@@ -80,7 +83,7 @@ export class App extends LitElement {
     if (
       !force &&
       this.isSocketConnected &&
-      winsow.socket?.readyState === WebSocket.OPEN
+      window.socket?.readyState === WebSocket.OPEN
     ) {
       return
     }
@@ -169,7 +172,7 @@ export class App extends LitElement {
     Object.assign(this, e.detail)
     push({
       data: await buildDataToSync(),
-      shareableData: buildShareableData(this.keys)
+      shareableData: buildShareableData(this.keys),
     })
     this.defaultRoute = "/"
     this.routerComponent.active = "/"
@@ -206,8 +209,7 @@ export class App extends LitElement {
         this.isSocketConnected = false
         this.reconnectSocket()
       }
-      window.socket.onmessage = event =>
-        handleIncomingMessage(event, this.keys)
+      window.socket.onmessage = event => handleIncomingMessage(event, this.keys)
       const authResp = await authenticateSocket(
         this.keys.auth.keyPair.privateKey,
         this.keys.auth.publicKeyRaw
@@ -230,15 +232,13 @@ export class App extends LitElement {
           contacts.map(async c => {
             if (!(await db.get("contacts", c.pubKeyHash))) {
               // fetch data from shareable
-              const resp = await fetch(`${c.originURL}/${c.pubKeyHash}/shareable`)
+              const resp = await fetch(
+                `${c.originURL}/${c.pubKeyHash}/shareable`
+              )
               if (resp.status !== 200) return
               contactsChanged = true
               const data = await resp.json()
-              return db.put(
-                "contacts",
-                data,
-                c.pubKeyHash
-              )
+              return db.put("contacts", data, c.pubKeyHash)
             }
           })
         )
@@ -265,7 +265,9 @@ export class App extends LitElement {
 }
 
 export function showToast(message) {
-  window.dispatchEvent(new CustomEvent("toast", {
-    detail: message
-  }))
+  window.dispatchEvent(
+    new CustomEvent("toast", {
+      detail: message,
+    })
+  )
 }

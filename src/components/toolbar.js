@@ -1,7 +1,6 @@
 import { LitElement, html, css } from "lit"
 
 export class Toolbar extends LitElement {
-
   static get styles() {
     return css`
       :host {
@@ -27,9 +26,9 @@ export class Toolbar extends LitElement {
 
   render() {
     return html`
-    <div class="foo">
-      <slot></slot>
-    </div>
+      <div class="foo">
+        <slot></slot>
+      </div>
     `
   }
 }

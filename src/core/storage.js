@@ -47,13 +47,11 @@ export function storeUser(userObject) {
   Object.entries(userObject).forEach(kv => {
     if (typeof kv[1] === "object") {
       localStorage.setItem(kv[0], JSON.stringify(kv[1]))
+    } else if (!kv[1]) {
+      // remove undefined values
+      localStorage.removeItem(kv[0])
     } else {
-      if (!kv[1]) {
-        // remove undefined values
-        localStorage.removeItem(kv[0])
-      } else {
-        localStorage.setItem(kv[0], kv[1])
-      }
+      localStorage.setItem(kv[0], kv[1])
     }
   })
 }

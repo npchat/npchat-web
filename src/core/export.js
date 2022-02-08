@@ -57,7 +57,7 @@ export async function importUserData(data) {
 export async function importUserDataFromURL() {
   let data = window.location.hash
   if (!data.startsWith("#import:")) return false
-  history.pushState({route: "/"}, "", "/")
+  history.pushState({ route: "/" }, "", "/")
   data = data.replace("#import:", "")
   const bytes = fromBase64(data)
   const unpacked = unpack(bytes)

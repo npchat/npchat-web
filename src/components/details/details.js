@@ -12,7 +12,7 @@ export class Details extends LitElement {
   static get properties() {
     return {
       contact: { type: Object },
-      shareableURL: {}
+      shareableURL: {},
     }
   }
 
@@ -34,7 +34,10 @@ export class Details extends LitElement {
   }
 
   willUpdate() {
-    this.shareableURL = buildShareableURL(this.contact.originURL, this.contact.keys.pubKeyHash)
+    this.shareableURL = buildShareableURL(
+      this.contact.originURL,
+      this.contact.keys.pubKeyHash
+    )
   }
 
   render() {
@@ -48,7 +51,9 @@ export class Details extends LitElement {
             class="avatar fullsize"
           />
           <div class="monospace">${this.shareableURL}</div>
-          <button class="button error" @click=${this.deleteContact}>Delete ${this.contact.displayName}</button>
+          <button class="button error" @click=${this.deleteContact}>
+            Delete ${this.contact.displayName}
+          </button>
         </div>
       </div>
     `

@@ -49,9 +49,11 @@ export async function subscribeToPushNotifications(vapidKey) {
 export function addNotificationClickEventListener() {
   navigator.serviceWorker.addEventListener("message", event => {
     console.log("message!", event.data.route)
-    const {route} = event.data
-    window.dispatchEvent(new CustomEvent("route", {
-      detail: route
-    }))
+    const { route } = event.data
+    window.dispatchEvent(
+      new CustomEvent("route", {
+        detail: route,
+      })
+    )
   })
 }

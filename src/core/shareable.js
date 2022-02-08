@@ -1,4 +1,4 @@
-import { importUserKeys, loadUser } from "./storage"
+import { loadUser } from "./storage.js"
 
 export const protocolScheme = "web+npchat"
 

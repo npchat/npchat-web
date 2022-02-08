@@ -112,7 +112,11 @@ export class Chat extends LitElement {
 
   callButtonsTemplate() {
     return html`
-      <button type="button" class="button icon call" @click=${this.startAudioCall}>
+      <button
+        type="button"
+        class="button icon call"
+        @click=${this.startAudioCall}
+      >
         <img alt="audio call" src="assets/icons/phone.svg" />
       </button>
     `
@@ -122,19 +126,19 @@ export class Chat extends LitElement {
     return this.inCall
       ? undefined
       : html`
-        <div class="composeContainer">
-          <form class="compose" @submit=${this.handleSubmit}>
-            <input
-              type="text"
-              placeholder="message ${this.contact.displayName}"
-              name="messageText"
-              autocomplete="off"
-            />
-            <button type="submit">
-              <img alt="send" src="assets/icons/send.svg" />
-            </button>
-          </form>
-        </div>
+          <div class="composeContainer">
+            <form class="compose" @submit=${this.handleSubmit}>
+              <input
+                type="text"
+                placeholder="message ${this.contact.displayName}"
+                name="messageText"
+                autocomplete="off"
+              />
+              <button type="submit">
+                <img alt="send" src="assets/icons/send.svg" />
+              </button>
+            </form>
+          </div>
         `
   }
 
@@ -171,10 +175,7 @@ export class Chat extends LitElement {
 
   render() {
     return html`
-      <npc-router
-        .default=${this.chatRoute || "/"}
-        .basePath=${this.chatRoute}
-      >
+      <npc-router .default=${this.chatRoute || "/"} .basePath=${this.chatRoute}>
         ${this.chatTemplate()} ${this.detailsTemplate()}
       </npc-router>
     `
@@ -257,7 +258,7 @@ export class Chat extends LitElement {
       this.contact.keys.pubKeyHash,
       "prev"
     )
-    
+
     if (!cursor) {
       db.close()
       return []

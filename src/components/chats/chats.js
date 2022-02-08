@@ -35,14 +35,15 @@ export class Chats extends LitElement {
   constructor() {
     super()
     this.contacts = []
-    
 
     this.init()
   }
 
   connectedCallback() {
     super.connectedCallback()
-    window.addEventListener("messageReceived", event => this.handleMessageReceived(event))
+    window.addEventListener("messageReceived", event =>
+      this.handleMessageReceived(event)
+    )
     window.addEventListener("contactsChanged", () => this.loadContacts())
   }
 

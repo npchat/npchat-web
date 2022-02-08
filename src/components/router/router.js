@@ -121,7 +121,7 @@ export function goToRoute(route) {
   window.dispatchEvent(
     new CustomEvent("route", {
       detail: route,
-      composed: true
+      composed: true,
     })
   )
 }

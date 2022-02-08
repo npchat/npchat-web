@@ -15,7 +15,7 @@ export class Preferences extends LitElement {
   static get properties() {
     return {
       preferences: { type: Object },
-      showInstallButton: { type: Boolean }
+      showInstallButton: { type: Boolean },
     }
   }
 
@@ -106,10 +106,17 @@ export class Preferences extends LitElement {
         <button type="submit" class="button">Submit</button>
 
         <div class="row margin" ?hidden=${!this.showInstallButton}>
-          <button type="button" class="button small" @click=${() => this.handleInstall()}>
-          <span>Install</span>
-        </button>
-          <p>Install npchat as a PWA. This enables things like offline functionality.</p>
+          <button
+            type="button"
+            class="button small"
+            @click=${() => this.handleInstall()}
+          >
+            <span>Install</span>
+          </button>
+          <p>
+            Install npchat as a PWA. This enables things like offline
+            functionality.
+          </p>
         </div>
 
         <div class="row margin">
@@ -122,8 +129,17 @@ export class Preferences extends LitElement {
         </div>
 
         <div class="row margin">
-          <button type="button" class="button small error" @click=${this.clearData}>Clear data</button>
-          <p>Sign out permenantly by deleting the keys, contacts & messages from the browser's storage</p>
+          <button
+            type="button"
+            class="button small error"
+            @click=${this.clearData}
+          >
+            Clear data
+          </button>
+          <p>
+            Sign out permenantly by deleting the keys, contacts & messages from
+            the browser's storage
+          </p>
         </div>
       </form>
     `
@@ -159,7 +175,11 @@ export class Preferences extends LitElement {
   }
 
   async clearData() {
-    if (!window.confirm("Are you sure you want to log out permenantly? Save your export data somewhere if you wish to gain access again.")) {
+    if (
+      !window.confirm(
+        "Are you sure you want to log out permenantly? Save your export data somewhere if you wish to gain access again."
+      )
+    ) {
       return
     }
     localStorage.clear()
@@ -219,7 +239,7 @@ export class Preferences extends LitElement {
   }
 
   async handleInstall() {
-    const {deferredInstallPrompt} = this
+    const { deferredInstallPrompt } = this
     if (!deferredInstallPrompt) return
     deferredInstallPrompt.prompt()
     const { outcome } = await deferredInstallPrompt.userChoice

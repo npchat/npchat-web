@@ -1,7 +1,7 @@
 import { pack } from "msgpackr"
-import { openDBConn } from "./db"
-import { loadUser } from "./storage"
-import { push } from "./websocket"
+import { openDBConn } from "./db.js"
+import { loadUser } from "./storage.js"
+import { push } from "./websocket.js"
 
 export async function buildDataToSync() {
   const db = await openDBConn()
@@ -9,7 +9,7 @@ export async function buildDataToSync() {
   db.close()
   const contactsToPush = contacts.map(c => ({
     originURL: c.originURL,
-    pubKeyHash: c.keys.pubKeyHash
+    pubKeyHash: c.keys.pubKeyHash,
   }))
   const user = loadUser()
   return pack({
@@ -21,5 +21,5 @@ export async function buildDataToSync() {
 
 export async function pushUserData() {
   const data = await buildDataToSync()
-  push({data})
+  push({ data })
 }

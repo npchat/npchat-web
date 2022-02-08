@@ -1,5 +1,5 @@
 import { LitElement, html, css } from "lit"
-import { goToRoute } from "./router"
+import { goToRoute } from "./router.js"
 
 export class RouteLink extends LitElement {
   static get styles() {

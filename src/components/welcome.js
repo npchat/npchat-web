@@ -21,7 +21,7 @@ export class Welcome extends LitElement {
       slideNumber: { type: Number },
       importErrorMessage: {},
       showInstallButton: { type: Boolean },
-      installState: {}
+      installState: {},
     }
   }
 
@@ -82,9 +82,11 @@ export class Welcome extends LitElement {
             <p ?hidden=${browserSupportsProtocolHandlers()}>
               It looks like your browser doesn't support some modern web APIs.
               For the best experience,
-              ${browserUsesChromium()
-                ? "update your browser"
-                : "switch to Brave or Google Chrome"}.
+              ${
+                browserUsesChromium()
+                  ? "update your browser"
+                  : "switch to Brave or Google Chrome"
+              }.
             </p>
             <label>
               <span>Your display name</span>
@@ -163,7 +165,8 @@ export class Welcome extends LitElement {
             />
             <div class="flex" ?hidden=${!this.showInstallButton}>
               <p class="center color-light">For a better experience, you can install the PWA.<br>Learn about PWAs <a href="https://www.youtube.com/watch?v=sFsRylCQblw" rel="noopener" target="_blank" class="link">here</a>.</p>
-              <button type="button" class="button small" @click=${() => this.handleInstall()}>Install PWA</button>
+              <button type="button" class="button small" @click=${() =>
+                this.handleInstall()}>Install PWA</button>
             </div>
             <div class="margin">
               <button type="submit" class="button">Done</button>
@@ -270,7 +273,7 @@ export class Welcome extends LitElement {
   }
 
   async handleInstall() {
-    const {deferredInstallPrompt} = this
+    const { deferredInstallPrompt } = this
     if (!deferredInstallPrompt) return
     deferredInstallPrompt.prompt()
     const { outcome } = await deferredInstallPrompt.userChoice
