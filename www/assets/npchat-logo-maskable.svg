@@ -1,0 +1,16 @@
+<svg version="1.1" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+  <style>.text {
+			font-family: "Segoe UI", Roboto, Ubuntu, "Helvetica Neue", sans-serif;
+			font-size: 15px;
+      font-weight: 400;
+      user-select: none;
+		}</style>
+  <defs>
+    <linearGradient id="linearGradient" y2="100%">
+      <stop stop-color="#9B00FF" offset=".3"/>
+      <stop stop-color="#07F" offset=".7"/>
+    </linearGradient>
+  </defs>
+  <path d="M0 0h24v24H0z" fill="url(#linearGradient)"/>
+  <path d="m14.4 5.6v5.6h-7.864l-0.936 0.936v-6.536h8.8m0.8-1.6h-10.4c-0.44 0-0.8 0.36-0.8 0.8v11.2l3.2-3.2h8c0.44 0 0.8-0.36 0.8-0.8v-7.2c0-0.44-0.36-0.8-0.8-0.8zm4 3.2h-1.6v7.2h-10.4v1.6c0 0.44 0.36 0.8 0.8 0.8h8.8l3.2 3.2v-12c0-0.44-0.36-0.8-0.8-0.8z" fill="#fff" stroke-width=".8"/>
+</svg>

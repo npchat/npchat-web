@@ -1,7 +1,14 @@
 {
+	"id": "npchat",
 	"name": "npchat",
 	"short_name": "npchat",
 	"icons": [
+		{
+			"src": "assets/npchat-logo-maskable.png",
+			"sizes": "512x512",
+			"type": "image/png",
+			"purpose": "maskable"
+		},
 		{
 			"src": "assets/npchat-logo.png",
 			"sizes": "512x512",

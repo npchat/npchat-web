@@ -8,9 +8,9 @@
 		}
   </style>
   <defs>
-    <linearGradient x1="0%" y1="0%" x2="100%" y2="100%" id="linearGradient">
-      <stop stop-color="#9B00FF" offset="30%"></stop>
-      <stop stop-color="#0077FF" offset="70%"></stop>
+    <linearGradient id="linearGradient" y2="100%">
+      <stop stop-color="#9B00FF" offset=".3"></stop>
+      <stop stop-color="#07F" offset=".7"></stop>
     </linearGradient>
   </defs>
   <path d="M0 0h24v24H0z" fill="url(#linearGradient)"/>
