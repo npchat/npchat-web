@@ -24,8 +24,7 @@ export const appStyles = css`
   }
 
   .logo {
-    margin-top: 7px;
-    height: 50px;
+    height: 40px;
     border-radius: 5px;
   }
 
