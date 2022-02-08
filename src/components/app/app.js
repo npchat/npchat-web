@@ -1,9 +1,9 @@
 import { LitElement, html } from "lit"
 import { styleMap } from "lit/directives/style-map.js"
-import { pack, unpack } from "msgpackr"
+import { unpack } from "msgpackr"
 import { importUserKeys, loadUser, storeUser } from "../../core/storage.js"
 import { getWebSocket, authenticateSocket, push } from "../../core/websocket.js"
-import { subscribeToPushNotifications } from "../../core/webpush.js"
+import { addNotificationClickEventListener, subscribeToPushNotifications } from "../../core/webpush.js"
 import { generateQR } from "../../util/qrcode.js"
 import {
   registerProtocolHandler,
@@ -62,6 +62,7 @@ export class App extends LitElement {
   connectedCallback() {
     super.connectedCallback()
     registerProtocolHandler()
+    addNotificationClickEventListener()
     window.addEventListener("callStart", this.handleCallStart)
     window.addEventListener("toast", event => this.showToast(event))
   }
@@ -203,7 +204,6 @@ export class App extends LitElement {
       window.socket = await getWebSocket(url.toString())
       window.socket.onclose = () => {
         this.isSocketConnected = false
-        console.log("closed")
         this.reconnectSocket()
       }
       window.socket.onmessage = event =>
@@ -225,14 +225,15 @@ export class App extends LitElement {
           Object.assign(this, { displayName, avatarURL })
         }
         const db = await openDBConn()
+        let contactsChanged = false
         await Promise.all(
           contacts.map(async c => {
             if (!(await db.get("contacts", c.pubKeyHash))) {
               // fetch data from shareable
               const resp = await fetch(`${c.originURL}/${c.pubKeyHash}/shareable`)
               if (resp.status !== 200) return
+              contactsChanged = true
               const data = await resp.json()
-              console.log("fetched", data)
               return db.put(
                 "contacts",
                 data,
@@ -242,6 +243,9 @@ export class App extends LitElement {
           })
         )
         db.close()
+        if (contactsChanged) {
+          window.dispatchEvent(new CustomEvent("contactsChanged"))
+        }
       }
       // push merged data
       const sub = await subscribeToPushNotifications(authResp.vapidKey)

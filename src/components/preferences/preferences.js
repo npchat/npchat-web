@@ -15,6 +15,7 @@ export class Preferences extends LitElement {
   static get properties() {
     return {
       preferences: { type: Object },
+      showInstallButton: { type: Boolean }
     }
   }
 
@@ -32,6 +33,14 @@ export class Preferences extends LitElement {
 
   get router() {
     return this.renderRoot.querySelector("npc-router")
+  }
+
+  constructor() {
+    super()
+    window.addEventListener("beforeinstallprompt", event => {
+      this.deferredInstallPrompt = event
+      this.showInstallButton = true
+    })
   }
 
   willUpdate() {
@@ -96,9 +105,18 @@ export class Preferences extends LitElement {
         </label>
         <button type="submit" class="button">Submit</button>
 
+        <div class="row margin" ?hidden=${!this.showInstallButton}>
+          <button type="button" class="button small" @click=${() => this.handleInstall()}>
+          <span>Install</span>
+        </button>
+          <p>Install npchat as a PWA. This enables things like offline functionality.</p>
+        </div>
+
         <div class="row margin">
           <npc-route-link route="/preferences/export">
-            <div class="button small">Export</div>
+            <div class="button small">
+              <span>Export</span>
+            </div>
           </npc-route-link>
           <p>Export data for another device</p>
         </div>
@@ -198,6 +216,16 @@ export class Preferences extends LitElement {
     const file = event.target.files[0]
     const resizedBlob = await resizeImageFile(file, 100, 100)
     this.avatarPreview.src = URL.createObjectURL(resizedBlob)
+  }
+
+  async handleInstall() {
+    const {deferredInstallPrompt} = this
+    if (!deferredInstallPrompt) return
+    deferredInstallPrompt.prompt()
+    const { outcome } = await deferredInstallPrompt.userChoice
+    if (outcome === "accepted") {
+      this.showInstallButton = false
+    }
   }
 
   canAccess() {

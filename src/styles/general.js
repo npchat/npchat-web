@@ -32,6 +32,10 @@ export const generalStyles = css`
     margin: 20px 0;
   }
 
+  .row p {
+    margin-left: 20px;
+  }
+
   .border-gradient {
     border-image: linear-gradient(
         45deg,
@@ -88,7 +92,14 @@ export const generalStyles = css`
     color: var(--color-red);
   }
 
+  p.center {
+    text-align: center;
+  }
+
   .button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     border: 0;
     outline: 0;
     background-color: transparent;
@@ -119,9 +130,6 @@ export const generalStyles = css`
     padding: 0;
     width: 44px;
     height: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
   }
 
   .button.icon img {

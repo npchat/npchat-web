@@ -1,9 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24px" height="24px">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
   <style>
     .text {
 			font-family: "Segoe UI", Roboto, Ubuntu, "Helvetica Neue", sans-serif;
 			font-size: 15px;
-      font-weight: 500;
+      font-weight: 400;
       user-select: none;
 		}
   </style>
@@ -13,7 +13,6 @@
       <stop stop-color="#0077FF" offset="70%"></stop>
     </linearGradient>
   </defs>
-  <path d="M0 0h24v24H0z" fill="none"/>
-  <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z" fill="url(#linearGradient)"/>
-  <text x="3" y="13" class="text" fill="#FFF">np</text>
+  <path d="M0 0h24v24H0z" fill="url(#linearGradient)"/>
+  <path d="M15 4v7H5.17l-.59.59-.58.58V4h11m1-2H3c-.55 0-1 .45-1 1v14l4-4h10c.55 0 1-.45 1-1V3c0-.55-.45-1-1-1zm5 4h-2v9H6v2c0 .55.45 1 1 1h11l4 4V7c0-.55-.45-1-1-1z" fill="#FFF"/>
 </svg>

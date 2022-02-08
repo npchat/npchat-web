@@ -26,6 +26,7 @@ export const appStyles = css`
   .logo {
     margin-top: 7px;
     height: 50px;
+    border-radius: 5px;
   }
 
   .buttonRound {

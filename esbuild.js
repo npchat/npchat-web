@@ -16,6 +16,17 @@ builds.push(build({
 	outdir: "www/dist"
 }))
 
+// service worker
+builds.push(build({
+	platform: "neutral",
+	bundle: true,
+	minify: !isDev(),
+	watch: isDev(),
+	entryPoints: ["src/service-worker.js"],
+	outfile: "www/sw.js",
+	define: { CACHE_VERSION: process.env.CF_PAGES_COMMIT_SHA || "\"v1\"" }
+}))
+
 // qrcode lib
 builds.push(build({
 	platform: "neutral",

@@ -62,6 +62,8 @@ export class Chats extends LitElement {
     if (toImport && toImport.originURL && toImport.keys) {
       this.addContact(toImport)
     }
+
+    await this.updateContacts()
   }
 
   contactTemplate(contact) {
@@ -135,13 +137,14 @@ export class Chats extends LitElement {
             // this only happens when contacts are synced
             Object.assign(updated, { keys })
           }
-          return db.put("contacts", updated, c.keys.pubKeyHash)
+          await db.put("contacts", updated, c.keys.pubKeyHash)
         } catch {
           return Promise.resolve()
         }
       })
     )
     db.close()
+    window.dispatchEvent(new CustomEvent("contactsChanged"))
   }
 
   handleInput(e) {

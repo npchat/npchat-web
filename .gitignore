@@ -12,6 +12,7 @@ npm-debug.log
 ## temp folders
 /.tmp/
 
-dist
+dist/
+www/sw.js
 *.pem
 wrangler.toml

@@ -49,16 +49,12 @@ export class Router extends LitElement {
       if (!event.state) return
       if (!this.basePath) return
       const { route } = event.state
-      if (route.startsWith(this.basePath)) {
-        this.active = route
-      }
+      this.handleWhenMine(route)
     })
 
     window.addEventListener("route", event => {
       const route = event.detail
-      if (route.startsWith(this.basePath)) {
-        this.active = route
-      }
+      this.handleWhenMine(route)
     })
 
     this.getUpdateComplete().then(() => {
@@ -112,6 +108,12 @@ export class Router extends LitElement {
       return route === pathname
     }
     return pathname.startsWith(route)
+  }
+
+  handleWhenMine(route) {
+    if (route.startsWith(this.basePath)) {
+      this.active = route
+    }
   }
 }
 

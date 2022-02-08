@@ -20,11 +20,15 @@ export class Welcome extends LitElement {
     return {
       slideNumber: { type: Number },
       importErrorMessage: {},
+      showInstallButton: { type: Boolean },
+      installState: {}
     }
   }
 
   static get styles() {
     return [
+      formStyles,
+      generalStyles,
       css`
         p {
           font-size: 1.2rem;
@@ -39,9 +43,11 @@ export class Welcome extends LitElement {
           margin-left: 5px;
           max-width: calc(100vw - 100px);
         }
+
+        .margin {
+          margin: 40px 0;
+        }
       `,
-      formStyles,
-      generalStyles,
     ]
   }
 
@@ -60,6 +66,10 @@ export class Welcome extends LitElement {
   constructor() {
     super()
     this.slideNumber = 0
+    window.addEventListener("beforeinstallprompt", event => {
+      this.deferredInstallPrompt = event
+      this.showInstallButton = true
+    })
   }
 
   welcomeFormTemplate() {
@@ -145,14 +155,19 @@ export class Welcome extends LitElement {
         </div>
         <div ?hidden=${this.slideNumber !== 1}>
           <div class="flex">
-            <h2>Generated fresh crypto keys</h2>
+            <h2>You're good to go!</h2>
             <img
               class="fingerprint"
               alt="fingerprint"
               src="assets/fingerprint.svg"
             />
-            <button type="submit" class="button">OK</button>
-          </div>
+            <div class="flex" ?hidden=${!this.showInstallButton}>
+              <p class="center color-light">For a better experience, you can install the PWA.<br>Learn about PWAs <a href="https://www.youtube.com/watch?v=sFsRylCQblw" rel="noopener" target="_blank" class="link">here</a>.</p>
+              <button type="button" class="button small" @click=${() => this.handleInstall()}>Install PWA</button>
+            </div>
+            <div class="margin">
+              <button type="submit" class="button">Done</button>
+            </div>
         </div>
       </form>
     `
@@ -252,6 +267,16 @@ export class Welcome extends LitElement {
     const file = event.target.files[0]
     const resizedBlob = await resizeImageFile(file, 100, 100)
     this.avatarPreview.src = URL.createObjectURL(resizedBlob)
+  }
+
+  async handleInstall() {
+    const {deferredInstallPrompt} = this
+    if (!deferredInstallPrompt) return
+    deferredInstallPrompt.prompt()
+    const { outcome } = await deferredInstallPrompt.userChoice
+    if (outcome === "accepted") {
+      this.showInstallButton = false
+    }
   }
 
   canAccess() {

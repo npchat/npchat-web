@@ -1,12 +1,5 @@
 import { toBase64 } from "../util/base64.js"
-
-async function registerServiceWorker() {
-  try {
-    return await navigator.serviceWorker.register("service-worker.js")
-  } catch (e) {
-    return Promise.reject(e)
-  }
-}
+import { registerServiceWorker } from "./worker.js"
 
 async function askPermission() {
   const permission = await Notification.requestPermission()
@@ -51,4 +44,14 @@ export async function subscribeToPushNotifications(vapidKey) {
       console.log("failed to subscribe for web push")
     }
   }
+}
+
+export function addNotificationClickEventListener() {
+  navigator.serviceWorker.addEventListener("message", event => {
+    console.log("message!", event.data.route)
+    const {route} = event.data
+    window.dispatchEvent(new CustomEvent("route", {
+      detail: route
+    }))
+  })
 }
