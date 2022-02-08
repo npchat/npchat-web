@@ -2,7 +2,7 @@ import { build } from "esbuild"
 
 // new PWA cache name will include last commit ID
 // esbuild wants a string literal with escaped quotes
-const CACHE_VERSION = `"${process.env.CF_PAGES_COMMIT_SHA}"` || "\"v1\""
+const CACHE_VERSION = `"${process.env.CF_PAGES_COMMIT_SHA || "v1"}"`
 
 function isDev() {
 	return process.argv.indexOf("--dev") >= 0
