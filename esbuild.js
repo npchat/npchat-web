@@ -1,5 +1,9 @@
 import { build } from "esbuild"
 
+// new PWA cache name will include last commit ID
+// esbuild wants a string literal with escaped quotes
+const CACHE_VERSION = `"${process.env.CF_PAGES_COMMIT_SHA}"` || "\"v1\""
+
 function isDev() {
 	return process.argv.indexOf("--dev") >= 0
 }
@@ -24,7 +28,7 @@ builds.push(build({
 	watch: isDev(),
 	entryPoints: ["src/service-worker.js"],
 	outfile: "www/sw.js",
-	define: { CACHE_VERSION: process.env.CF_PAGES_COMMIT_SHA || "\"v1\"" }
+	define: { CACHE_VERSION }
 }))
 
 // qrcode lib
