@@ -10,7 +10,7 @@
 			"purpose": "maskable"
 		},
 		{
-			"src": "assets/npchat-logo.png",
+			"src": "assets/npchat-logo-maskable.png",
 			"sizes": "512x512",
 			"type": "image/png"
 		}

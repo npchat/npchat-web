@@ -33,6 +33,8 @@ export class Call extends LitElement {
     super()
     this.videoEnabled = true
 
+    window.addEventListener("callStart", event => this.startCall(event))
+
     window.addEventListener("packedMessageReceived", async event => {
       if (!this.theirKeys) {
         this.contact = event.detail.contact
@@ -86,7 +88,7 @@ export class Call extends LitElement {
           />
           <video id="remote-video" class="remote" playsinline autoplay></video>
           <div class="buttonGroup">
-            <button class="icon endCall" @click=${() => this.endCall(true)}>
+            <button class="button icon endCall" @click=${() => this.endCall(true)}>
               <img alt="end call" src="assets/icons/end_call.svg" />
             </button>
           </div>

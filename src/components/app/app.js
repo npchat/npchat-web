@@ -66,13 +66,7 @@ export class App extends LitElement {
     super.connectedCallback()
     registerProtocolHandler()
     addNotificationClickEventListener()
-    window.addEventListener("callStart", this.handleCallStart)
     window.addEventListener("toast", event => this.showToast(event))
-  }
-
-  disconnectedCallback() {
-    super.disconnectedCallback()
-    window.removeEventListener("callStart", this.handleCallStart)
   }
 
   async init(force) {
@@ -111,7 +105,7 @@ export class App extends LitElement {
     return html`
       <header>
         <npc-route-link route="/">
-          <img alt="logo" src="assets/npchat-logo.svg" class="logo" />
+          <img alt="logo" src="assets/npchat-logo-maskable.svg" class="logo" />
         </npc-route-link>
         <npc-status
           ?hidden=${!this.originURL}
@@ -185,10 +179,6 @@ export class App extends LitElement {
       this.selectedContact.keys.pubKeyHash,
       JSON.stringify(this.selectedContactMessages)
     )
-  }
-
-  handleCallStart(e) {
-    this.callComponent.startCall(e)
   }
 
   reconnectSocket() {
