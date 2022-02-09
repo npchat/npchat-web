@@ -37,6 +37,11 @@ export class Router extends LitElement {
     }
   }
 
+  constructor() {
+    super()
+    this.setAttribute("hidden", "")
+  }
+
   render() {
     return html`<slot></slot>`
   }
@@ -84,6 +89,9 @@ export class Router extends LitElement {
         child.setAttribute("hidden", "")
       }
     })
+    if (this._slottedChildren?.length > 0) {
+      this.removeAttribute("hidden")
+    }
   }
 
   getMatch(pathname) {
