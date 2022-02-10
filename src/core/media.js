@@ -1,4 +1,5 @@
 export const avatarSize = 250
+// TODO: secure with ephemeral token
 const apiKey = "gXVqOrNeZvjx3OnVSjcXmvVcKNNY4SwLpOJpyTA"
 const endpoint = "https://npchat-media.dr-useless.workers.dev"
 

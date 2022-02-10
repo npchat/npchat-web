@@ -1,15 +1,5 @@
-export const iceConfig = {
-  iceServers: [
-    {
-      urls: "stun:stun.l.google.com:19302",
-    },
-    {
-      urls: "turn:dev.npchat.org:3478",
-      username: "npchat",
-      credential: "npchatturn",
-    },
-  ],
-}
+import { pack } from "msgpackr"
+import { toBase64 } from "../util/base64"
 
 /*
 export function amIPolitePeer(myPubKeyHash, peerPubKeyHash) {
@@ -21,3 +11,26 @@ export function amIPolitePeer(myPubKeyHash, peerPubKeyHash) {
   }
 }
 */
+
+async function getTurnServer(authObject, pubKeyHash) {
+  const endpoint = new URL(`${pubKeyHash}/turn`, localStorage.originURL)
+  const auth = toBase64(pack(authObject))
+  const response = await fetch(endpoint, {
+    headers: { "Authorization": auth }
+  })
+  if (response.status !== 200) return
+  return response.json()
+}
+
+export async function getIceConfig(authObject, pubKeyHash) {
+  const turnServer = await getTurnServer(authObject, pubKeyHash)
+  const config = {
+    iceServers: [
+      {
+        urls: "stun:stun.l.google.com:19302",
+      }
+    ]
+  }
+  config.iceServers.push(turnServer)
+  return config
+}

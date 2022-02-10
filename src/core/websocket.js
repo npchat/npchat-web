@@ -1,5 +1,5 @@
 import { pack, unpack } from "msgpackr"
-import { sign } from "../util/auth.js"
+import { buildAuthObject } from "./auth.js"
 
 export async function authenticateSocket(privateKey, publicKeyRaw) {
   return new Promise((resolve, reject) => {
@@ -22,12 +22,7 @@ export async function authenticateSocket(privateKey, publicKeyRaw) {
     window.socket.addEventListener(
       "open",
       async () => {
-        const time = new TextEncoder().encode(Date.now().toString())
-        const buffer = pack({
-          time,
-          sig: new Uint8Array(await sign(privateKey, time)),
-          publicKey: publicKeyRaw,
-        })
+        const buffer = pack(await buildAuthObject(privateKey, publicKeyRaw))
         window.socket.send(buffer)
       },
       { once: true }

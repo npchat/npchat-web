@@ -1,8 +1,9 @@
 import { LitElement, html } from "lit"
 import { pack } from "msgpackr"
+import { buildAuthObject } from "../../core/auth.js"
 import { importAuthKey, importDHKey } from "../../core/keys.js"
 import { buildMessage } from "../../core/message.js"
-import { iceConfig } from "../../core/webrtc.js"
+import { getIceConfig } from "../../core/webrtc.js"
 import { formStyles } from "../../styles/form.js"
 import { generalStyles } from "../../styles/general.js"
 import { fromBase64 } from "../../util/base64.js"
@@ -45,7 +46,7 @@ export class Call extends LitElement {
         const msg = JSON.parse(event.detail.unpacked)
         const { offer, answer, candidate, call } = msg
         if (offer) {
-          this.initPeerConnection()
+          await this.initPeerConnection()
           await this.startLocalStream({ width: 300, height: 300 })
           await this.pc.setRemoteDescription(new RTCSessionDescription(offer))
           await this.pc.setLocalDescription(await this.pc.createAnswer())
@@ -119,7 +120,7 @@ export class Call extends LitElement {
   async startCall(event) {
     Object.assign(this, event.detail)
     await this.initKeys()
-    this.initPeerConnection()
+    await this.initPeerConnection()
     await this.startLocalStream({ width: 300, height: 300 })
     await this.pc.setLocalDescription(await this.pc.createOffer())
     await this.sendData({ offer: this.pc.localDescription })
@@ -145,8 +146,14 @@ export class Call extends LitElement {
     console.log("call ended")
   }
 
-  initPeerConnection() {
+  async initPeerConnection() {
     this.inCall = true
+
+    const authObject = await buildAuthObject(this.myKeys.auth.keyPair.privateKey, this.myKeys.auth.publicKeyRaw)
+    const iceConfig = await getIceConfig(authObject, this.myKeys.pubKeyHash)
+
+    console.log({iceConfig})
+
     this.pc = new RTCPeerConnection(iceConfig)
 
     // listen for remote stream
@@ -161,6 +168,7 @@ export class Call extends LitElement {
 
     // listen for ICE candidates & send them to peer
     this.pc.onicecandidate = ({ candidate }) => {
+      console.log("ICE", candidate)
       this.sendData({ candidate })
     }
 

@@ -1,5 +1,5 @@
 import { pack } from "msgpackr"
-import { sign, verify } from "../util/auth.js"
+import { sign, verify } from "./auth.js"
 import { hash } from "../util/hash.js"
 import { deriveDHSecret } from "./keys.js"
 import { encrypt, getIV } from "../util/privacy.js"
