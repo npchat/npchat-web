@@ -2,7 +2,7 @@ import { LitElement, html } from "lit"
 import { styleMap } from "lit/directives/style-map.js"
 import { unpack } from "msgpackr"
 import { importUserKeys, loadUser, storeUser } from "../../core/storage.js"
-import { getWebSocket, authenticateSocket, push } from "../../core/websocket.js"
+import { getWebSocket, push } from "../../core/websocket.js"
 import {
   addNotificationClickEventListener,
   subscribeToPushNotifications,
@@ -13,13 +13,13 @@ import {
   buildShareableURL,
   buildShareableData,
 } from "../../core/shareable.js"
-import { openDBConn } from "../../core/db.js"
 import { handleIncomingMessage } from "../../core/incoming.js"
 import { appStyles } from "./styles.js"
 import { avatarFallbackURL, generalStyles } from "../../styles/general.js"
-import { buildDataToSync } from "../../core/sync.js"
+import { buildDataToSync, handleReceivedData } from "../../core/sync.js"
 import { importUserDataFromURL } from "../../core/export.js"
 import { goToRoute } from "../router/router.js"
+import { buildAuthObject } from "../../core/auth.js"
 
 export class App extends LitElement {
   static get properties() {
@@ -194,57 +194,27 @@ export class App extends LitElement {
   async connectSocket() {
     try {
       const url = new URL(this.keys.pubKeyHash, this.originURL)
-      window.socket = await getWebSocket(url.toString())
+      const authObject = await buildAuthObject(this.keys.auth.keyPair.privateKey, this.keys.auth.publicKeyRaw)
+      window.socket = getWebSocket(url.toString(), authObject)
       window.socket.onclose = () => {
         this.isSocketConnected = false
         this.reconnectSocket()
       }
-      window.socket.onmessage = event => handleIncomingMessage(event, this.keys)
-      const authResp = await authenticateSocket(
-        this.keys.auth.keyPair.privateKey,
-        this.keys.auth.publicKeyRaw
-      )
-      if (authResp.error) {
-        throw new Error(authResp.error)
-      }
-      this.isSocketConnected = true
-      // handle received data
-      if (authResp.data) {
-        const unpacked = unpack(authResp.data)
-        const { displayName, avatarURL, contacts } = unpacked
-        if (displayName) {
-          storeUser({ displayName, avatarURL })
-          Object.assign(this, { displayName, avatarURL })
-        }
-        const db = await openDBConn()
-        let contactsChanged = false
-        await Promise.all(
-          contacts.map(async c => {
-            if (!(await db.get("contacts", c.pubKeyHash))) {
-              // fetch data from shareable
-              const resp = await fetch(
-                `${c.originURL}/${c.pubKeyHash}/shareable`
-              )
-              if (resp.status !== 200) return
-              contactsChanged = true
-              const data = await resp.json()
-              return db.put("contacts", data, c.pubKeyHash)
-            }
-          })
-        )
-        db.close()
-        if (contactsChanged) {
-          window.dispatchEvent(new CustomEvent("contactsChanged"))
-        }
-      }
-      // push merged data
-      const sub = await subscribeToPushNotifications(authResp.vapidKey)
-      push({
-        data: await buildDataToSync(),
-        shareableData: buildShareableData(this.keys),
-        sub: sub || "",
-      })
-      window.dispatchEvent(new CustomEvent("socketConnected"))
+      window.socket.addEventListener("message", async msg => {
+        this.isSocketConnected = true
+        window.socket.onmessage = event => handleIncomingMessage(event, this.keys)
+        const authResp = unpack(new Uint8Array(await msg.data.arrayBuffer()))
+        // handle received data
+        await handleReceivedData(authResp)
+        // push merged data
+        const sub = await subscribeToPushNotifications(authResp.vapidKey)
+        push({
+          data: await buildDataToSync(),
+          shareableData: buildShareableData(this.keys),
+          sub: sub || "",
+        })
+        window.dispatchEvent(new CustomEvent("socketConnected"))
+      }, {once: true})
       return Promise.resolve(true)
     } catch (err) {
       console.log("failed to connect", err)

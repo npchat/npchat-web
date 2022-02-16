@@ -1,34 +1,5 @@
-import { pack, unpack } from "msgpackr"
-import { buildAuthObject } from "./auth.js"
-
-export async function authenticateSocket(privateKey, publicKeyRaw) {
-  return new Promise((resolve, reject) => {
-    // handle response message
-    window.socket.addEventListener(
-      "message",
-      async msg => {
-        try {
-          const arrayBuffer = await msg.data.arrayBuffer()
-          const data = unpack(new Uint8Array(arrayBuffer))
-          resolve(data)
-        } catch (e) {
-          reject(e)
-        }
-      },
-      { once: true }
-    )
-
-    // send auth solution
-    window.socket.addEventListener(
-      "open",
-      async () => {
-        const buffer = pack(await buildAuthObject(privateKey, publicKeyRaw))
-        window.socket.send(buffer)
-      },
-      { once: true }
-    )
-  })
-}
+import { pack } from "msgpackr"
+import { toBase64 } from "../util/base64"
 
 /**
  * URL string
@@ -36,16 +7,16 @@ export async function authenticateSocket(privateKey, publicKeyRaw) {
  * @param {*} url
  * @returns
  */
-export async function getWebSocket(url) {
+export function getWebSocket(url, authObject) {
   let fixed = url
-  // check for redirect
-  const resp = await fetch(url)
-  if (resp.redirected) {
-    fixed = resp.url
-  }
+
   // http -> ws & https -> wss
   fixed = fixed.replace("http://", "ws://")
   fixed = fixed.replace("https://", "wss://")
+
+  // add auth as query param
+  const auth = toBase64(pack(authObject))
+  fixed += "?auth="+auth
   return new WebSocket(fixed)
 }
 
